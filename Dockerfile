@@ -5,8 +5,7 @@
 FROM golang:1.12 as builder
 
 # Copy local code to the container image.
-WORKDIR /go/src/github.com/jbraeuer/prometheus-service
-#WORKDIR /go/src/github.com/keptn-contrib/prometheus-service
+WORKDIR /go/src/github.com/keptn-contrib/prometheus-service
 COPY . .
 
 ARG DEP_VERSION=0.5.3

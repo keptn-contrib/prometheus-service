@@ -8,8 +8,8 @@ import (
 
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
 	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
-	"github.com/johannes-b/prometheus-service/eventhandling"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	keptnutils "github.com/keptn/go-utils/pkg/utils"
 )
 
@@ -64,7 +64,7 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
 	logger.Debug("Receiving event from prometheus alertmanager")
 
-	// check event type
+	// check event type and start process or forward it to 8081 in case of a Cloud Event
 	if false {
 		eventhandling.ProcessAndForwardAlertEvent(eventbroker, rw, req, logger, shkeptncontext)
 	} else {

@@ -14,11 +14,8 @@ import (
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 
 	"github.com/keptn-contrib/prometheus-service/utils"
-	"github.com/keptn-contrib/prometheus-service/websocketutil"
-	"github.com/keptn/keptn/cli/utils/websockethelper"
 
 	"github.com/keptn/go-utils/pkg/events"
 	"github.com/keptn/go-utils/pkg/models"
@@ -42,34 +39,36 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	logger := keptnutils.NewLogger(shkeptncontext, event.Context.GetID(), "prometheus-service")
 
 	// open websocket connection to api component
-	endPoint, err := utils.GetServiceEndpoint(api)
-	if err != nil {
-		return err
-	}
+	/*
+		endPoint, err := utils.GetServiceEndpoint(api)
+		if err != nil {
+			return err
+		}
 
-	if endPoint.Host == "" {
-		const errorMsg = "Host of api not set"
-		logger.Error(errorMsg)
-		return errors.New(errorMsg)
-	}
+		if endPoint.Host == "" {
+			const errorMsg = "Host of api not set"
+			logger.Error(errorMsg)
+			return errors.New(errorMsg)
+		}
 
-	connData := &websockethelper.ConnectionData{}
-	if err := event.DataAs(connData); err != nil {
-		logger.Error(fmt.Sprintf("Data of the event is incompatible. %s", err.Error()))
-		return err
-	}
+		connData := &websockethelper.ConnectionData{}
+		if err := event.DataAs(connData); err != nil {
+			logger.Error(fmt.Sprintf("Data of the event is incompatible. %s", err.Error()))
+			return err
+		}
 
-	ws, _, err := websocketutil.OpenWS(*connData, endPoint)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Opening websocket connection failed. %s", err.Error()))
-		return err
-	}
-	defer ws.Close()
+		ws, _, err := websocketutil.OpenWS(*connData, endPoint)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Opening websocket connection failed. %s", err.Error()))
+			return err
+		}
+		defer ws.Close()
+	*/
 
 	// process event
 	if event.Type() == events.ConfigureMonitoringEventType {
-		version, err := configurePrometheusAndStoreResources(event, *logger, ws)
-		if err := logErrAndRespondWithDoneEvent(event, version, err, *logger, ws); err != nil {
+		version, err := configurePrometheusAndStoreResources(event, *logger)
+		if err := logErrAndRespondWithDoneEvent(event, version, err, *logger); err != nil {
 			return err
 		}
 
@@ -77,15 +76,17 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	}
 
 	const errorMsg = "Received unexpected keptn event that cannot be processed"
-	if err := websocketutil.WriteWSLog(ws, createEventCopy(event, "sh.keptn.events.log"), errorMsg, true, "INFO"); err != nil {
-		logger.Error(fmt.Sprintf("Could not write log to websocket. %s", err.Error()))
-	}
+	/*
+		if err := websocketutil.WriteWSLog(ws, createEventCopy(event, "sh.keptn.events.log"), errorMsg, true, "INFO"); err != nil {
+			logger.Error(fmt.Sprintf("Could not write log to websocket. %s", err.Error()))
+		}
+	*/
 	logger.Error(errorMsg)
 	return errors.New(errorMsg)
 }
 
 // configurePrometheusAndStoreResources
-func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnutils.Logger, ws *websocket.Conn) (*models.Version, error) {
+func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnutils.Logger) (*models.Version, error) {
 	eventData := &events.ConfigureMonitoringEventData{}
 
 	// (1) if prometheus is not installed - install prometheus
@@ -118,23 +119,25 @@ func storeMonitoringResources(eventData events.ConfigureMonitoringEventData, log
 }
 
 // logErrAndRespondWithDoneEvent sends a keptn done event to the keptn eventbroker
-func logErrAndRespondWithDoneEvent(event cloudevents.Event, version *models.Version, err error, logger keptnutils.Logger, ws *websocket.Conn) error {
+func logErrAndRespondWithDoneEvent(event cloudevents.Event, version *models.Version, err error, logger keptnutils.Logger) error {
 	var result = "success"
-	var webSocketMessage = "Prometheus successfully configured"
+	//var webSocketMessage = "Prometheus successfully configured"
 	var eventMessage = "Prometheus successfully configured and rule created"
 
 	if err != nil { // error
 		result = "error"
 		eventMessage = fmt.Sprintf("%s.", err.Error())
-		webSocketMessage = eventMessage
+		//webSocketMessage = eventMessage
 		logger.Error(eventMessage)
 	} else { // success
 		logger.Info(eventMessage)
 	}
 
-	if err := websocketutil.WriteWSLog(ws, createEventCopy(event, "sh.keptn.events.log"), webSocketMessage, true, "INFO"); err != nil {
-		logger.Error(fmt.Sprintf("Could not write log to websocket. %s", err.Error()))
-	}
+	/*
+		if err := websocketutil.WriteWSLog(ws, createEventCopy(event, "sh.keptn.events.log"), webSocketMessage, true, "INFO"); err != nil {
+			logger.Error(fmt.Sprintf("Could not write log to websocket. %s", err.Error()))
+		}
+	*/
 	if err := sendDoneEvent(event, result, eventMessage, version); err != nil {
 		logger.Error(fmt.Sprintf("No sh.keptn.event.done event sent. %s", err.Error()))
 	}

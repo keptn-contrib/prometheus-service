@@ -12,7 +12,6 @@ before_install:
 - GIT_SHA="$(git rev-parse --short HEAD)"
 - echo "$REGISTRY_PASSWORD" | docker login --username $REGISTRY_USER --password-stdin
 - REPO_URL="$(git remote get-url --all origin)"
-- LAST_COMMIT="$(git log -1 --oneline)"
 - ./writeManifest.sh
 - cat MANIFEST
 jobs:

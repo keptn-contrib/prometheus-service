@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -25,19 +25,21 @@ func main() {
 	// listen on port 8080 for any event
 	shkeptncontext := ""
 	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
-	logger.Debug("Starting handler")
+	logger.Debug("Starting server for receiving events on 8080")
 	http.HandleFunc("/", Handler)
-	http.ListenAndServe(":8080", nil)
+	go http.ListenAndServe(":8080", nil)
 
 	// listen on port 8081 for CloudEvent
 	var env envConfig
 	if err := envconfig.Process("", &env); err != nil {
-		log.Fatalf("Failed to process env var: %s", err)
+		logger.Error(fmt.Sprintf("Failed to process env var: %s", err))
 	}
 	os.Exit(_main(os.Args[1:], env))
 }
 
 func _main(args []string, env envConfig) int {
+	shkeptncontext := ""
+	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
 
 	ctx := context.Background()
 
@@ -46,19 +48,20 @@ func _main(args []string, env envConfig) int {
 		cloudeventshttp.WithPath(env.Path),
 	)
 	if err != nil {
-		log.Fatalf("Failed to create transport: %v", err)
+		logger.Error(fmt.Sprintf("Failed to create transport: %v", err))
 	}
 
 	c, err := client.New(t)
 	if err != nil {
-		log.Fatalf("Failed to create client: %v", err)
+		logger.Error(fmt.Sprintf("Failed to create client: %v", err))
 	}
-	log.Fatalf("Failed to start receiver: %s", c.StartReceiver(ctx, eventhandling.GotEvent))
+	logger.Debug("Starting server for receiving Cloud Events on 8081")
+	logger.Error(fmt.Sprintf("Failed to start receiver: %s", c.StartReceiver(ctx, eventhandling.GotEvent)))
 
 	return 0
 }
 
-// Handler takes the prometheus alert as input
+// Handler takes request and forwards it to the corresponding event handler
 func Handler(rw http.ResponseWriter, req *http.Request) {
 	shkeptncontext := ""
 	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
@@ -69,9 +72,9 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 		eventhandling.ProcessAndForwardAlertEvent(eventbroker, rw, req, logger, shkeptncontext)
 	} else {
 
-		req, err := http.NewRequest("POST", "localhost:8081", req.Body)
-		client := &http.Client{}
-		resp, err := client.Do(req)
+		req, err := http.NewRequest("POST", "http://localhost:8081", req.Body)
+		req.Header.Set("Content-Type", "application/cloudevents+json")
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			logger.Error("Could not send cloud event: " + err.Error())
 		}

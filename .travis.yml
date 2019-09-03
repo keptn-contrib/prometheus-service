@@ -5,8 +5,8 @@ services:
 - docker
 before_install:
 - export TZ=Europe/Vienna
-- IMAGE=keptn/dynatrace-service
-- REGISTRY_USER=bacherfl
+- IMAGE=keptn/prometheus-service
+- REGISTRY_USER=jbraeuer
 - VERSION="$(cat version | tr -d '[:space:]')"
 - DATE="$(date +'%Y%m%d.%H%M')"
 - GIT_SHA="$(git rev-parse --short HEAD)"
@@ -17,8 +17,8 @@ before_install:
 - cat MANIFEST
 jobs:
   include:
-  - stage: feature/bug
-    if: branch =~ ^feature.*$ OR branch =~ ^bug.*$ OR branch =~ ^hotfix.*$
+  - stage: feature/bug/hotfix/patch
+    if: branch =~ ^feature.*$ OR branch =~ ^bug.*$ OR branch =~ ^hotfix.*$ OR branch =~ ^patch.*$
     script:
     - echo $TRAVIS_BUILD_STAGE_NAME
     - TYPE="$(echo $TRAVIS_BRANCH | cut -d'/' -f1)"

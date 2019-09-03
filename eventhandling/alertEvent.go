@@ -15,7 +15,7 @@ import (
 	keptnevents "github.com/keptn/go-utils/pkg/events"
 	keptnutils "github.com/keptn/go-utils/pkg/utils"
 
-	"github.com/johannes-b/prometheus-service/utils"
+	"github.com/keptn-contrib/prometheus-service/utils"
 )
 
 type alertManagerEvent struct {

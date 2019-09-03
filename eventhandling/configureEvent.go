@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/url"
 
+	"gopkg.in/yaml.v2"
+
 	cloudevents "github.com/cloudevents/sdk-go"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
 	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
@@ -18,8 +20,8 @@ import (
 	"github.com/keptn-contrib/prometheus-service/websocketutil"
 	"github.com/keptn/keptn/cli/utils/websockethelper"
 
-	keptnevents "github.com/keptn/go-utils/pkg/events"
-	models "github.com/keptn/go-utils/pkg/models"
+	"github.com/keptn/go-utils/pkg/events"
+	"github.com/keptn/go-utils/pkg/models"
 	keptnutils "github.com/keptn/go-utils/pkg/utils"
 )
 
@@ -65,7 +67,7 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	defer ws.Close()
 
 	// process event
-	if event.Type() == keptnevents.ConfigureMonitoringEventType {
+	if event.Type() == events.ConfigureMonitoringEventType {
 		version, err := configurePrometheusAndStoreResources(event, *logger, ws)
 		if err := logErrAndRespondWithDoneEvent(event, version, err, *logger, ws); err != nil {
 			return err
@@ -84,14 +86,35 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 
 // configurePrometheusAndStoreResources
 func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnutils.Logger, ws *websocket.Conn) (*models.Version, error) {
+	eventData := &events.ConfigureMonitoringEventData{}
 
 	// (1) if prometheus is not installed - install prometheus
 
 	// (2) update config map with alert rule
 
 	// (3) store resources
+	return storeMonitoringResources(*eventData, logger)
+}
 
-	return nil, nil
+func storeMonitoringResources(eventData events.ConfigureMonitoringEventData, logger keptnutils.Logger) (*models.Version, error) {
+	serviceObjectives, err := yaml.Marshal(eventData.ServiceObjectives)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal service objectives. %s", err.Error())
+	}
+	storeResourceForService(eventData.Service, "service-objectives.yaml", string(serviceObjectives), logger)
+
+	serviceIndicators, err := yaml.Marshal(eventData.ServiceIndicators)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal service indicators. %s", err.Error())
+	}
+	storeResourceForService(eventData.Service, "service-indicators.yaml", string(serviceIndicators), logger)
+
+	remediation, err := yaml.Marshal(eventData.Remediation)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal remediation. %s", err.Error())
+	}
+
+	return storeResourceForService(eventData.Service, "remedation.yaml", string(remediation), logger)
 }
 
 // logErrAndRespondWithDoneEvent sends a keptn done event to the keptn eventbroker

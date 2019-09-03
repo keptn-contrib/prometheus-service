@@ -84,7 +84,7 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 		eventhandling.ProcessAndForwardAlertEvent(rw, req, logger, shkeptncontext)
 	} else {
 		proxyReq, err := http.NewRequest(req.Method, "http://localhost:8081", bytes.NewReader(body))
-		req.Header.Set("Content-Type", "application/cloudevents+json")
+		proxyReq.Header.Set("Content-Type", "application/cloudevents+json")
 		resp, err := http.DefaultClient.Do(proxyReq)
 		if err != nil {
 			logger.Error("Could not send cloud event: " + err.Error())

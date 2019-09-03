@@ -45,9 +45,10 @@ type annotations struct {
 }
 
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud Event to the keptn event broker
-func ProcessAndForwardAlertEvent(eventbroker string, rw http.ResponseWriter, req *http.Request, logger *keptnutils.Logger, shkeptncontext string) {
+func ProcessAndForwardAlertEvent(rw http.ResponseWriter, req *http.Request, logger *keptnutils.Logger, shkeptncontext string) {
 	decoder := json.NewDecoder(req.Body)
 	var event alertManagerEvent
+
 	err := decoder.Decode(&event)
 	if err != nil {
 		logger.Error("Could not map received event to datastructure: " + err.Error())

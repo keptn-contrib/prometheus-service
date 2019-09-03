@@ -27,8 +27,12 @@ spec:
             memory: "128Mi"
             cpu: "500m"
         env:
+        - name: CONFIGURATION_SERVICE
+          value: 'http://configuration-service.keptn.svc.cluster.local:8080'
         - name: EVENTBROKER
           value: 'http://event-broker.keptn.svc.cluster.local/keptn'
+        - name: API
+          value: 'ws://api.keptn.svc.cluster.local'
 ---
 apiVersion: v1
 kind: Service

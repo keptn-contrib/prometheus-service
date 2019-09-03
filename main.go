@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -19,13 +22,15 @@ type envConfig struct {
 	Path string `envconfig:"RCV_PATH" default:"/"`
 }
 
-const eventbroker = "EVENTBROKER"
+type ceTest struct {
+	Specversion string `json:"specversion" yaml:"specversion"`
+}
 
 func main() {
 	// listen on port 8080 for any event
 	shkeptncontext := ""
 	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
-	logger.Debug("Starting server for receiving events on 8080")
+	logger.Debug("Starting server for receiving events on exposed port 8080")
 	http.HandleFunc("/", Handler)
 	go http.ListenAndServe(":8080", nil)
 
@@ -55,7 +60,7 @@ func _main(args []string, env envConfig) int {
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to create client: %v", err))
 	}
-	logger.Debug("Starting server for receiving Cloud Events on 8081")
+	logger.Debug("Starting server for receiving Cloud Events on 8081 for internal use")
 	logger.Error(fmt.Sprintf("Failed to start receiver: %s", c.StartReceiver(ctx, eventhandling.GotEvent)))
 
 	return 0
@@ -65,23 +70,30 @@ func _main(args []string, env envConfig) int {
 func Handler(rw http.ResponseWriter, req *http.Request) {
 	shkeptncontext := ""
 	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
-	logger.Debug("Receiving event from prometheus alertmanager")
+	logger.Debug("Receiving event which will be dispatched")
 
-	// check event type and start process or forward it to 8081 in case of a Cloud Event
-	if false {
-		eventhandling.ProcessAndForwardAlertEvent(eventbroker, rw, req, logger, shkeptncontext)
+	event := ceTest{}
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to read body from requst: %s", err))
+		return
+	}
+
+	// check event whether event contains specversion to forward it to 8081; otherwise process it as prometheus alert
+	if json.Unmarshal(body, &event) != nil || event.Specversion == "" {
+		eventhandling.ProcessAndForwardAlertEvent(rw, req, logger, shkeptncontext)
 	} else {
-
-		req, err := http.NewRequest("POST", "http://localhost:8081", req.Body)
+		proxyReq, err := http.NewRequest(req.Method, "http://localhost:8081", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/cloudevents+json")
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := http.DefaultClient.Do(proxyReq)
 		if err != nil {
 			logger.Error("Could not send cloud event: " + err.Error())
+			return
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != 200 {
-			logger.Error("Could not send cloud event: " + err.Error())
+		if resp.StatusCode != 202 {
+			logger.Error(fmt.Sprintf("Could not send cloud event: %s", err.Error()))
 			rw.WriteHeader(500)
 		} else {
 			logger.Debug("Event successfully sent to port 8081")

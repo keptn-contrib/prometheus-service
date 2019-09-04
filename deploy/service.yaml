@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: prometheus-service
-        image: jbraeuer/prometheus-service:0.0.1
+        image: keptn/prometheus-service:cfb862f
         ports:
         - containerPort: 8080
         resources:

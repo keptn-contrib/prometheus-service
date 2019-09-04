@@ -87,13 +87,8 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnutils.Logger) (*models.Version, error) {
 	eventData := &events.ConfigureMonitoringEventData{}
 
-	// (1) if prometheus is not installed - install prometheus
-	available, err := checkPrometheusInstallation(logger)
-	if err != nil {
-		return nil, err
-	}
-
-	if !available {
+	// (1) check if prometheus is installed, otherwise install prometheus and alert manager
+	if !checkPrometheusInstallation(logger) {
 		logger.Debug("Installing Prometheus monitoring")
 		err := installPrometheus(logger)
 		if err != nil {
@@ -115,18 +110,18 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 	return storeMonitoringResources(*eventData, logger)
 }
 
-func checkPrometheusInstallation(logger keptnutils.Logger) (bool, error) {
+func checkPrometheusInstallation(logger keptnutils.Logger) bool {
 	logger.Debug("Check if Prometheus service in monitoring namespace is available")
 
 	o := options{"get", "svc", "prometheus-service", "-n", "monitoring"}
-	result, err := keptnutils.ExecuteCommand("kubectl", o)
+	_, err := keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
-		return false, err
+		logger.Debug(fmt.Sprintf("Prometheus service in monitoring namespace is not available. %s", err.Error()))
+		return false
 	}
 
-	logger.Debug(result)
-
-	return true, nil
+	logger.Debug("Prometheus service in monitoring namespace is available")
+	return true
 }
 
 func installPrometheus(logger keptnutils.Logger) error {

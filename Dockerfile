@@ -32,7 +32,6 @@ COPY --from=builder /bin/kubectl /bin/kubectl
 ADD MANIFEST /
 ADD manifests /manifests
 
-RUN kubectl version
 RUN ls
 RUN ls /manifests
 

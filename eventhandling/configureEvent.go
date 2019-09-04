@@ -88,16 +88,23 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 	eventData := &events.ConfigureMonitoringEventData{}
 
 	// (1) if prometheus is not installed - install prometheus
-	logger.Debug("Installing Prometheus monitoring")
-	err := installPrometheus(logger)
+	available, err := checkPrometheusInstallation(logger)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Debug("Installing Prometheus alert manager")
-	err = installPrometheusAlertManager(logger)
-	if err != nil {
-		return nil, err
+	if !available {
+		logger.Debug("Installing Prometheus monitoring")
+		err := installPrometheus(logger)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.Debug("Installing Prometheus alert manager")
+		err = installPrometheusAlertManager(logger)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// (2) update config map with alert rule
@@ -106,6 +113,20 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 
 	// (3) store resources
 	return storeMonitoringResources(*eventData, logger)
+}
+
+func checkPrometheusInstallation(logger keptnutils.Logger) (bool, error) {
+	logger.Debug("Check if Prometheus service in monitoring namespace is available")
+
+	o := options{"get", "svc", "prometheus-service", "-n", "monitoring"}
+	result, err := keptnutils.ExecuteCommand("kubectl", o)
+	if err != nil {
+		return false, err
+	}
+
+	logger.Debug(result)
+
+	return true, nil
 }
 
 func installPrometheus(logger keptnutils.Logger) error {

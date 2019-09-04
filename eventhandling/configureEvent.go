@@ -94,29 +94,41 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 }
 
 func storeMonitoringResources(eventData events.ConfigureMonitoringEventData, logger keptnutils.Logger) (*models.Version, error) {
+	resources := []*models.Resource{}
+
 	serviceObjectives, err := yaml.Marshal(eventData.ServiceObjectives)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to marshal service objectives. %s", err.Error())
 	}
-	_, err = storeResourceForService(eventData.Project, eventData.Service, "service-objectives.yaml", string(serviceObjectives), logger)
-	if err != nil {
-		return nil, err
+	serviceObjectivesURI := `service-objectives.yaml`
+	serviceObjectivesRes := models.Resource{
+		ResourceURI:     &serviceObjectivesURI,
+		ResourceContent: string(serviceObjectives),
 	}
 
 	serviceIndicators, err := yaml.Marshal(eventData.ServiceIndicators)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to marshal service indicators. %s", err.Error())
 	}
-	_, err = storeResourceForService(eventData.Project, eventData.Service, "service-indicators.yaml", string(serviceIndicators), logger)
-	if err != nil {
-		return nil, err
+	serviceIndicatorURI := `service-indicators.yaml`
+	serviceIndicatorRes := models.Resource{
+		ResourceURI:     &serviceIndicatorURI,
+		ResourceContent: string(serviceIndicators),
 	}
 
 	remediation, err := yaml.Marshal(eventData.Remediation)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to marshal remediation. %s", err.Error())
 	}
-	return storeResourceForService(eventData.Project, eventData.Service, "remedation.yaml", string(remediation), logger)
+	remediationURI := `remediation.yaml`
+	remediationRes := models.Resource{
+		ResourceURI:     &remediationURI,
+		ResourceContent: string(remediation),
+	}
+
+	resources = append(resources, &serviceObjectivesRes, &serviceIndicatorRes, &remediationRes)
+
+	return storeResourcesForService(eventData.Project, eventData.Service, resources, logger)
 }
 
 // logErrAndRespondWithDoneEvent sends a keptn done event to the keptn eventbroker
@@ -224,24 +236,18 @@ func sendDoneEvent(receivedEvent cloudevents.Event, result string, message strin
 	return nil
 }
 
-// storeResourceForService stores the resource for a service using the keptnutils.ResourceHandler
-func storeResourceForService(project string, service string, resourceURI string, resourceContent string, logger keptnutils.Logger) (*models.Version, error) {
-	resource := models.Resource{
-		ResourceURI:     &resourceURI,
-		ResourceContent: resourceContent,
-	}
-	resources := []*models.Resource{&resource}
-
+// storeResourcesForService stores the resource for a service using the keptnutils.ResourceHandler
+func storeResourcesForService(project string, service string, resources []*models.Resource, logger keptnutils.Logger) (*models.Version, error) {
 	configEndpoint, err := utils.GetServiceEndpoint(configservice)
 	resourceHandler := keptnutils.NewResourceHandler(configEndpoint.Host)
 
-	// TODO
+	// TODO: Use CreateServiceResources(project, service, resources)
 	versionStr, err := resourceHandler.CreateServiceResources(project, "dev", service, resources)
 	if err != nil {
-		return nil, fmt.Errorf("Storing %s file failed. %s", resourceURI, err.Error())
+		return nil, fmt.Errorf("Storing monitoring files failed. %s", err.Error())
 	}
 
-	logger.Info(fmt.Sprintf("Resource %s successfully stored", resourceURI))
+	logger.Info("Monitoring files successfully stored")
 	version := models.Version{
 		Version: versionStr,
 	}

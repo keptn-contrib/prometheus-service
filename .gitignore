@@ -14,3 +14,7 @@ vendor/
 
 # test files
 alert-payload.json
+
+service-objectives.yaml
+service-indicators.yaml
+remediation.yaml

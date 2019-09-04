@@ -32,8 +32,5 @@ COPY --from=builder /bin/kubectl /bin/kubectl
 ADD MANIFEST /
 ADD manifests /manifests
 
-RUN ls
-RUN ls /manifests
-
 # Run the web service on container startup.
 CMD ["sh", "-c", "cat MANIFEST && /prometheus-service"]

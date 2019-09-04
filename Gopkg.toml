@@ -36,6 +36,22 @@
   name = "github.com/keptn/go-utils"
   branch = "develop"
 
+[[constraint]]
+  name = "github.com/prometheus/prometheus"
+  version = "2.2.1"
+
+[[override]]
+  name = "k8s.io/client-go"
+  version = "11.0.0"
+
+[[override]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.14.3"
+
+[[override]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.14.3"
+
 [prune]
   go-tests = true
   unused-packages = true

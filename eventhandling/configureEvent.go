@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"gopkg.in/yaml.v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cloudevents "github.com/cloudevents/sdk-go"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
@@ -20,6 +21,8 @@ import (
 	"github.com/keptn/go-utils/pkg/events"
 	"github.com/keptn/go-utils/pkg/models"
 	keptnutils "github.com/keptn/go-utils/pkg/utils"
+
+	prometheusconfig "github.com/prometheus/prometheus/config"
 )
 
 const configservice = "CONFIGURATION_SERVICE"
@@ -86,16 +89,19 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 // configurePrometheusAndStoreResources
 func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnutils.Logger) (*models.Version, error) {
 	eventData := &events.ConfigureMonitoringEventData{}
+	if err := event.DataAs(eventData); err != nil {
+		return nil, err
+	}
 
 	// (1) check if prometheus is installed, otherwise install prometheus and alert manager
-	if !checkPrometheusInstallation(logger) {
-		logger.Debug("Installing Prometheus monitoring")
+	if !isPrometheusInstalled(logger) {
+		logger.Debug("Installing prometheus monitoring")
 		err := installPrometheus(logger)
 		if err != nil {
 			return nil, err
 		}
 
-		logger.Debug("Installing Prometheus alert manager")
+		logger.Debug("Installing prometheus alert manager")
 		err = installPrometheusAlertManager(logger)
 		if err != nil {
 			return nil, err
@@ -103,15 +109,19 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 	}
 
 	// (2) update config map with alert rule
+	if err := updatePrometheusConfigMap(*eventData, logger); err != nil {
+		return nil, err
+	}
 
 	// (2.1) delete prometheus pod
 
 	// (3) store resources
-	return storeMonitoringResources(*eventData, logger)
+	//return storeMonitoringResources(*eventData, logger)
+	return nil, nil
 }
 
-func checkPrometheusInstallation(logger keptnutils.Logger) bool {
-	logger.Debug("Check if Prometheus service in monitoring namespace is available")
+func isPrometheusInstalled(logger keptnutils.Logger) bool {
+	logger.Debug("Check if prometheus service in monitoring namespace is available")
 
 	o := options{"get", "svc", "prometheus-service", "-n", "monitoring"}
 	_, err := keptnutils.ExecuteCommand("kubectl", o)
@@ -126,7 +136,7 @@ func checkPrometheusInstallation(logger keptnutils.Logger) bool {
 
 func installPrometheus(logger keptnutils.Logger) error {
 	//namespace.yaml
-	logger.Debug("Apply namespace for Prometheus monitoring")
+	logger.Debug("Apply namespace for prometheus monitoring")
 	o := options{"apply", "-f", "/manifests/namespace.yaml"}
 	_, err := keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
@@ -134,7 +144,7 @@ func installPrometheus(logger keptnutils.Logger) error {
 	}
 
 	//config-map.yaml
-	logger.Debug("Apply configmap for Prometheus monitoring")
+	logger.Debug("Apply configmap for prometheus monitoring")
 	o = options{"apply", "-f", "/manifests/config-map.yaml"}
 	_, err = keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
@@ -142,7 +152,7 @@ func installPrometheus(logger keptnutils.Logger) error {
 	}
 
 	//cluster-role.yaml
-	logger.Debug("Apply clusterrole for Prometheus monitoring")
+	logger.Debug("Apply clusterrole for prometheus monitoring")
 	o = options{"apply", "-f", "/manifests/cluster-role.yaml"}
 	_, err = keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
@@ -150,7 +160,7 @@ func installPrometheus(logger keptnutils.Logger) error {
 	}
 
 	//prometheus.yaml
-	logger.Debug("Apply service and deployment for Prometheus monitoring")
+	logger.Debug("Apply service and deployment for prometheus monitoring")
 	o = options{"apply", "-f", "/manifests/prometheus.yaml"}
 	_, err = keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
@@ -162,7 +172,7 @@ func installPrometheus(logger keptnutils.Logger) error {
 
 func installPrometheusAlertManager(logger keptnutils.Logger) error {
 	//alertmanager-configmap.yaml
-	logger.Debug("Apply configmap for Prometheus alert manager")
+	logger.Debug("Apply configmap for prometheus alert manager")
 	o := options{"apply", "-f", "/manifests/alertmanager-configmap.yaml"}
 	_, err := keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
@@ -170,7 +180,7 @@ func installPrometheusAlertManager(logger keptnutils.Logger) error {
 	}
 
 	//alertmanager-template.yaml
-	logger.Debug("Apply configmap template for Prometheus alert manager")
+	logger.Debug("Apply configmap template for prometheus alert manager")
 	o = options{"apply", "-f", "/manifests/alertmanager-template.yaml"}
 	_, err = keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
@@ -178,7 +188,7 @@ func installPrometheusAlertManager(logger keptnutils.Logger) error {
 	}
 
 	//alertmanager-deployment.yaml
-	logger.Debug("Apply deployment for Prometheus alert manager")
+	logger.Debug("Apply deployment for prometheus alert manager")
 	o = options{"apply", "-f", "/manifests/alertmanager-deployment.yaml"}
 	_, err = keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
@@ -186,12 +196,39 @@ func installPrometheusAlertManager(logger keptnutils.Logger) error {
 	}
 
 	//alertmanager-svc.yaml
-	logger.Debug("Apply service for Prometheus alert manager")
+	logger.Debug("Apply service for prometheus alert manager")
 	o = options{"apply", "-f", "/manifests/alertmanager-deployment.yaml"}
 	_, err = keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, logger keptnutils.Logger) error {
+	api, err := keptnutils.GetKubeAPI(false)
+	if err != nil {
+		return err
+	}
+
+	cmPrometheus, err := api.ConfigMaps("monitoring").Get("prometheus-server-conf", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	config, err := prometheusconfig.Load(cmPrometheus.Data["prometheus.yml"])
+	fmt.Print(config)
+
+	cmKeptnDomain, err := api.ConfigMaps("keptn").Get("keptn-domain", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	gateway := cmKeptnDomain.Data["app_domain"]
+	fmt.Print(gateway)
+
+	// update
+
+	// apply
 
 	return nil
 }

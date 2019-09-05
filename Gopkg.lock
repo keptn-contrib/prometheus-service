@@ -2,15 +2,15 @@
 
 
 [[projects]]
-  digest = "1:80004fcc5cf64e591486b3e11b406f1e0d17bf85d475d64203c8494f5da4fcd1"
+  digest = "1:a24d4f0bfca235899423e806a033447bb840d48970ecd8e1bc409537d0289c23"
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
   pruneopts = "UT"
-  revision = "ceeb313ad77b789a7fa5287b36a1d127b69b7093"
-  version = "v0.44.3"
+  revision = "d1af076dc3f6a314e9dd6610fe83b0f7afaff6d6"
+  version = "v0.45.1"
 
 [[projects]]
-  digest = "1:57ff66b713494f88a341741b561e2b01b078b9d8dd75ef70ad478b09f30a8d70"
+  digest = "1:f17cef275e69de62741e2cbb955e00061272e5749241fe2acc3b4d4ae8fe7952"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
     "services/compute/mgmt/2018-10-01/compute",
@@ -18,8 +18,8 @@
     "version",
   ]
   pruneopts = "UT"
-  revision = "de65d71d3102a1ca9dee41db58aa57c7fdafed7f"
-  version = "v33.0.0"
+  revision = "98353253a537e7e94652d100d7d78b30a4a7ee21"
+  version = "v33.1.0"
 
 [[projects]]
   digest = "1:9e27615143b0e40936d601a461c6833a3cc0306d5e205360e114c31f582a3af2"
@@ -71,7 +71,7 @@
   version = "v9"
 
 [[projects]]
-  digest = "1:59daaf5d427695dfc2de2de6715264f5bd9fd9c19cb4de4065d1ff8906a0dbd3"
+  digest = "1:dbedd2c137bfe35e43d05cd1ab823bbb7e6e3a73ef3bdb8b01265fd218172ffc"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -110,8 +110,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = "UT"
-  revision = "038baef27d86865da72603d700d55d8d0c212ce8"
-  version = "v1.23.14"
+  revision = "3dcbbb77091aafa553f033227bf12e4742fa0c51"
+  version = "v1.23.15"
 
 [[projects]]
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
@@ -303,6 +303,14 @@
   version = "v1.3.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:b7cb6054d3dff43b38ad2e92492f220f57ae6087ee797dca298139776749ace8"
+  name = "github.com/golang/groupcache"
+  packages = ["lru"]
+  pruneopts = "UT"
+  revision = "869f871628b6baa9cfbc11732cdf6546b17c1298"
+
+[[projects]]
   digest = "1:f5ce1529abc1204444ec73779f44f94e2fa8fcdb7aca3c355b0c95947e4005c6"
   name = "github.com/golang/protobuf"
   packages = [
@@ -422,7 +430,7 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:256b0768f7f3f37c0fd3d5ff355a6a5bbdb508957ee614b60f0d28a780973f4b"
+  digest = "1:7b893c9e1181e224506c523777dea0d16f4bd20a7627b100cc800e14229f405c"
   name = "github.com/hashicorp/go-rootcerts"
   packages = ["."]
   pruneopts = "UT"
@@ -496,8 +504,19 @@
   version = "v1.4.0"
 
 [[projects]]
+  branch = "feature/720/configure-prometheus"
+  digest = "1:34294a8343f4e9dc8e6552495c4fb56dcab7e1047eb661280a6f916bc6ee971f"
+  name = "github.com/keptn-contrib/prometheus-service"
+  packages = [
+    "eventhandling",
+    "utils",
+  ]
+  pruneopts = "UT"
+  revision = "03f32cc6226cc852e6c84b5c7dd79daf76b0002a"
+
+[[projects]]
   branch = "develop"
-  digest = "1:83123c0c392c19ec5c7916f8fd170a5bb47ea941c0b4ae312da49f1f0487e3f3"
+  digest = "1:aec5f459daecd761b6b4c8ad0fa6095f51dd6499e1a95b066581d339459cb26d"
   name = "github.com/keptn/go-utils"
   packages = [
     "pkg/events",
@@ -505,19 +524,18 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "157ced1815a263305caab01a0f8969840db8b596"
+  revision = "abfe28a1679dbb9a25e1b700f68efec3db0f5093"
 
 [[projects]]
-  branch = "develop"
-  digest = "1:2f70ffce02799f95067305366ecbc4e197140dff494580b09886ef18b517ce85"
+  digest = "1:90c0c18484d7c2b03e7d17b4fc859bb24da9fd549c7d7170a344c8453875c1d0"
   name = "github.com/keptn/keptn"
   packages = [
-    "api/models",
     "cli/utils",
     "cli/utils/websockethelper",
   ]
   pruneopts = "UT"
-  revision = "41ed56f5f06a921cc9fbc237d0b97770088b68a4"
+  revision = "b18313556e1593ca345fc4b64e38b9ace0b74dd5"
+  version = "0.4.0"
 
 [[projects]]
   digest = "1:fd7f169f32c221b096c74e756bda16fe22d3bb448bbf74042fd0700407a1f92f"
@@ -744,7 +762,7 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:74055050ea547bb04600be79cc501965cb3de8988018262f2ca430f0a0b48ec3"
+  digest = "1:b984f402fbabb0e9eb0476f0ecfa51d0b2ff11cd0ac03538d6284091033b39ae"
   name = "go.opencensus.io"
   packages = [
     ".",
@@ -765,8 +783,8 @@
     "trace/tracestate",
   ]
   pruneopts = "UT"
-  revision = "9c377598961b706d1542bd2d84d538b5094d596e"
-  version = "v0.22.0"
+  revision = "59d1ce35d30f3c25ba762169da2a37eab6ffa041"
+  version = "v0.22.1"
 
 [[projects]]
   digest = "1:a5158647b553c61877aa9ae74f4015000294e47981e6b8b07525edcbb0747c81"
@@ -865,7 +883,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:fbe064736aed0cd253543e59bcf7bec82848ccbf8687c3cedb3e8b3d7c8c048c"
+  digest = "1:66f179d68c2aaaf216b9a97bd137530dd3a9eb47340444821b372b2f9b350319"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -873,7 +891,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "43c01164e93111c754a278ab423ba01063c44917"
+  revision = "749cb33beabd9aa6d3178e3de05bcc914f70b2bf"
 
 [[projects]]
   digest = "1:66a2f252a58b4fbbad0e4e180e1d85a83c222b6bce09c3dcdef3dc87c72eda7c"
@@ -952,7 +970,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "24fa4b261c55da65468f2abfdae2b024eef27dfb"
+  revision = "92dd089d5514cecde7a465f807541f83dfd486d5"
 
 [[projects]]
   digest = "1:3b97661db2e5d4c87f7345e875ea28f911e54c715ba0a74be08e1649d67e05cd"
@@ -1304,12 +1322,15 @@
     "github.com/google/uuid",
     "github.com/gorilla/websocket",
     "github.com/kelseyhightower/envconfig",
+    "github.com/keptn-contrib/prometheus-service/eventhandling",
+    "github.com/keptn-contrib/prometheus-service/utils",
     "github.com/keptn/go-utils/pkg/events",
+    "github.com/keptn/go-utils/pkg/models",
     "github.com/keptn/go-utils/pkg/utils",
-    "github.com/keptn/keptn/api/models",
     "github.com/keptn/keptn/cli/utils/websockethelper",
     "github.com/prometheus/prometheus/config",
-    "k8s.io/client-go/kubernetes",
+    "gopkg.in/yaml.v2",
+    "k8s.io/apimachinery/pkg/apis/meta/v1",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

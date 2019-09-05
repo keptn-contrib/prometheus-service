@@ -22,7 +22,10 @@ import (
 	"github.com/keptn/go-utils/pkg/models"
 	keptnutils "github.com/keptn/go-utils/pkg/utils"
 
+	prometheus_model "github.com/prometheus/common/model"
 	prometheusconfig "github.com/prometheus/prometheus/config"
+	prometheus_sd_config "github.com/prometheus/prometheus/discovery/config"
+	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
 
 const configservice = "CONFIGURATION_SERVICE"
@@ -35,8 +38,35 @@ type doneEventData struct {
 	Version string `json:"version"`
 }
 
+type alertingRules struct {
+	Groups []alertingGroup `json:"groups" yaml:"groups"`
+}
+
+type alertingGroup struct {
+	Name  string         `json:"name" yaml:"name"`
+	Rules []alertingRule `json:"rules" yaml:"rules"`
+}
+
+type alertingRule struct {
+	Alert       string              `json:"alert" yaml:"alert"`
+	Expr        string              `json:"expr" yaml:"expr"`
+	For         string              `json:"for" yaml:"for"`
+	Labels      alertingLabel       `json:"labels" yaml:"labels"`
+	Annotations alertingAnnotations `json:"annotations" yaml:"annotations"`
+}
+
+type alertingLabel struct {
+	Severity string `json:"severity" yaml:"severity"`
+}
+
+type alertingAnnotations struct {
+	Summary     string `json:"summary" yaml:"summary"`
+	Description string `json:"description" yaml:"descriptions"`
+}
+
 type options []string
 
+// GotEvent is the event handler of cloud events
 func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	var shkeptncontext string
 	event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
@@ -114,9 +144,13 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 	}
 
 	// (2.1) delete prometheus pod
+	err = deletePrometheusPod()
+	if err != nil {
+		return nil, err
+	}
 
 	// (3) store resources
-	//return storeMonitoringResources(*eventData, logger)
+	return storeMonitoringResources(*eventData, logger)
 	return nil, nil
 }
 
@@ -226,15 +260,92 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 	gateway := cmKeptnDomain.Data["app_domain"]
 	fmt.Print(gateway)
 
+	configEndpoint, err := utils.GetServiceEndpoint(configservice)
+	resourceHandler := keptnutils.NewResourceHandler(configEndpoint.Host)
+	keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
+	shipyard, err := keptnHandler.GetShipyard(eventData.Project)
+	if err != nil {
+		return err
+	}
+	var ars alertingRules
+	if cmPrometheus.Data["prometheus.rules"] != "" {
+		yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &ars)
+	} else {
+		ars = alertingRules{
+			Groups: []alertingGroup{},
+		}
+	}
 	// update
+	for _, stage := range shipyard.Stages {
 
+		// create scrape config
+		scrapeConfig := &prometheusconfig.ScrapeConfig{
+			JobName:     eventData.Service + "-" + eventData.Project + "-" + stage.Name,
+			MetricsPath: "/prometheus",
+			ServiceDiscoveryConfig: prometheus_sd_config.ServiceDiscoveryConfig{
+				StaticConfigs: []*targetgroup.Group{
+					{
+						Targets: []prometheus_model.LabelSet{
+							{prometheus_model.AddressLabel: prometheus_model.LabelValue(eventData.Service + "." + eventData.Project + "-" + stage.Name + "." + gateway + ":80")},
+						},
+					},
+				},
+			},
+		}
+		config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
+
+		ag := alertingGroup{
+			Name: eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts"
+		}
+		for _, objective := range eventData.ServiceObjectives.Objectives {
+
+			indicator := getServiceIndicatorForObjective(objective, eventData.ServiceIndicators)
+			if indicator != nil {
+				ar := alertingRule{
+					Alert: objective.Name,
+					Expr:  indicator.Query + " > " + fmt.Sprintf("%f", objective.Threshold),
+					For:   objective.Timeframe,
+					Labels: alertingLabel{
+						Severity: "webhook",
+					},
+					Annotations: alertingAnnotations{
+						Summary:     objective.Name,
+						Description: "Pod name {{ $labels.pod_name }}",
+					},
+				}
+				ag.Rules = append(ag.Rules, ar)
+			}
+		}
+		ars.Groups = append(ars.Groups, ag)
+	}
+	alertingRulesYAMLString, err := yaml.Marshal(ars)
+	if err != nil {
+		return err
+	}
 	// apply
+	cmPrometheus.Data["prometheus.rules"] = string(alertingRulesYAMLString)
+	cmPrometheus.Data["prometheus.yml"] = config.String()
+	_, err = api.ConfigMaps("monitoring").Update(cmPrometheus)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func getServiceIndicatorForObjective(objective *models.ServiceObjective, indicators *models.ServiceIndicators) *models.ServiceIndicator {
+	for _, indicator := range indicators.Indicators {
+		if indicator.Name == objective.Name {
+			return indicator
+		}
+	}
 	return nil
 }
 
 func deletePrometheusPod() error {
 
+	if err := keptnutils.RestartPodsWithSelector(false, "monitoring", "app=prometheus-server"); err != nil {
+		return err
+	}
 	return nil
 }
 

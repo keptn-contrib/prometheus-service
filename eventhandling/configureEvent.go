@@ -295,7 +295,7 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 		config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
 
 		ag := alertingGroup{
-			Name: eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts"
+			Name: eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts",
 		}
 		for _, objective := range eventData.ServiceObjectives.Objectives {
 

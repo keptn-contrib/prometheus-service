@@ -26,6 +26,8 @@ RUN wget -q https://storage.googleapis.com/kubernetes-release/release/v$KUBE_VER
 FROM alpine
 RUN apk add --no-cache ca-certificates
 
+ENV env=production
+
 # Copy the binary to the production image from the builder stage.
 COPY --from=builder /go/src/github.com/keptn-contrib/prometheus-service/prometheus-service /prometheus-service
 COPY --from=builder /bin/kubectl /bin/kubectl

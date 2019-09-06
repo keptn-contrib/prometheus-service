@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -241,7 +242,7 @@ func installPrometheusAlertManager(logger keptnutils.Logger) error {
 }
 
 func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, logger keptnutils.Logger) error {
-	api, err := keptnutils.GetKubeAPI(false)
+	api, err := keptnutils.GetKubeAPI(os.Getenv("env") == "production")
 	if err != nil {
 		return err
 	}

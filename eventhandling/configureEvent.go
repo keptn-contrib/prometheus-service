@@ -305,14 +305,14 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 			if indicator != nil {
 				expr := strings.Replace(strings.TrimSuffix(indicator.Query, "\n")+" > "+fmt.Sprintf("%f", objective.Threshold), "$DURATION_MINUTES", objective.Timeframe, -1)
 				ar := alertingRule{
-					Alert: objective.Name,
+					Alert: objective.Metric,
 					Expr:  expr,
 					For:   objective.Timeframe,
 					Labels: alertingLabel{
 						Severity: "webhook",
 					},
 					Annotations: alertingAnnotations{
-						Summary:     objective.Name,
+						Summary:     objective.Metric,
 						Description: "Pod name {{ $labels.pod_name }}",
 					},
 				}
@@ -344,7 +344,7 @@ func getConfigurationServiceURL() string {
 
 func getServiceIndicatorForObjective(objective *models.ServiceObjective, indicators *models.ServiceIndicators) *models.ServiceIndicator {
 	for _, indicator := range indicators.Indicators {
-		if indicator.Name == objective.Name {
+		if indicator.Metric == objective.Metric {
 			return indicator
 		}
 	}

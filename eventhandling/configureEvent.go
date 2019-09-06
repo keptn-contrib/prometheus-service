@@ -244,18 +244,12 @@ func installPrometheusAlertManager(logger keptnutils.Logger) error {
 func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, logger keptnutils.Logger) error {
 	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
 	fmt.Println("Trying to get shipyard")
-	shipyardResource, err := resourceHandler.GetProjectResource(eventData.Project, "shipyard.yaml")
-	//keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
-	//shipyard, err := keptnHandler.GetShipyard(eventData.Project)
+	keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
+	shipyard, err := keptnHandler.GetShipyard(eventData.Project)
 	if err != nil {
 		return err
 	}
-	fmt.Println("got shipyard: " + shipyardResource.ResourceContent)
-	var shipyard models.Shipyard
-	err = yaml.Unmarshal([]byte(shipyardResource.ResourceContent), &shipyard)
-	if err != nil {
-		return err
-	}
+	fmt.Println("got shipyard")
 
 	api, err := keptnutils.GetKubeAPI(os.Getenv("env") == "production")
 	if err != nil {

@@ -138,6 +138,7 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 			return nil, err
 		}
 	}
+	fmt.Println("prometheus is installed, updating config maps")
 
 	// (2) update config map with alert rule
 	if err := updatePrometheusConfigMap(*eventData, logger); err != nil {
@@ -152,7 +153,6 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 
 	// (3) store resources
 	return storeMonitoringResources(*eventData, logger)
-	return nil, nil
 }
 
 func isPrometheusInstalled(logger keptnutils.Logger) bool {
@@ -242,6 +242,21 @@ func installPrometheusAlertManager(logger keptnutils.Logger) error {
 }
 
 func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, logger keptnutils.Logger) error {
+	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
+	fmt.Println("Trying to get shipyard")
+	shipyardResource, err := resourceHandler.GetProjectResource(eventData.Project, "shipyard.yaml")
+	//keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
+	//shipyard, err := keptnHandler.GetShipyard(eventData.Project)
+	if err != nil {
+		return err
+	}
+	fmt.Println("got shipyard: " + shipyardResource.ResourceContent)
+	var shipyard models.Shipyard
+	err = yaml.Unmarshal([]byte(shipyardResource.ResourceContent), &shipyard)
+	if err != nil {
+		return err
+	}
+
 	api, err := keptnutils.GetKubeAPI(os.Getenv("env") == "production")
 	if err != nil {
 		return err
@@ -252,33 +267,29 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 		return err
 	}
 	config, err := prometheusconfig.Load(cmPrometheus.Data["prometheus.yml"])
-	fmt.Print(config)
+	fmt.Println(config)
 
 	cmKeptnDomain, err := api.ConfigMaps("keptn").Get("keptn-domain", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	gateway := cmKeptnDomain.Data["app_domain"]
-	fmt.Print(gateway)
+	fmt.Println(gateway)
 
-	configEndpoint, err := utils.GetServiceEndpoint(configservice)
-	resourceHandler := keptnutils.NewResourceHandler(configEndpoint.Host)
-	keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
-	shipyard, err := keptnHandler.GetShipyard(eventData.Project)
-	if err != nil {
-		return err
-	}
+	fmt.Println("checking if alerting rules are available")
 	var ars alertingRules
 	if cmPrometheus.Data["prometheus.rules"] != "" {
+		fmt.Println("existing alerting rules: " + cmPrometheus.Data["prometheus.rules"])
 		yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &ars)
 	} else {
+		fmt.Println("Creating new alerting rules")
 		ars = alertingRules{
 			Groups: []alertingGroup{},
 		}
 	}
 	// update
 	for _, stage := range shipyard.Stages {
-
+		fmt.Println("creating scrape job for " + stage.Name)
 		// create scrape config
 		scrapeConfig := &prometheusconfig.ScrapeConfig{
 			JobName:     eventData.Service + "-" + eventData.Project + "-" + stage.Name,
@@ -295,6 +306,7 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 		}
 		config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
 
+		fmt.Println("creating alerting rules for " + stage.Name)
 		ag := alertingGroup{
 			Name: eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts",
 		}
@@ -331,6 +343,13 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 		return err
 	}
 	return nil
+}
+
+func getConfigurationServiceURL() string {
+	if os.Getenv("env") == "production" {
+		return "configuration-service.keptn.svc.cluster.local:8080"
+	}
+	return "localhost:6060"
 }
 
 func getServiceIndicatorForObjective(objective *models.ServiceObjective, indicators *models.ServiceIndicators) *models.ServiceIndicator {
@@ -495,8 +514,7 @@ func sendDoneEvent(receivedEvent cloudevents.Event, result string, message strin
 
 // storeResourcesForService stores the resource for a service using the keptnutils.ResourceHandler
 func storeResourcesForService(project string, service string, resources []*models.Resource, logger keptnutils.Logger) (*models.Version, error) {
-	configEndpoint, err := utils.GetServiceEndpoint(configservice)
-	resourceHandler := keptnutils.NewResourceHandler(configEndpoint.Host)
+	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
 
 	// TODO: Use CreateServiceResources(project, service, resources)
 	versionStr, err := resourceHandler.CreateServiceResources(project, "dev", service, resources)

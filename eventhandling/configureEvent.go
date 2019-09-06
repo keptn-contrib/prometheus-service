@@ -144,7 +144,7 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 	}
 
 	// (2.1) delete prometheus pod
-	err = deletePrometheusPod()
+	err := deletePrometheusPod()
 	if err != nil {
 		return nil, err
 	}

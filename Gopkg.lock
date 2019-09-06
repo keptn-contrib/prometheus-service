@@ -39,6 +39,22 @@
   version = "v13.0.0"
 
 [[projects]]
+  digest = "1:9f3b30d9f8e0d7040f729b82dcbc8f0dead820a133b3147ce355fc451f32d761"
+  name = "github.com/BurntSushi/toml"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005"
+  version = "v0.3.1"
+
+[[projects]]
+  digest = "1:55388fd080150b9a072912f97b1f5891eb0b50df43401f8b75fb4273d3fec9fc"
+  name = "github.com/Masterminds/semver"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c7af12943936e8c39859482e61f0574c2fd7fc75"
+  version = "v1.4.2"
+
+[[projects]]
   digest = "1:a2682518d905d662d984ef9959984ef87cecb777d379bfa9d9fe40e78069b3e4"
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
@@ -71,7 +87,7 @@
   version = "v9"
 
 [[projects]]
-  digest = "1:dbedd2c137bfe35e43d05cd1ab823bbb7e6e3a73ef3bdb8b01265fd218172ffc"
+  digest = "1:1942e49255df08fd9bd071171d4f4fec053ad850552049f3cebcbf643fff6980"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -110,8 +126,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = "UT"
-  revision = "3dcbbb77091aafa553f033227bf12e4742fa0c51"
-  version = "v1.23.15"
+  revision = "4651c2a344e90782ae06c956a5b0edcae3ae21d0"
+  version = "v1.23.16"
 
 [[projects]]
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
@@ -151,6 +167,14 @@
   version = "0.7.0"
 
 [[projects]]
+  digest = "1:ec66ad050342a3573ed2f5a4337d51b4c6d5d2a717cc6c9ecf86b081235a5759"
+  name = "github.com/cyphar/filepath-securejoin"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a261ee33d7a517f054effbf451841abaafe3e0fd"
+  version = "v0.2.2"
+
+[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -180,6 +204,14 @@
   pruneopts = "UT"
   revision = "1615341f118ae12f353cc8a983f35b584342c9b3"
   version = "v1.12.0"
+
+[[projects]]
+  digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
+  name = "github.com/ghodss/yaml"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:a54d9b22e14caae3254cfa3e86c814c720e334bc49b0e153a673a7137642598e"
@@ -290,6 +322,23 @@
   pruneopts = "UT"
   revision = "2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a"
   version = "v1.8.0"
+
+[[projects]]
+  digest = "1:9ae31ce33b4bab257668963e844d98765b44160be4ee98cafc44637a213e530d"
+  name = "github.com/gobwas/glob"
+  packages = [
+    ".",
+    "compiler",
+    "match",
+    "syntax",
+    "syntax/ast",
+    "syntax/lexer",
+    "util/runes",
+    "util/strings",
+  ]
+  pruneopts = "UT"
+  revision = "5ccd90ef52e1e632236f7326478d4faa74f99438"
+  version = "v0.2.3"
 
 [[projects]]
   digest = "1:8a85f428bc6ebfa87f53216b6e43b52b30eccbcffcbd6b057a69ee16718a2248"
@@ -505,18 +554,18 @@
 
 [[projects]]
   branch = "feature/720/configure-prometheus"
-  digest = "1:34294a8343f4e9dc8e6552495c4fb56dcab7e1047eb661280a6f916bc6ee971f"
+  digest = "1:4f206facde5f4266595c78a271f6f913cb87210f7c2fdffe6ceda3c72a5410c1"
   name = "github.com/keptn-contrib/prometheus-service"
   packages = [
     "eventhandling",
     "utils",
   ]
   pruneopts = "UT"
-  revision = "03f32cc6226cc852e6c84b5c7dd79daf76b0002a"
+  revision = "c6482a3b6041b7b738590dbae451c9a8c90bae2a"
 
 [[projects]]
   branch = "develop"
-  digest = "1:aec5f459daecd761b6b4c8ad0fa6095f51dd6499e1a95b066581d339459cb26d"
+  digest = "1:7a12363500cfdacd86a81aaff32cc820a370419b1051eda4faf471ef2dbcc313"
   name = "github.com/keptn/go-utils"
   packages = [
     "pkg/events",
@@ -524,7 +573,7 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "abfe28a1679dbb9a25e1b700f68efec3db0f5093"
+  revision = "83540ea4d97b892c6ac998d4f032bcf04762a71d"
 
 [[projects]]
   digest = "1:90c0c18484d7c2b03e7d17b4fc859bb24da9fd549c7d7170a344c8453875c1d0"
@@ -747,7 +796,7 @@
   version = "v0.2.1"
 
 [[projects]]
-  digest = "1:8df0cacec93eb908d08567373cce96d3298302a5ac3dd751485fec5b5a915c71"
+  digest = "1:8458b1a19a304c09d8f109a9463a419f703e3d1a81615afcaf3593dcce6749b9"
   name = "go.mongodb.org/mongo-driver"
   packages = [
     "bson",
@@ -758,8 +807,8 @@
     "x/bsonx/bsoncore",
   ]
   pruneopts = "UT"
-  revision = "d42ea7239f0db8a61e77191b9f2730a922459042"
-  version = "v1.1.0"
+  revision = "c520d023af0a89aec8b7f97717b52da270df2c38"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:b984f402fbabb0e9eb0476f0ecfa51d0b2ff11cd0ac03538d6284091033b39ae"
@@ -928,7 +977,7 @@
   revision = "9d24e82272b4f38b78bc8cff74fa936d31ccd8ef"
 
 [[projects]]
-  digest = "1:3a422b4517e7f39dd5824cfe57b49f51e2c54899bf3e1c4bf149a2e24e4fc181"
+  digest = "1:3c3205ed27884bddc7f8a0884c518540239d405120c77cd9b2f32c591ddf9c30"
   name = "google.golang.org/api"
   packages = [
     "compute/v1",
@@ -942,8 +991,8 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = "UT"
-  revision = "feb0267beb8644f5088a03be4d5ec3f8c7020152"
-  version = "v0.9.0"
+  revision = "09a9d0a772eb18da65a7917760cf4ca9ae943c83"
+  version = "v0.10.0"
 
 [[projects]]
   digest = "1:498b722d33dde4471e7d6e5d88a5e7132d2a8306fea5ff5ee82d1f418b4f41ed"
@@ -1283,6 +1332,21 @@
   version = "v11.0.0"
 
 [[projects]]
+  digest = "1:8453e43a8cd9a01812e29b91a9682f238adb9015a105a7fa574f43acc4ca74bc"
+  name = "k8s.io/helm"
+  packages = [
+    "pkg/chartutil",
+    "pkg/ignore",
+    "pkg/proto/hapi/chart",
+    "pkg/proto/hapi/version",
+    "pkg/sympath",
+    "pkg/version",
+  ]
+  pruneopts = "UT"
+  revision = "0e7f3b6637f7af8fcfddb3d2941fcc7cbebb0085"
+  version = "v2.14.3"
+
+[[projects]]
   digest = "1:ccb9be4c583b6ec848eb98aa395a4e8c8f8ad9ebb823642c0dd1c1c45939a5bb"
   name = "k8s.io/klog"
   packages = ["."]
@@ -1328,7 +1392,10 @@
     "github.com/keptn/go-utils/pkg/models",
     "github.com/keptn/go-utils/pkg/utils",
     "github.com/keptn/keptn/cli/utils/websockethelper",
+    "github.com/prometheus/common/model",
     "github.com/prometheus/prometheus/config",
+    "github.com/prometheus/prometheus/discovery/config",
+    "github.com/prometheus/prometheus/discovery/targetgroup",
     "gopkg.in/yaml.v2",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
   ]

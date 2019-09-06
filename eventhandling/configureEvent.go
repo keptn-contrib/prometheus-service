@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -232,7 +233,7 @@ func installPrometheusAlertManager(logger keptnutils.Logger) error {
 
 	//alertmanager-svc.yaml
 	logger.Debug("Apply service for prometheus alert manager")
-	o = options{"apply", "-f", "/manifests/alertmanager-deployment.yaml"}
+	o = options{"apply", "-f", "/manifests/alertmanager-svc.yaml"}
 	_, err = keptnutils.ExecuteCommand("kubectl", o)
 	if err != nil {
 		return err
@@ -243,13 +244,11 @@ func installPrometheusAlertManager(logger keptnutils.Logger) error {
 
 func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, logger keptnutils.Logger) error {
 	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
-	fmt.Println("Trying to get shipyard")
 	keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
 	shipyard, err := keptnHandler.GetShipyard(eventData.Project)
 	if err != nil {
 		return err
 	}
-	fmt.Println("got shipyard")
 
 	api, err := keptnutils.GetKubeAPI(os.Getenv("env") == "production")
 	if err != nil {
@@ -270,20 +269,17 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 	gateway := cmKeptnDomain.Data["app_domain"]
 	fmt.Println(gateway)
 
-	fmt.Println("checking if alerting rules are available")
+	// check if alerting rules are already availablre
 	var ars alertingRules
 	if cmPrometheus.Data["prometheus.rules"] != "" {
-		fmt.Println("existing alerting rules: " + cmPrometheus.Data["prometheus.rules"])
 		yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &ars)
 	} else {
-		fmt.Println("Creating new alerting rules")
 		ars = alertingRules{
 			Groups: []alertingGroup{},
 		}
 	}
 	// update
 	for _, stage := range shipyard.Stages {
-		fmt.Println("creating scrape job for " + stage.Name)
 		// create scrape config
 		scrapeConfig := &prometheusconfig.ScrapeConfig{
 			JobName:     eventData.Service + "-" + eventData.Project + "-" + stage.Name,
@@ -300,7 +296,6 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 		}
 		config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
 
-		fmt.Println("creating alerting rules for " + stage.Name)
 		ag := alertingGroup{
 			Name: eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts",
 		}
@@ -308,9 +303,10 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 
 			indicator := getServiceIndicatorForObjective(objective, eventData.ServiceIndicators)
 			if indicator != nil {
+				expr := strings.Replace(strings.TrimSuffix(indicator.Query, "\n")+" > "+fmt.Sprintf("%f", objective.Threshold), "$DURATION_MINUTES", objective.Timeframe, -1)
 				ar := alertingRule{
 					Alert: objective.Name,
-					Expr:  indicator.Query + " > " + fmt.Sprintf("%f", objective.Threshold),
+					Expr:  expr,
 					For:   objective.Timeframe,
 					Labels: alertingLabel{
 						Severity: "webhook",

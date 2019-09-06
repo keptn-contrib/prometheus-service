@@ -554,18 +554,18 @@
 
 [[projects]]
   branch = "feature/720/configure-prometheus"
-  digest = "1:4f206facde5f4266595c78a271f6f913cb87210f7c2fdffe6ceda3c72a5410c1"
+  digest = "1:2e48d90f72a142aa361f90d04ff53ac91618fd9ec0fa49d446eee8e908ec7d0d"
   name = "github.com/keptn-contrib/prometheus-service"
   packages = [
     "eventhandling",
     "utils",
   ]
   pruneopts = "UT"
-  revision = "c6482a3b6041b7b738590dbae451c9a8c90bae2a"
+  revision = "7a0bce369ed348cc386e2985c65dd4c954b333e2"
 
 [[projects]]
   branch = "develop"
-  digest = "1:7a12363500cfdacd86a81aaff32cc820a370419b1051eda4faf471ef2dbcc313"
+  digest = "1:7d6b2908ab5c5d17cb0e5b77b8b3b0a048d2558ec4d18d7e30dfb76bfd80a4d2"
   name = "github.com/keptn/go-utils"
   packages = [
     "pkg/events",
@@ -573,7 +573,7 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "83540ea4d97b892c6ac998d4f032bcf04762a71d"
+  revision = "2775c51625e4088c6f1781cb1e6d910579d087f4"
 
 [[projects]]
   digest = "1:90c0c18484d7c2b03e7d17b4fc859bb24da9fd549c7d7170a344c8453875c1d0"

@@ -2,7 +2,12 @@
 # Use the offical Golang image to create a build artifact.
 # This is based on Debian and sets the GOPATH to /go.
 # https://hub.docker.com/_/golang
-FROM golang:1.12 as builder
+FROM golang:1.12-alpine as builder
+
+ENV CGO_ENABLED 0
+
+# Allow Go to retreive the dependencies for the build step
+RUN apk add --no-cache git
 
 # Copy local code to the container image.
 WORKDIR /go/src/github.com/keptn-contrib/prometheus-service

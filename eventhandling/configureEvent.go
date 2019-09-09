@@ -71,7 +71,33 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	var shkeptncontext string
 	event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
 
-	logger := keptnutils.NewLogger(shkeptncontext, event.Context.GetID(), "prometheus-service")
+	stdLogger := keptnutils.NewLogger(shkeptncontext, event.Context.GetID(), "helm-service")
+
+	var logger keptnutils.LoggerInterface
+
+	connData := &keptnutils.ConnectionData{}
+	if err := event.DataAs(connData); err != nil ||
+		connData.ChannelInfo.ChannelID == "" || connData.ChannelInfo.Token == "" {
+		logger = stdLogger
+		logger.Debug("No Websocket connection data available")
+	} else {
+		apiServiceURL, err := utils.GetServiceEndpoint(api)
+		if err != nil {
+			logger.Error(err.Error())
+			return nil
+		}
+		ws, _, err := keptnutils.OpenWS(*connData, apiServiceURL)
+		defer ws.Close()
+		if err != nil {
+			stdLogger.Error(fmt.Sprintf("Opening websocket connection failed. %s", err.Error()))
+			return nil
+		}
+		combinedLogger := keptnutils.NewCombinedLogger(stdLogger, ws)
+		defer combinedLogger.Terminate()
+		logger = combinedLogger
+	}
+
+	//logger := keptnutils.NewLogger(shkeptncontext, event.Context.GetID(), "prometheus-service")
 
 	// open websocket connection to api component
 	// endPoint, err := utils.GetServiceEndpoint(api)
@@ -100,8 +126,8 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 
 	// process event
 	if event.Type() == events.ConfigureMonitoringEventType {
-		version, err := configurePrometheusAndStoreResources(event, *logger)
-		if err := logErrAndRespondWithDoneEvent(event, version, err, *logger); err != nil {
+		version, err := configurePrometheusAndStoreResources(event, logger)
+		if err := logErrAndRespondWithDoneEvent(event, version, err, logger); err != nil {
 			return err
 		}
 
@@ -117,7 +143,7 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 }
 
 // configurePrometheusAndStoreResources
-func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnutils.Logger) (*models.Version, error) {
+func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnutils.LoggerInterface) (*models.Version, error) {
 	eventData := &events.ConfigureMonitoringEventData{}
 	if err := event.DataAs(eventData); err != nil {
 		return nil, err
@@ -154,7 +180,7 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 	return storeMonitoringResources(*eventData, logger)
 }
 
-func isPrometheusInstalled(logger keptnutils.Logger) bool {
+func isPrometheusInstalled(logger keptnutils.LoggerInterface) bool {
 	logger.Debug("Check if prometheus service in monitoring namespace is available")
 
 	o := options{"get", "svc", "prometheus-service", "-n", "monitoring"}
@@ -168,7 +194,7 @@ func isPrometheusInstalled(logger keptnutils.Logger) bool {
 	return true
 }
 
-func installPrometheus(logger keptnutils.Logger) error {
+func installPrometheus(logger keptnutils.LoggerInterface) error {
 	//namespace.yaml
 	logger.Debug("Apply namespace for prometheus monitoring")
 	o := options{"apply", "-f", "/manifests/namespace.yaml"}
@@ -204,7 +230,7 @@ func installPrometheus(logger keptnutils.Logger) error {
 	return nil
 }
 
-func installPrometheusAlertManager(logger keptnutils.Logger) error {
+func installPrometheusAlertManager(logger keptnutils.LoggerInterface) error {
 	//alertmanager-configmap.yaml
 	logger.Debug("Apply configmap for prometheus alert manager")
 	o := options{"apply", "-f", "/manifests/alertmanager-configmap.yaml"}
@@ -240,7 +266,7 @@ func installPrometheusAlertManager(logger keptnutils.Logger) error {
 	return nil
 }
 
-func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, logger keptnutils.Logger) error {
+func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, logger keptnutils.LoggerInterface) error {
 	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
 	keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
 	shipyard, err := keptnHandler.GetShipyard(eventData.Project)
@@ -404,7 +430,7 @@ func deletePrometheusPod() error {
 	return nil
 }
 
-func storeMonitoringResources(eventData events.ConfigureMonitoringEventData, logger keptnutils.Logger) (*models.Version, error) {
+func storeMonitoringResources(eventData events.ConfigureMonitoringEventData, logger keptnutils.LoggerInterface) (*models.Version, error) {
 	resources := []*models.Resource{}
 
 	serviceObjectives, err := yaml.Marshal(eventData.ServiceObjectives)
@@ -443,7 +469,7 @@ func storeMonitoringResources(eventData events.ConfigureMonitoringEventData, log
 }
 
 // logErrAndRespondWithDoneEvent sends a keptn done event to the keptn eventbroker
-func logErrAndRespondWithDoneEvent(event cloudevents.Event, version *models.Version, err error, logger keptnutils.Logger) error {
+func logErrAndRespondWithDoneEvent(event cloudevents.Event, version *models.Version, err error, logger keptnutils.LoggerInterface) error {
 	var result = "success"
 	//var webSocketMessage = "Prometheus successfully configured"
 	var eventMessage = "Prometheus successfully configured and rule created"
@@ -548,7 +574,7 @@ func sendDoneEvent(receivedEvent cloudevents.Event, result string, message strin
 }
 
 // storeResourcesForService stores the resource for a service using the keptnutils.ResourceHandler
-func storeResourcesForService(project string, service string, resources []*models.Resource, logger keptnutils.Logger) (*models.Version, error) {
+func storeResourcesForService(project string, service string, resources []*models.Resource, logger keptnutils.LoggerInterface) (*models.Version, error) {
 	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
 
 	// TODO: Use CreateServiceResources(project, service, resources)

@@ -4,17 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
-	"os"
-	"strings"
-
-	"gopkg.in/yaml.v2"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	cloudevents "github.com/cloudevents/sdk-go"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
 	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
+	"gopkg.in/yaml.v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/url"
+	"os"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -41,20 +39,20 @@ type doneEventData struct {
 }
 
 type alertingRules struct {
-	Groups []alertingGroup `json:"groups" yaml:"groups"`
+	Groups []*alertingGroup `json:"groups" yaml:"groups"`
 }
 
 type alertingGroup struct {
-	Name  string         `json:"name" yaml:"name"`
-	Rules []alertingRule `json:"rules" yaml:"rules"`
+	Name  string          `json:"name" yaml:"name"`
+	Rules []*alertingRule `json:"rules" yaml:"rules"`
 }
 
 type alertingRule struct {
-	Alert       string              `json:"alert" yaml:"alert"`
-	Expr        string              `json:"expr" yaml:"expr"`
-	For         string              `json:"for" yaml:"for"`
-	Labels      alertingLabel       `json:"labels" yaml:"labels"`
-	Annotations alertingAnnotations `json:"annotations" yaml:"annotations"`
+	Alert       string               `json:"alert" yaml:"alert"`
+	Expr        string               `json:"expr" yaml:"expr"`
+	For         string               `json:"for" yaml:"for"`
+	Labels      *alertingLabel       `json:"labels" yaml:"labels"`
+	Annotations *alertingAnnotations `json:"annotations" yaml:"annotations"`
 }
 
 type alertingLabel struct {
@@ -277,9 +275,7 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 	if cmPrometheus.Data["prometheus.rules"] != "" {
 		yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &alertingRulesConfig)
 	} else {
-		alertingRulesConfig = alertingRules{
-			Groups: []alertingGroup{},
-		}
+		alertingRulesConfig = alertingRules{}
 	}
 	// update
 	for _, stage := range shipyard.Stages {
@@ -308,20 +304,35 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 		var alertingGroupConfig *alertingGroup
 		alertingGroupName := eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts"
 		alertingGroupConfig = getAlertingGroup(&alertingRulesConfig, alertingGroupName)
+		if alertingGroupConfig == nil {
+			alertingGroupConfig = &alertingGroup{
+				Name: alertingGroupName,
+			}
+			alertingRulesConfig.Groups = append(alertingRulesConfig.Groups, alertingGroupConfig)
+		}
 
 		for _, objective := range eventData.ServiceObjectives.Objectives {
 
 			indicator := getServiceIndicatorForObjective(objective, eventData.ServiceIndicators)
 			if indicator != nil {
-				alertingRule := getAlertingRuleOfGroup(alertingGroupConfig, objective.Metric)
-				expr := strings.Replace(strings.TrimSuffix(indicator.Query, "\n")+" > "+fmt.Sprintf("%f", objective.Threshold), "$DURATION_MINUTES", objective.Timeframe, -1)
-				alertingRule.Alert = objective.Metric
-				alertingRule.Expr = expr
-				alertingRule.For = objective.Timeframe
-				alertingRule.Labels = alertingLabel{
+				var newAlertingRule *alertingRule
+				newAlertingRule = getAlertingRuleOfGroup(alertingGroupConfig, objective.Metric)
+				if newAlertingRule == nil {
+					newAlertingRule = &alertingRule{
+						Alert: objective.Metric,
+					}
+					alertingGroupConfig.Rules = append(alertingGroupConfig.Rules, newAlertingRule)
+				}
+
+				expr := strings.Replace(indicator.Query+">"+fmt.Sprintf("%f", objective.Threshold), "$DURATION_MINUTES", objective.Timeframe, -1)
+				expr = strings.Replace(expr, "$ENVIRONMENT", stage.Name, -1)
+				newAlertingRule.Alert = objective.Metric
+				newAlertingRule.Expr = expr
+				newAlertingRule.For = objective.Timeframe
+				newAlertingRule.Labels = &alertingLabel{
 					Severity: "webhook",
 				}
-				alertingRule.Annotations = alertingAnnotations{
+				newAlertingRule.Annotations = &alertingAnnotations{
 					Summary:     objective.Metric,
 					Description: "Pod name {{ $labels.pod_name }}",
 				}
@@ -345,27 +356,19 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 func getAlertingRuleOfGroup(alertingGroup *alertingGroup, alertName string) *alertingRule {
 	for _, rule := range alertingGroup.Rules {
 		if rule.Alert == alertName {
-			return &rule
+			return rule
 		}
 	}
-	newRule := &alertingRule{
-		Alert: alertName,
-	}
-	alertingGroup.Rules = append(alertingGroup.Rules, *newRule)
-	return newRule
+	return nil
 }
 
 func getAlertingGroup(alertingRulesConfig *alertingRules, groupName string) *alertingGroup {
 	for _, alertingGroup := range alertingRulesConfig.Groups {
 		if alertingGroup.Name == groupName {
-			return &alertingGroup
+			return alertingGroup
 		}
 	}
-	newAlertingGroup := &alertingGroup{
-		Name: groupName,
-	}
-	alertingRulesConfig.Groups = append(alertingRulesConfig.Groups, *newAlertingGroup)
-	return newAlertingGroup
+	return nil
 }
 
 func getScrapeConfig(config *prometheusconfig.Config, name string) *prometheusconfig.ScrapeConfig {

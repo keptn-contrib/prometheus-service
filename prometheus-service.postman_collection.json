@@ -1,0 +1,49 @@
+{
+	"info": {
+		"_postman_id": "9f95a1a3-4f0f-42eb-9941-8066a6b22f38",
+		"name": "keptn",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Prometheus Service",
+			"item": [
+				{
+					"name": "Monitoring",
+					"item": [
+						{
+							"name": "Configure Monitoring",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"projectName\": \"rockshop\",\n  \"gitUser\": \"bacherfl\",\n  \"gitToken\": \"\",\n  \"gitRemoteURI\": \"https://github.com/bacherfl/rockshop\"\n}"
+								},
+								"url": {
+									"raw": "localhost:8080/v1/project",
+									"host": [
+										"localhost"
+									],
+									"port": "8080",
+									"path": [
+										"v1",
+										"project"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
+		}
+	]
+}

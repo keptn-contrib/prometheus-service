@@ -260,6 +260,9 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 		return err
 	}
 	config, err := prometheusconfig.Load(cmPrometheus.Data["prometheus.yml"])
+	if err != nil {
+		return err
+	}
 	fmt.Println(config)
 
 	cmKeptnDomain, err := api.ConfigMaps("keptn").Get("keptn-domain", metav1.GetOptions{})
@@ -270,58 +273,62 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 	fmt.Println(gateway)
 
 	// check if alerting rules are already availablre
-	var ars alertingRules
+	var alertingRulesConfig alertingRules
 	if cmPrometheus.Data["prometheus.rules"] != "" {
-		yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &ars)
+		yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &alertingRulesConfig)
 	} else {
-		ars = alertingRules{
+		alertingRulesConfig = alertingRules{
 			Groups: []alertingGroup{},
 		}
 	}
 	// update
 	for _, stage := range shipyard.Stages {
-		// create scrape config
-		scrapeConfig := &prometheusconfig.ScrapeConfig{
-			JobName:     eventData.Service + "-" + eventData.Project + "-" + stage.Name,
-			MetricsPath: "/prometheus",
-			ServiceDiscoveryConfig: prometheus_sd_config.ServiceDiscoveryConfig{
-				StaticConfigs: []*targetgroup.Group{
-					{
-						Targets: []prometheus_model.LabelSet{
-							{prometheus_model.AddressLabel: prometheus_model.LabelValue(eventData.Service + "." + eventData.Project + "-" + stage.Name + "." + gateway + ":80")},
-						},
+		var scrapeConfig *prometheusconfig.ScrapeConfig
+		scrapeConfigName := eventData.Service + "-" + eventData.Project + "-" + stage.Name
+		// (a) if a scrape config with the same name is available, update that one
+		scrapeConfig = getScrapeConfig(config, scrapeConfigName)
+		// (b) if not, create a new scrape config
+		if scrapeConfig == nil {
+			scrapeConfig = &prometheusconfig.ScrapeConfig{}
+			config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
+		}
+		scrapeConfig.JobName = scrapeConfigName
+		scrapeConfig.MetricsPath = "/prometheus"
+		scrapeConfig.ServiceDiscoveryConfig = prometheus_sd_config.ServiceDiscoveryConfig{
+			StaticConfigs: []*targetgroup.Group{
+				{
+					Targets: []prometheus_model.LabelSet{
+						{prometheus_model.AddressLabel: prometheus_model.LabelValue(eventData.Service + "." + eventData.Project + "-" + stage.Name + "." + gateway + ":80")},
 					},
 				},
 			},
 		}
-		config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
 
-		ag := alertingGroup{
-			Name: eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts",
-		}
+		// Create or update alerting group
+		var alertingGroupConfig *alertingGroup
+		alertingGroupName := eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts"
+		alertingGroupConfig = getAlertingGroup(&alertingRulesConfig, alertingGroupName)
+
 		for _, objective := range eventData.ServiceObjectives.Objectives {
 
 			indicator := getServiceIndicatorForObjective(objective, eventData.ServiceIndicators)
 			if indicator != nil {
+				alertingRule := getAlertingRuleOfGroup(alertingGroupConfig, objective.Metric)
 				expr := strings.Replace(strings.TrimSuffix(indicator.Query, "\n")+" > "+fmt.Sprintf("%f", objective.Threshold), "$DURATION_MINUTES", objective.Timeframe, -1)
-				ar := alertingRule{
-					Alert: objective.Metric,
-					Expr:  expr,
-					For:   objective.Timeframe,
-					Labels: alertingLabel{
-						Severity: "webhook",
-					},
-					Annotations: alertingAnnotations{
-						Summary:     objective.Metric,
-						Description: "Pod name {{ $labels.pod_name }}",
-					},
+				alertingRule.Alert = objective.Metric
+				alertingRule.Expr = expr
+				alertingRule.For = objective.Timeframe
+				alertingRule.Labels = alertingLabel{
+					Severity: "webhook",
 				}
-				ag.Rules = append(ag.Rules, ar)
+				alertingRule.Annotations = alertingAnnotations{
+					Summary:     objective.Metric,
+					Description: "Pod name {{ $labels.pod_name }}",
+				}
 			}
 		}
-		ars.Groups = append(ars.Groups, ag)
 	}
-	alertingRulesYAMLString, err := yaml.Marshal(ars)
+	alertingRulesYAMLString, err := yaml.Marshal(alertingRulesConfig)
 	if err != nil {
 		return err
 	}
@@ -331,6 +338,41 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 	_, err = api.ConfigMaps("monitoring").Update(cmPrometheus)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func getAlertingRuleOfGroup(alertingGroup *alertingGroup, alertName string) *alertingRule {
+	for _, rule := range alertingGroup.Rules {
+		if rule.Alert == alertName {
+			return &rule
+		}
+	}
+	newRule := &alertingRule{
+		Alert: alertName,
+	}
+	alertingGroup.Rules = append(alertingGroup.Rules, *newRule)
+	return newRule
+}
+
+func getAlertingGroup(alertingRulesConfig *alertingRules, groupName string) *alertingGroup {
+	for _, alertingGroup := range alertingRulesConfig.Groups {
+		if alertingGroup.Name == groupName {
+			return &alertingGroup
+		}
+	}
+	newAlertingGroup := &alertingGroup{
+		Name: groupName,
+	}
+	alertingRulesConfig.Groups = append(alertingRulesConfig.Groups, *newAlertingGroup)
+	return newAlertingGroup
+}
+
+func getScrapeConfig(config *prometheusconfig.Config, name string) *prometheusconfig.ScrapeConfig {
+	for _, scrapeConfig := range config.ScrapeConfigs {
+		if scrapeConfig.JobName == name {
+			return scrapeConfig
+		}
 	}
 	return nil
 }
@@ -353,7 +395,7 @@ func getServiceIndicatorForObjective(objective *models.ServiceObjective, indicat
 
 func deletePrometheusPod() error {
 
-	if err := keptnutils.RestartPodsWithSelector(false, "monitoring", "app=prometheus-server"); err != nil {
+	if err := keptnutils.RestartPodsWithSelector(os.Getenv("env") == "production", "monitoring", "app=prometheus-server"); err != nil {
 		return err
 	}
 	return nil

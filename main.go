@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
 	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	keptnutils "github.com/keptn/go-utils/pkg/utils"
 )
 

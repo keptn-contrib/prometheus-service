@@ -16,9 +16,12 @@ spec:
     spec:
       containers:
       - name: prometheus-service
-        image: keptn/prometheus-service:bc86ccc
+        image: bacherfl/prometheus-service
         ports:
         - containerPort: 8080
+        - containerPort: 40000
+          name: debug
+          protocol: TCP
         resources:
           requests:
             memory: "32Mi"

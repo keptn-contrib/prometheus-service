@@ -15,6 +15,9 @@ vendor/
 # test files
 alert-payload.json
 
+Dockerfile_dev
+skaffold.yaml
+
 service-objectives.yaml
 service-indicators.yaml
 remediation.yaml

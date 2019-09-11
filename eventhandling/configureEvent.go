@@ -92,37 +92,10 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 			stdLogger.Error(fmt.Sprintf("Opening websocket connection failed. %s", err.Error()))
 			return nil
 		}
-		combinedLogger := keptnutils.NewCombinedLogger(stdLogger, ws)
+		combinedLogger := keptnutils.NewCombinedLogger(stdLogger, ws, shkeptncontext)
 		defer combinedLogger.Terminate()
 		logger = combinedLogger
 	}
-
-	//logger := keptnutils.NewLogger(shkeptncontext, event.Context.GetID(), "prometheus-service")
-
-	// open websocket connection to api component
-	// endPoint, err := utils.GetServiceEndpoint(api)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if endPoint.Host == "" {
-	// 	const errorMsg = "Host of api not set"
-	// 	logger.Error(errorMsg)
-	// 	return errors.New(errorMsg)
-	// }
-
-	// connData := &websockethelper.ConnectionData{}
-	// if err := event.DataAs(connData); err != nil {
-	// 	logger.Error(fmt.Sprintf("Data of the event is incompatible. %s", err.Error()))
-	// 	return err
-	// }
-
-	// ws, _, err := websocketutil.OpenWS(*connData, endPoint)
-	// if err != nil {
-	// 	logger.Error(fmt.Sprintf("Opening websocket connection failed. %s", err.Error()))
-	// 	return err
-	// }
-	// defer ws.Close()
 
 	// process event
 	if event.Type() == events.ConfigureMonitoringEventType {
@@ -352,7 +325,7 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 
 				indicatorQueryString := strings.Replace(indicator.Query, "$DURATION_MINUTESm", "$DURATION_MINUTES", -1)
 				indicatorQueryString = strings.Replace(indicatorQueryString, "$DURATION_MINUTES", objective.Timeframe, -1)
-				expr := indicatorQueryString+">"+fmt.Sprintf("%f", objective.Threshold)
+				expr := indicatorQueryString + ">" + fmt.Sprintf("%f", objective.Threshold)
 				expr = strings.Replace(expr, "$ENVIRONMENT", stage.Name, -1)
 				newAlertingRule.Alert = objective.Metric
 				newAlertingRule.Expr = expr

@@ -10,7 +10,7 @@
   version = "v0.45.1"
 
 [[projects]]
-  digest = "1:f17cef275e69de62741e2cbb955e00061272e5749241fe2acc3b4d4ae8fe7952"
+  digest = "1:f806d9f40a2cefc00cf658cc564c40573d68cad158f9279e0eb9f39d7069656d"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
     "services/compute/mgmt/2018-10-01/compute",
@@ -18,8 +18,8 @@
     "version",
   ]
   pruneopts = "UT"
-  revision = "98353253a537e7e94652d100d7d78b30a4a7ee21"
-  version = "v33.1.0"
+  revision = "7577651eb4127da06c3cb42126e22d70ad974b12"
+  version = "v33.2.0"
 
 [[projects]]
   digest = "1:78df7dcd6d2a3e38b9fc52a47129135bdfaf1f89e8dd07001968455459666b11"
@@ -47,12 +47,28 @@
   version = "v0.3.1"
 
 [[projects]]
+  digest = "1:3b10c6fd33854dc41de2cf78b7bae105da94c2789b6fa5b9ac9e593ea43484ac"
+  name = "github.com/Masterminds/goutils"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "41ac8693c5c10a92ea1ff5ac3a7f95646f6123b0"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:55388fd080150b9a072912f97b1f5891eb0b50df43401f8b75fb4273d3fec9fc"
   name = "github.com/Masterminds/semver"
   packages = ["."]
   pruneopts = "UT"
   revision = "c7af12943936e8c39859482e61f0574c2fd7fc75"
   version = "v1.4.2"
+
+[[projects]]
+  digest = "1:ab506cfc00b11d6d406789c15abb0b341e8db076640e3f5255615a7e327398c1"
+  name = "github.com/Masterminds/sprig"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "258b00ffa7318e8b109a141349980ffbd30a35db"
+  version = "v2.20.0"
 
 [[projects]]
   digest = "1:a2682518d905d662d984ef9959984ef87cecb777d379bfa9d9fe40e78069b3e4"
@@ -87,7 +103,7 @@
   version = "v9"
 
 [[projects]]
-  digest = "1:eac6954eaf6d37f7869496448775172fa0dd04012690d66db869da2bcd6b8a9a"
+  digest = "1:f1569b48dc040909e470f91caa51b02fe3f71cb7b2a415b5c4a318e82e83a5f5"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -126,8 +142,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = "UT"
-  revision = "cf5210b77b6f9d40c4c34a0bc793f3bdbe4bc877"
-  version = "v1.23.17"
+  revision = "e51c7493711a6595b86496dc3f6229bae1354c1c"
+  version = "v1.23.19"
 
 [[projects]]
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
@@ -506,6 +522,14 @@
   version = "v0.8.3"
 
 [[projects]]
+  digest = "1:f9a5e090336881be43cfc1cf468330c1bdd60abdc9dd194e0b1ab69f4b94dd7c"
+  name = "github.com/huandu/xstrings"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f02667b379e2fb5916c3cda2cf31e0eb885d79f8"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:a0cefd27d12712af4b5018dc7046f245e1e3b5760e2e848c30b171b570708f9b"
   name = "github.com/imdario/mergo"
   packages = ["."]
@@ -554,7 +578,7 @@
 
 [[projects]]
   branch = "develop"
-  digest = "1:6003f0792a481a92298d1749077ed34b99e29b72fd0e8630db9e16f080e03fd7"
+  digest = "1:f8faefb398b03fe333eef8d5f2efb18b32ac5e4b4bd7445975bf0c4bd53d2fbd"
   name = "github.com/keptn/go-utils"
   packages = [
     "pkg/events",
@@ -562,7 +586,7 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "8bd2a723246ef496c9c589e9e7e0161b33c82000"
+  revision = "6bb1ea21967fe4667c0f7afeb20fbfc96b6c8e0a"
 
 [[projects]]
   digest = "1:90c0c18484d7c2b03e7d17b4fc859bb24da9fd549c7d7170a344c8453875c1d0"
@@ -592,7 +616,6 @@
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
 
 [[projects]]
-  branch = "master"
   digest = "1:927762c6729b4e72957ba3310e485ed09cf8451c5a637a52fd016a9fe09e7936"
   name = "github.com/mailru/easyjson"
   packages = [
@@ -601,7 +624,8 @@
     "jwriter",
   ]
   pruneopts = "UT"
-  revision = "b2ccc519800e761ac8000b95e5d57c80a897ff9e"
+  revision = "1b2b06f5f209fea48ff5922d8bfb2b9ed5d8f00b"
+  version = "v0.7.0"
 
 [[projects]]
   digest = "1:ff5ebae34cfbf047d505ee150de27e60570e8c394b3b8fdbb720ff6ac71985fc"
@@ -612,12 +636,12 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:554af29db5f8e97dd01a8d5a3944c6cc3e91a2578a4ae14408d48cb179557e45"
+  digest = "1:857519ede212509c0325923628682c94d837329fda0f7409164fb4862618e50d"
   name = "github.com/miekg/dns"
   packages = ["."]
   pruneopts = "UT"
-  revision = "c67445656579a3c3836047c509073f97022da0ed"
-  version = "v1.1.16"
+  revision = "2acbc9eff343291e671c1a9ba7be3201bf66dfd6"
+  version = "v1.1.17"
 
 [[projects]]
   digest = "1:5d231480e1c64a726869bc4142d270184c419749d34f167646baa21008eb0a79"
@@ -857,7 +881,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7f5484d2022018b65e5fcd7acaa2636d70b2f8831c47c24c8539d28ca6cfa301"
+  digest = "1:6a28ac2bed8418012e727a6c90d8dc04c3758e130ce04077f6d139bdd2c299e6"
   name = "golang.org/x/crypto"
   packages = [
     "cast5",
@@ -872,14 +896,16 @@
     "openpgp/errors",
     "openpgp/packet",
     "openpgp/s2k",
+    "pbkdf2",
     "poly1305",
+    "scrypt",
     "ssh",
     "ssh/agent",
     "ssh/knownhosts",
     "ssh/terminal",
   ]
   pruneopts = "UT"
-  revision = "094676da4a83be5288d281081bba63a173ce6772"
+  revision = "227b76d455e791cb042b03e633e2f7fbcfdf74a5"
 
 [[projects]]
   branch = "master"
@@ -921,7 +947,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:cdbc36247a6108b07769afd7f582254d8e81c71f257af6c6cf9eaa6453a2c8db"
+  digest = "1:66e855c53eea3664a30089d4f6f79edb7772c5ff1a6b8c4aa2c3f79f6dcff649"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -929,7 +955,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "f460065e899abee61eb86816fd1fd684ea5a0f26"
+  revision = "bbd175535a8b9969bb0b33f1502f681ee0b122bd"
 
 [[projects]]
   digest = "1:66a2f252a58b4fbbad0e4e180e1d85a83c222b6bce09c3dcdef3dc87c72eda7c"
@@ -1321,14 +1347,17 @@
   version = "v11.0.0"
 
 [[projects]]
-  digest = "1:8453e43a8cd9a01812e29b91a9682f238adb9015a105a7fa574f43acc4ca74bc"
+  digest = "1:93c14bd5adb4ad2cdce1a57fda1c648781c91999bfdb96db0768f631adc849f0"
   name = "k8s.io/helm"
   packages = [
     "pkg/chartutil",
+    "pkg/engine",
     "pkg/ignore",
     "pkg/proto/hapi/chart",
     "pkg/proto/hapi/version",
+    "pkg/renderutil",
     "pkg/sympath",
+    "pkg/timeconv",
     "pkg/version",
   ]
   pruneopts = "UT"

@@ -390,7 +390,7 @@ func getConfigurationServiceURL() string {
 
 func getServiceIndicatorForObjective(objective *models.ServiceObjective, indicators *models.ServiceIndicators) *models.ServiceIndicator {
 	for _, indicator := range indicators.Indicators {
-		if indicator.Metric == objective.Metric {
+		if indicator.Metric == objective.Metric && strings.ToLower(indicator.Source) == "prometheus" {
 			return indicator
 		}
 	}

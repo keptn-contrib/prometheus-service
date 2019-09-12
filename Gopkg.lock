@@ -55,12 +55,12 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:55388fd080150b9a072912f97b1f5891eb0b50df43401f8b75fb4273d3fec9fc"
+  digest = "1:087d103f14f737c68b30386831252e96564a8a7e5e8c157227dd57154cd050d6"
   name = "github.com/Masterminds/semver"
   packages = ["."]
   pruneopts = "UT"
-  revision = "c7af12943936e8c39859482e61f0574c2fd7fc75"
-  version = "v1.4.2"
+  revision = "805c489aa98f412e79eb308a37996bf9d8b1c91e"
+  version = "v1.5.0"
 
 [[projects]]
   digest = "1:ab506cfc00b11d6d406789c15abb0b341e8db076640e3f5255615a7e327398c1"
@@ -103,7 +103,7 @@
   version = "v9"
 
 [[projects]]
-  digest = "1:f1569b48dc040909e470f91caa51b02fe3f71cb7b2a415b5c4a318e82e83a5f5"
+  digest = "1:141ac439d7ed64bcb3ae7b564a1446c804788b6600157113e560d8abdb899caa"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -142,8 +142,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = "UT"
-  revision = "e51c7493711a6595b86496dc3f6229bae1354c1c"
-  version = "v1.23.19"
+  revision = "8c6586204ba7e9a887fb4cb6ffca2428e6c6dc7c"
+  version = "v1.23.20"
 
 [[projects]]
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
@@ -947,7 +947,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:66e855c53eea3664a30089d4f6f79edb7772c5ff1a6b8c4aa2c3f79f6dcff649"
+  digest = "1:c6781e110eebbe86b2605ac9fcd939bb31442587f008b4d7394f857c3c46364d"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -955,7 +955,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "bbd175535a8b9969bb0b33f1502f681ee0b122bd"
+  revision = "7ad0cfa0b7b5a50bdf0fb49923febdf3742a975c"
 
 [[projects]]
   digest = "1:66a2f252a58b4fbbad0e4e180e1d85a83c222b6bce09c3dcdef3dc87c72eda7c"
@@ -1034,10 +1034,10 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "92dd089d5514cecde7a465f807541f83dfd486d5"
+  revision = "1774047e7e5133fa3573a4e51b37a586b6b0360c"
 
 [[projects]]
-  digest = "1:3b97661db2e5d4c87f7345e875ea28f911e54c715ba0a74be08e1649d67e05cd"
+  digest = "1:2e18183989c76d073e9088f1a56f8b1c46ca920b74b529a50c2d7e5877ff18ac"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -1075,8 +1075,8 @@
     "tap",
   ]
   pruneopts = "UT"
-  revision = "6eaf6f47437a6b4e2153a190160ef39a92c7eceb"
-  version = "v1.23.0"
+  revision = "39e8a7b072a67ca2a75f57fa2e0d50995f5b22f6"
+  version = "v1.23.1"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"

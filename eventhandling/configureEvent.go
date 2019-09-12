@@ -551,16 +551,23 @@ func sendDoneEvent(receivedEvent cloudevents.Event, result string, message strin
 // storeResourcesForService stores the resource for a service using the keptnutils.ResourceHandler
 func storeResourcesForService(project string, service string, resources []*models.Resource, logger keptnutils.LoggerInterface) (*models.Version, error) {
 	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
-
-	// TODO: Use CreateServiceResources(project, service, resources)
-	versionStr, err := resourceHandler.CreateServiceResources(project, "dev", service, resources)
+	keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
+	shipyard, err := keptnHandler.GetShipyard(project)
 	if err != nil {
 		return nil, fmt.Errorf("Storing monitoring files failed. %s", err.Error())
 	}
 
-	logger.Info("Monitoring files successfully stored")
-	version := models.Version{
-		Version: versionStr,
+	var version models.Version
+	for _, stage := range shipyard.Stages {
+		versionStr, err := resourceHandler.CreateServiceResources(project, stage.Name, service, resources)
+		if err != nil {
+			return nil, fmt.Errorf("Storing monitoring files failed. %s", err.Error())
+		}
+
+		logger.Info("Monitoring files successfully stored")
+		version = models.Version{
+			Version: versionStr,
+		}
 	}
 
 	return &version, nil

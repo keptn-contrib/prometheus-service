@@ -57,6 +57,7 @@ type alertingRule struct {
 
 type alertingLabel struct {
 	Severity string `json:"severity" yaml:"severity"`
+	PodName  string `json:"pod_name,omitempty" yaml:"pod_name"`
 }
 
 type alertingAnnotations struct {
@@ -332,6 +333,7 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 				newAlertingRule.For = objective.Timeframe
 				newAlertingRule.Labels = &alertingLabel{
 					Severity: "webhook",
+					PodName:  eventData.Service + "-primary",
 				}
 				newAlertingRule.Annotations = &alertingAnnotations{
 					Summary:     objective.Metric,

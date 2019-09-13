@@ -19,38 +19,38 @@ import (
 )
 
 type alertManagerEvent struct {
-	Receiver string `json:"receiver"`
-	Status   string `json:"status"`
-	Alerts   []alert
+	Receiver string  `json:"receiver"`
+	Status   string  `json:"status"`
+	Alerts   []alert `json:"alerts""`
 }
 
 type alert struct {
-	Status      string `json:"status"`
-	Labels      labels
-	Annotations annotations
+	Status      string      `json:"status"`
+	Labels      labels      `json:"labels"`
+	Annotations annotations `json:"annotations"`
 	//StartsAt time   `json:"startsAt"`
 	//EndsAt   time   `json:"endsAt"`
 }
 
 type labels struct {
-	AlertName string `json:"alertname"`
+	AlertName string `json:"alertname,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
 	PodName   string `json:"pod_name,omitempty"`
-	Severity  string `json:"severity"`
+	Severity  string `json:"severity,omitempty"`
 }
 
 type annotations struct {
 	Summary     string `json:"summary"`
-	Description string `json:"description,omitempty"`
+	Description string `json:"descriptions,omitempty"`
 }
 
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud Event to the keptn event broker
-func ProcessAndForwardAlertEvent(rw http.ResponseWriter, req *http.Request, logger *keptnutils.Logger, shkeptncontext string) {
-	decoder := json.NewDecoder(req.Body)
+func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, logger *keptnutils.Logger, shkeptncontext string) {
 	var event alertManagerEvent
 
-	err := decoder.Decode(&event)
+	err := json.Unmarshal(requestBody, &event)
 	if err != nil {
+		return
 		logger.Error("Could not map received event to datastructure: " + err.Error())
 	}
 

@@ -81,7 +81,7 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 
 	// check event whether event contains specversion to forward it to 8081; otherwise process it as prometheus alert
 	if json.Unmarshal(body, &event) != nil || event.Specversion == "" {
-		eventhandling.ProcessAndForwardAlertEvent(rw, req, logger, shkeptncontext)
+		eventhandling.ProcessAndForwardAlertEvent(rw, body, logger, shkeptncontext)
 	} else {
 		proxyReq, err := http.NewRequest(req.Method, "http://localhost:8081", bytes.NewReader(body))
 		proxyReq.Header.Set("Content-Type", "application/cloudevents+json")

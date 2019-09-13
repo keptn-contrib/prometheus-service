@@ -87,7 +87,7 @@ func createAndSendCE(eventbroker string, problemData keptnevents.ProblemEventDat
 	ce := cloudevents.Event{
 		Context: cloudevents.EventContextV02{
 			ID:          uuid.New().String(),
-			Type:        "sh.keptn.event.problem",
+			Type:        keptnevents.ProblemOpenEventType,
 			Source:      types.URLRef{URL: *source},
 			ContentType: &contentType,
 			Extensions:  map[string]interface{}{"shkeptncontext": shkeptncontext},

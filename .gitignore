@@ -4,9 +4,20 @@
 *.dll
 *.so
 *.dylib
+vendor/
 
 # Test binary, build with `go test -c`
 *.test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# test files
+alert-payload.json
+
+Dockerfile_dev
+skaffold.yaml
+
+service-objectives.yaml
+service-indicators.yaml
+remediation.yaml

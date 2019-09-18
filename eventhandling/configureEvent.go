@@ -324,8 +324,9 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 					alertingGroupConfig.Rules = append(alertingGroupConfig.Rules, newAlertingRule)
 				}
 
-				indicatorQueryString := strings.Replace(indicator.Query, "$DURATION_MINUTESm", "$DURATION_MINUTES", -1)
-				indicatorQueryString = strings.Replace(indicatorQueryString, "$DURATION_MINUTES", objective.Timeframe, -1)
+				indicatorQueryString := strings.Replace(indicator.Query, "$DURATION_MINUTES", "$DURATION", -1)
+				indicatorQueryString = strings.Replace(indicator.Query, "$DURATIONm", "$DURATION", -1)
+				indicatorQueryString = strings.Replace(indicatorQueryString, "$DURATION", objective.Timeframe, -1)
 				expr := indicatorQueryString + ">" + fmt.Sprintf("%f", objective.Threshold)
 				expr = strings.Replace(expr, "$ENVIRONMENT", stage.Name, -1)
 				newAlertingRule.Alert = objective.Metric

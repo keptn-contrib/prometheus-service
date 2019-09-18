@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
 	cloudevents "github.com/cloudevents/sdk-go"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
 	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/url"
-	"os"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -490,6 +492,7 @@ func createEventCopy(eventSource cloudevents.Event, eventType string) cloudevent
 	event := cloudevents.Event{
 		Context: cloudevents.EventContextV02{
 			ID:          uuid.New().String(),
+			Time:        &types.Timestamp{Time: time.Now()},
 			Type:        eventType,
 			Source:      types.URLRef{URL: *source},
 			ContentType: &contentType,

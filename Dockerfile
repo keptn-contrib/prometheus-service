@@ -26,7 +26,7 @@ ENV env=production
 
 # Copy the binary to the production image from the builder stage.
 COPY --from=builder /go/src/github.com/keptn-contrib/prometheus-service/prometheus-service /prometheus-service
-COPY --from=builder /bin/kubectl /bin/kubectl
+
 ADD MANIFEST /
 
 # Run the web service on container startup.

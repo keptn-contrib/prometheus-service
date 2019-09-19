@@ -57,7 +57,7 @@ data:
           target_label: __metrics_path__
           replacement: /api/v1/nodes/${1}/proxy/metrics
 
-      
+
       - job_name: 'kubernetes-pods'
 
         kubernetes_sd_configs:
@@ -105,7 +105,7 @@ data:
           regex: (.+)
           target_label: __metrics_path__
           replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
-      
+
       - job_name: 'kubernetes-service-endpoints'
 
         kubernetes_sd_configs:

@@ -67,12 +67,10 @@ type alertingAnnotations struct {
 	Description string `json:"description" yaml:"descriptions"`
 }
 
-type options []string
-
 // GotEvent is the event handler of cloud events
 func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	var shkeptncontext string
-	event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
+	_ = event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
 
 	stdLogger := keptnutils.NewLogger(shkeptncontext, event.Context.GetID(), "helm-service")
 
@@ -158,9 +156,13 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 
 func isPrometheusInstalled(logger keptnutils.LoggerInterface) bool {
 	logger.Debug("Check if prometheus service in monitoring namespace is available")
+	api, err := keptnutils.GetKubeAPI(os.Getenv("env") == "production")
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
+		return false
+	}
 
-	o := options{"get", "svc", "prometheus-service", "-n", "monitoring"}
-	_, err := keptnutils.ExecuteCommand("kubectl", o)
+	_, err = api.Services("monitoring").Get("prometheus-service", metav1.GetOptions{})
 	if err != nil {
 		logger.Debug(fmt.Sprintf("Prometheus service in monitoring namespace is not available. %s", err.Error()))
 		return false
@@ -171,73 +173,76 @@ func isPrometheusInstalled(logger keptnutils.LoggerInterface) bool {
 }
 
 func installPrometheus(logger keptnutils.LoggerInterface) error {
-	//namespace.yaml
+	logger.Info("Installing Prometheus...")
+	prometheusHelper, err := utils.NewPrometheusHelper()
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
+		return err
+	}
 	logger.Debug("Apply namespace for prometheus monitoring")
-	o := options{"apply", "-f", "/manifests/namespace.yaml"}
-	_, err := keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdatePrometheusNamespace()
 	if err != nil {
 		return err
 	}
 
 	//config-map.yaml
-	logger.Debug("Apply configmap for prometheus monitoring")
-	o = options{"apply", "-f", "/manifests/config-map.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	logger.Debug("Apply config map for prometheus monitoring")
+	err = prometheusHelper.CreateOrUpdatePrometheusConfigMap()
 	if err != nil {
 		return err
 	}
 
 	//cluster-role.yaml
-	logger.Debug("Apply clusterrole for prometheus monitoring")
-	o = options{"apply", "-f", "/manifests/cluster-role.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	logger.Debug("Apply cluster role for prometheus monitoring")
+	err = prometheusHelper.CreateOrUpdatePrometheusClusterRole()
 	if err != nil {
 		return err
 	}
 
 	//prometheus.yaml
 	logger.Debug("Apply service and deployment for prometheus monitoring")
-	o = options{"apply", "-f", "/manifests/prometheus.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdatePrometheusDeployment()
 	if err != nil {
 		return err
 	}
+
+	logger.Info("Prometheus installed successfully")
 
 	return nil
 }
 
 func installPrometheusAlertManager(logger keptnutils.LoggerInterface) error {
+	logger.Info("Installing Prometheus AlertManager...")
+	prometheusHelper, err := utils.NewPrometheusHelper()
 	//alertmanager-configmap.yaml
 	logger.Debug("Apply configmap for prometheus alert manager")
-	o := options{"apply", "-f", "/manifests/alertmanager-configmap.yaml"}
-	_, err := keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdateAlertManagerConfigMap()
 	if err != nil {
 		return err
 	}
 
 	//alertmanager-template.yaml
 	logger.Debug("Apply configmap template for prometheus alert manager")
-	o = options{"apply", "-f", "/manifests/alertmanager-template.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdateAlertManagerTemplatesConfigMap()
 	if err != nil {
 		return err
 	}
 
 	//alertmanager-deployment.yaml
 	logger.Debug("Apply deployment for prometheus alert manager")
-	o = options{"apply", "-f", "/manifests/alertmanager-deployment.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdateAlertManagerDeployment()
 	if err != nil {
 		return err
 	}
 
 	//alertmanager-svc.yaml
 	logger.Debug("Apply service for prometheus alert manager")
-	o = options{"apply", "-f", "/manifests/alertmanager-svc.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdateAlertManagerService()
 	if err != nil {
 		return err
 	}
+
+	logger.Info("Prometheus AlertManager installed successfully")
 
 	return nil
 }

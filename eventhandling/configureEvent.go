@@ -150,8 +150,7 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 		return nil, err
 	}
 
-	// (3) store resources
-	return storeMonitoringResources(*eventData, logger)
+	return nil, nil
 }
 
 func isPrometheusInstalled(logger keptnutils.LoggerInterface) bool {
@@ -307,6 +306,12 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 			},
 		}
 
+		serviceIndicators, serviceObjectives, err := retrieveMonitoringResources(eventData, stage.Name, logger)
+		if err != nil || serviceIndicators == nil || serviceObjectives == nil {
+			logger.Info("No SRE files found for stage " + stage.Name + ". No alerting rules created for this stage")
+			continue
+		}
+
 		// Create or update alerting group
 		var alertingGroupConfig *alertingGroup
 		alertingGroupName := eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts"
@@ -318,9 +323,9 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 			alertingRulesConfig.Groups = append(alertingRulesConfig.Groups, alertingGroupConfig)
 		}
 
-		for _, objective := range eventData.ServiceObjectives.Objectives {
+		for _, objective := range serviceObjectives.Objectives {
 
-			indicator := getServiceIndicatorForObjective(objective, eventData.ServiceIndicators)
+			indicator := getServiceIndicatorForObjective(objective, serviceIndicators)
 			if indicator != nil {
 				var newAlertingRule *alertingRule
 				newAlertingRule = getAlertingRuleOfGroup(alertingGroupConfig, objective.Metric)
@@ -415,42 +420,33 @@ func deletePrometheusPod() error {
 	return nil
 }
 
-func storeMonitoringResources(eventData events.ConfigureMonitoringEventData, logger keptnutils.LoggerInterface) (*models.Version, error) {
-	resources := []*models.Resource{}
+func retrieveMonitoringResources(eventData events.ConfigureMonitoringEventData, stage string, logger keptnutils.LoggerInterface) (*models.ServiceIndicators, *models.ServiceObjectives, error) {
+	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
 
-	serviceObjectives, err := yaml.Marshal(eventData.ServiceObjectives)
+	resource, err := resourceHandler.GetServiceResource(eventData.Project, stage, eventData.Service, "service-indicators.yaml")
+	if err != nil || resource.ResourceContent == "" {
+		return nil, nil, errors.New("No Service indicators file available for service " + eventData.Service + " in stage " + stage)
+	}
+	var serviceIndicators models.ServiceIndicators
+
+	err = yaml.Unmarshal([]byte(resource.ResourceContent), &serviceIndicators)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal service objectives. %s", err.Error())
-	}
-	serviceObjectivesURI := `service-objectives.yaml`
-	serviceObjectivesRes := models.Resource{
-		ResourceURI:     &serviceObjectivesURI,
-		ResourceContent: string(serviceObjectives),
+		return nil, nil, errors.New("Invalid Service indicators file format")
 	}
 
-	serviceIndicators, err := yaml.Marshal(eventData.ServiceIndicators)
+	resource, err = resourceHandler.GetServiceResource(eventData.Project, stage, eventData.Service, "service-objectives.yaml")
+	if err != nil || resource.ResourceContent == "" {
+		return nil, nil, errors.New("No Service objectives file available for service " + eventData.Service + " in stage " + stage)
+	}
+	var serviceObjectives models.ServiceObjectives
+
+	err = yaml.Unmarshal([]byte(resource.ResourceContent), &serviceObjectives)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal service indicators. %s", err.Error())
-	}
-	serviceIndicatorURI := `service-indicators.yaml`
-	serviceIndicatorRes := models.Resource{
-		ResourceURI:     &serviceIndicatorURI,
-		ResourceContent: string(serviceIndicators),
+		return nil, nil, errors.New("Invalid Service objectives file format")
 	}
 
-	remediation, err := yaml.Marshal(eventData.Remediation)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal remediation. %s", err.Error())
-	}
-	remediationURI := `remediation.yaml`
-	remediationRes := models.Resource{
-		ResourceURI:     &remediationURI,
-		ResourceContent: string(remediation),
-	}
+	return &serviceIndicators, &serviceObjectives, nil
 
-	resources = append(resources, &serviceObjectivesRes, &serviceIndicatorRes, &remediationRes)
-
-	return storeResourcesForService(eventData.Project, eventData.Service, resources, logger)
 }
 
 // logErrAndRespondWithDoneEvent sends a keptn done event to the keptn eventbroker
@@ -557,29 +553,4 @@ func sendDoneEvent(receivedEvent cloudevents.Event, result string, message strin
 	}
 
 	return nil
-}
-
-// storeResourcesForService stores the resource for a service using the keptnutils.ResourceHandler
-func storeResourcesForService(project string, service string, resources []*models.Resource, logger keptnutils.LoggerInterface) (*models.Version, error) {
-	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
-	keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
-	shipyard, err := keptnHandler.GetShipyard(project)
-	if err != nil {
-		return nil, fmt.Errorf("Storing monitoring files failed. %s", err.Error())
-	}
-
-	var version models.Version
-	for _, stage := range shipyard.Stages {
-		versionStr, err := resourceHandler.CreateServiceResources(project, stage.Name, service, resources)
-		if err != nil {
-			return nil, fmt.Errorf("Storing monitoring files failed. %s", err.Error())
-		}
-
-		logger.Info("Monitoring files successfully stored")
-		version = models.Version{
-			Version: versionStr,
-		}
-	}
-
-	return &version, nil
 }

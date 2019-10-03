@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go"
 	cloudeventsclient "github.com/cloudevents/sdk-go/pkg/cloudevents/client"
@@ -87,6 +88,7 @@ func createAndSendCE(eventbroker string, problemData keptnevents.ProblemEventDat
 	ce := cloudevents.Event{
 		Context: cloudevents.EventContextV02{
 			ID:          uuid.New().String(),
+			Time:        &types.Timestamp{Time: time.Now()},
 			Type:        keptnevents.ProblemOpenEventType,
 			Source:      types.URLRef{URL: *source},
 			ContentType: &contentType,

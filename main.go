@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	"io/ioutil"
 	"net/http"
@@ -68,7 +69,7 @@ func _main(args []string, env envConfig) int {
 
 // Handler takes request and forwards it to the corresponding event handler
 func Handler(rw http.ResponseWriter, req *http.Request) {
-	shkeptncontext := ""
+	shkeptncontext := uuid.New().String()
 	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
 	logger.Debug("Receiving event which will be dispatched")
 

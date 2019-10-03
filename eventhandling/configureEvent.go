@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
 	cloudevents "github.com/cloudevents/sdk-go"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
 	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/url"
-	"os"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -65,12 +67,10 @@ type alertingAnnotations struct {
 	Description string `json:"description" yaml:"descriptions"`
 }
 
-type options []string
-
 // GotEvent is the event handler of cloud events
 func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	var shkeptncontext string
-	event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
+	_ = event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
 
 	stdLogger := keptnutils.NewLogger(shkeptncontext, event.Context.GetID(), "helm-service")
 
@@ -150,15 +150,18 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 		return nil, err
 	}
 
-	// (3) store resources
-	return storeMonitoringResources(*eventData, logger)
+	return nil, nil
 }
 
 func isPrometheusInstalled(logger keptnutils.LoggerInterface) bool {
 	logger.Debug("Check if prometheus service in monitoring namespace is available")
+	api, err := keptnutils.GetKubeAPI(os.Getenv("env") == "production")
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
+		return false
+	}
 
-	o := options{"get", "svc", "prometheus-service", "-n", "monitoring"}
-	_, err := keptnutils.ExecuteCommand("kubectl", o)
+	_, err = api.Services("monitoring").Get("prometheus-service", metav1.GetOptions{})
 	if err != nil {
 		logger.Debug(fmt.Sprintf("Prometheus service in monitoring namespace is not available. %s", err.Error()))
 		return false
@@ -169,73 +172,76 @@ func isPrometheusInstalled(logger keptnutils.LoggerInterface) bool {
 }
 
 func installPrometheus(logger keptnutils.LoggerInterface) error {
-	//namespace.yaml
+	logger.Info("Installing Prometheus...")
+	prometheusHelper, err := utils.NewPrometheusHelper()
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
+		return err
+	}
 	logger.Debug("Apply namespace for prometheus monitoring")
-	o := options{"apply", "-f", "/manifests/namespace.yaml"}
-	_, err := keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdatePrometheusNamespace()
 	if err != nil {
 		return err
 	}
 
 	//config-map.yaml
-	logger.Debug("Apply configmap for prometheus monitoring")
-	o = options{"apply", "-f", "/manifests/config-map.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	logger.Debug("Apply config map for prometheus monitoring")
+	err = prometheusHelper.CreateOrUpdatePrometheusConfigMap()
 	if err != nil {
 		return err
 	}
 
 	//cluster-role.yaml
-	logger.Debug("Apply clusterrole for prometheus monitoring")
-	o = options{"apply", "-f", "/manifests/cluster-role.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	logger.Debug("Apply cluster role for prometheus monitoring")
+	err = prometheusHelper.CreateOrUpdatePrometheusClusterRole()
 	if err != nil {
 		return err
 	}
 
 	//prometheus.yaml
 	logger.Debug("Apply service and deployment for prometheus monitoring")
-	o = options{"apply", "-f", "/manifests/prometheus.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdatePrometheusDeployment()
 	if err != nil {
 		return err
 	}
+
+	logger.Info("Prometheus installed successfully")
 
 	return nil
 }
 
 func installPrometheusAlertManager(logger keptnutils.LoggerInterface) error {
+	logger.Info("Installing Prometheus AlertManager...")
+	prometheusHelper, err := utils.NewPrometheusHelper()
 	//alertmanager-configmap.yaml
 	logger.Debug("Apply configmap for prometheus alert manager")
-	o := options{"apply", "-f", "/manifests/alertmanager-configmap.yaml"}
-	_, err := keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdateAlertManagerConfigMap()
 	if err != nil {
 		return err
 	}
 
 	//alertmanager-template.yaml
 	logger.Debug("Apply configmap template for prometheus alert manager")
-	o = options{"apply", "-f", "/manifests/alertmanager-template.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdateAlertManagerTemplatesConfigMap()
 	if err != nil {
 		return err
 	}
 
 	//alertmanager-deployment.yaml
 	logger.Debug("Apply deployment for prometheus alert manager")
-	o = options{"apply", "-f", "/manifests/alertmanager-deployment.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdateAlertManagerDeployment()
 	if err != nil {
 		return err
 	}
 
 	//alertmanager-svc.yaml
 	logger.Debug("Apply service for prometheus alert manager")
-	o = options{"apply", "-f", "/manifests/alertmanager-svc.yaml"}
-	_, err = keptnutils.ExecuteCommand("kubectl", o)
+	err = prometheusHelper.CreateOrUpdateAlertManagerService()
 	if err != nil {
 		return err
 	}
+
+	logger.Info("Prometheus AlertManager installed successfully")
 
 	return nil
 }
@@ -300,6 +306,12 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 			},
 		}
 
+		serviceIndicators, serviceObjectives, err := retrieveMonitoringResources(eventData, stage.Name, logger)
+		if err != nil || serviceIndicators == nil || serviceObjectives == nil {
+			logger.Info("No SRE files found for stage " + stage.Name + ". No alerting rules created for this stage")
+			continue
+		}
+
 		// Create or update alerting group
 		var alertingGroupConfig *alertingGroup
 		alertingGroupName := eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts"
@@ -311,9 +323,9 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 			alertingRulesConfig.Groups = append(alertingRulesConfig.Groups, alertingGroupConfig)
 		}
 
-		for _, objective := range eventData.ServiceObjectives.Objectives {
+		for _, objective := range serviceObjectives.Objectives {
 
-			indicator := getServiceIndicatorForObjective(objective, eventData.ServiceIndicators)
+			indicator := getServiceIndicatorForObjective(objective, serviceIndicators)
 			if indicator != nil {
 				var newAlertingRule *alertingRule
 				newAlertingRule = getAlertingRuleOfGroup(alertingGroupConfig, objective.Metric)
@@ -324,8 +336,9 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 					alertingGroupConfig.Rules = append(alertingGroupConfig.Rules, newAlertingRule)
 				}
 
-				indicatorQueryString := strings.Replace(indicator.Query, "$DURATION_MINUTESm", "$DURATION_MINUTES", -1)
-				indicatorQueryString = strings.Replace(indicatorQueryString, "$DURATION_MINUTES", objective.Timeframe, -1)
+				indicatorQueryString := strings.Replace(indicator.Query, "$DURATION_MINUTES", "$DURATION", -1)
+				indicatorQueryString = strings.Replace(indicator.Query, "$DURATIONm", "$DURATION", -1)
+				indicatorQueryString = strings.Replace(indicatorQueryString, "$DURATION", objective.Timeframe, -1)
 				expr := indicatorQueryString + ">" + fmt.Sprintf("%f", objective.Threshold)
 				expr = strings.Replace(expr, "$ENVIRONMENT", stage.Name, -1)
 				newAlertingRule.Alert = objective.Metric
@@ -407,42 +420,33 @@ func deletePrometheusPod() error {
 	return nil
 }
 
-func storeMonitoringResources(eventData events.ConfigureMonitoringEventData, logger keptnutils.LoggerInterface) (*models.Version, error) {
-	resources := []*models.Resource{}
+func retrieveMonitoringResources(eventData events.ConfigureMonitoringEventData, stage string, logger keptnutils.LoggerInterface) (*models.ServiceIndicators, *models.ServiceObjectives, error) {
+	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
 
-	serviceObjectives, err := yaml.Marshal(eventData.ServiceObjectives)
+	resource, err := resourceHandler.GetServiceResource(eventData.Project, stage, eventData.Service, "service-indicators.yaml")
+	if err != nil || resource.ResourceContent == "" {
+		return nil, nil, errors.New("No Service indicators file available for service " + eventData.Service + " in stage " + stage)
+	}
+	var serviceIndicators models.ServiceIndicators
+
+	err = yaml.Unmarshal([]byte(resource.ResourceContent), &serviceIndicators)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal service objectives. %s", err.Error())
-	}
-	serviceObjectivesURI := `service-objectives.yaml`
-	serviceObjectivesRes := models.Resource{
-		ResourceURI:     &serviceObjectivesURI,
-		ResourceContent: string(serviceObjectives),
+		return nil, nil, errors.New("Invalid Service indicators file format")
 	}
 
-	serviceIndicators, err := yaml.Marshal(eventData.ServiceIndicators)
+	resource, err = resourceHandler.GetServiceResource(eventData.Project, stage, eventData.Service, "service-objectives.yaml")
+	if err != nil || resource.ResourceContent == "" {
+		return nil, nil, errors.New("No Service objectives file available for service " + eventData.Service + " in stage " + stage)
+	}
+	var serviceObjectives models.ServiceObjectives
+
+	err = yaml.Unmarshal([]byte(resource.ResourceContent), &serviceObjectives)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal service indicators. %s", err.Error())
-	}
-	serviceIndicatorURI := `service-indicators.yaml`
-	serviceIndicatorRes := models.Resource{
-		ResourceURI:     &serviceIndicatorURI,
-		ResourceContent: string(serviceIndicators),
+		return nil, nil, errors.New("Invalid Service objectives file format")
 	}
 
-	remediation, err := yaml.Marshal(eventData.Remediation)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal remediation. %s", err.Error())
-	}
-	remediationURI := `remediation.yaml`
-	remediationRes := models.Resource{
-		ResourceURI:     &remediationURI,
-		ResourceContent: string(remediation),
-	}
+	return &serviceIndicators, &serviceObjectives, nil
 
-	resources = append(resources, &serviceObjectivesRes, &serviceIndicatorRes, &remediationRes)
-
-	return storeResourcesForService(eventData.Project, eventData.Service, resources, logger)
 }
 
 // logErrAndRespondWithDoneEvent sends a keptn done event to the keptn eventbroker
@@ -489,6 +493,7 @@ func createEventCopy(eventSource cloudevents.Event, eventType string) cloudevent
 	event := cloudevents.Event{
 		Context: cloudevents.EventContextV02{
 			ID:          uuid.New().String(),
+			Time:        &types.Timestamp{Time: time.Now()},
 			Type:        eventType,
 			Source:      types.URLRef{URL: *source},
 			ContentType: &contentType,
@@ -548,29 +553,4 @@ func sendDoneEvent(receivedEvent cloudevents.Event, result string, message strin
 	}
 
 	return nil
-}
-
-// storeResourcesForService stores the resource for a service using the keptnutils.ResourceHandler
-func storeResourcesForService(project string, service string, resources []*models.Resource, logger keptnutils.LoggerInterface) (*models.Version, error) {
-	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
-	keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
-	shipyard, err := keptnHandler.GetShipyard(project)
-	if err != nil {
-		return nil, fmt.Errorf("Storing monitoring files failed. %s", err.Error())
-	}
-
-	var version models.Version
-	for _, stage := range shipyard.Stages {
-		versionStr, err := resourceHandler.CreateServiceResources(project, stage.Name, service, resources)
-		if err != nil {
-			return nil, fmt.Errorf("Storing monitoring files failed. %s", err.Error())
-		}
-
-		logger.Info("Monitoring files successfully stored")
-		version = models.Version{
-			Version: versionStr,
-		}
-	}
-
-	return &version, nil
 }

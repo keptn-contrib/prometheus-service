@@ -88,7 +88,7 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	var logger keptnutils.LoggerInterface
 
 	connData := &keptnutils.ConnectionData{}
-	if err := event.DataAs(connData); err != nil || true ||
+	if err := event.DataAs(connData); err != nil ||
 		*connData.EventContext.KeptnContext == "" || *connData.EventContext.Token == "" {
 		logger = stdLogger
 		logger.Debug("No Websocket connection data available")
@@ -305,13 +305,13 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 	// update
 	for _, stage := range shipyard.Stages {
 		var scrapeConfig *prometheusconfig.ScrapeConfig
-		primaryScrapeConfigName := eventData.Service + "-" + eventData.Project + "-" + stage.Name
 		// (a) if a scrape config with the same name is available, update that one
-		createScrapeJobConfig(scrapeConfig, config, primaryScrapeConfigName, gateway)
 
 		if stage.DeploymentStrategy == "blue_green_service" {
-			canaryScrapeConfigName := eventData.Service + "-" + eventData.Project + "-" + stage.Name + "-canary"
-			createScrapeJobConfig(scrapeConfig, config, canaryScrapeConfigName, gateway)
+			createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, true)
+			createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, true, false)
+		} else {
+			createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false)
 		}
 
 		// only create alerts for stages that use auto-remediation
@@ -367,7 +367,7 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 							alertingGroupConfig.Rules = append(alertingGroupConfig.Rules, newAlertingRule)
 						}
 						newAlertingRule.Alert = ruleName
-						newAlertingRule.Expr = expr
+						newAlertingRule.Expr = expr + criteriaString
 						newAlertingRule.For = "5m" // TODO: introduce alert duration concept in SLO?
 						newAlertingRule.Labels = &alertingLabel{
 							Severity: "webhook",
@@ -571,7 +571,18 @@ func getCustomQuery(project string, sli string, logger keptnutils.LoggerInterfac
 
 }
 
-func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *prometheusconfig.Config, scrapeConfigName string, gateway string) {
+func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *prometheusconfig.Config, project string, stage string, service string, isCanary bool, isPrimary bool) {
+	scrapeConfigName := service + "-" + project + "-" + stage
+	var scrapeEndpoint string
+	if isCanary {
+		scrapeConfigName = scrapeConfigName + "-canary"
+		scrapeEndpoint = service + "-canary." + project + "-" + stage + ":80"
+	} else if isPrimary {
+		scrapeEndpoint = service + "-primary." + project + "-" + stage + ":80"
+	} else {
+		scrapeEndpoint = service + "." + project + "-" + stage + ":80"
+	}
+
 	scrapeConfig = getScrapeConfig(config, scrapeConfigName)
 	// (b) if not, create a new scrape config
 	if scrapeConfig == nil {
@@ -584,7 +595,7 @@ func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *
 		StaticConfigs: []*targetgroup.Group{
 			{
 				Targets: []prometheus_model.LabelSet{
-					{prometheus_model.AddressLabel: prometheus_model.LabelValue(scrapeConfigName + "." + gateway + ":80")},
+					{prometheus_model.AddressLabel: prometheus_model.LabelValue(scrapeEndpoint)},
 				},
 			},
 		},

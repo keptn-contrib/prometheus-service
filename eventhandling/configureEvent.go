@@ -579,7 +579,7 @@ func getCustomQuery(project string, sli string, logger keptnutils.LoggerInterfac
 		return "", nil
 	}
 
-	query := configMap.Data[sli]
+	query := customQueries[sli]
 
 	return query, nil
 

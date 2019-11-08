@@ -441,15 +441,20 @@ func getSLIQuery(project string, stage string, service string, sli string, filte
 	}
 	switch sli {
 	case Throughput:
+		logger.Info("Using default query for throughput")
 		query = getDefaultThroughputQuery(project, stage, service, filters)
 	case ErrorRate:
+		logger.Info("Using default query for error_rate")
 		query = getDefaultErrorRateQuery(project, stage, service, filters)
 	case ResponseTimeP50:
-		query = getDefaultRequestLatencyQuery(project, stage, service, filters, "50")
+		logger.Info("Using default query for response_time_p50")
+		query = getDefaultResponseTimeQuery(project, stage, service, filters, "50")
 	case ResponseTimeP90:
-		query = getDefaultRequestLatencyQuery(project, stage, service, filters, "90")
+		logger.Info("Using default query for response_time_p90")
+		query = getDefaultResponseTimeQuery(project, stage, service, filters, "90")
 	case ResponseTimeP95:
-		query = getDefaultRequestLatencyQuery(project, stage, service, filters, "95")
+		logger.Info("Using default query for response_time_p95")
+		query = getDefaultResponseTimeQuery(project, stage, service, filters, "95")
 	default:
 		return "", errors.New("unsupported SLI")
 	}
@@ -513,7 +518,7 @@ func getDefaultErrorRateQuery(project string, stage string, service string, filt
 	return "sum(rate(http_requests_total{" + filterExpr + ",status!~'2..'}[180s]))/sum(rate(http_requests_total{" + filterExpr + "}[180s]))"
 }
 
-func getDefaultRequestLatencyQuery(project string, stage string, service string, filters map[string]string, percentile string) string {
+func getDefaultResponseTimeQuery(project string, stage string, service string, filters map[string]string, percentile string) string {
 	filterExpr := getDefaultFilterExpression(project, stage, service, filters)
 	// e.g. histogram_quantile(0.95, sum(rate(http_response_time_milliseconds_bucket{job='carts-sockshop-dev'}[30m])) by (le))&time=1571649085
 	/*
@@ -559,13 +564,22 @@ func getCustomQuery(project string, sli string, logger keptnutils.LoggerInterfac
 	}
 	logger.Info("Checking for custom SLI queries for project " + project)
 
-	configMap, err := kubeClient.ConfigMaps("keptn").Get("prometheus-metric-config-"+project, metav1.GetOptions{})
-	if err != nil || configMap == nil || configMap.Data == nil || configMap.Data[sli] == "" {
+	configMap, err := kubeClient.ConfigMaps("keptn").Get("prometheus-sli-service-config-"+project, metav1.GetOptions{})
+
+	if err != nil || configMap == nil || configMap.Data == nil || configMap.Data["custom-queries"] == "" {
 		logger.Info("No custom query defined for SLI " + sli + " in project " + project)
 		return "", nil
 	}
 
-	query := configMap.Data[sli]
+	customQueries := make(map[string]string)
+	err = yaml.Unmarshal([]byte(configMap.Data["custom-queries"]), &customQueries)
+
+	if err != nil || customQueries == nil || customQueries[sli] == "" {
+		logger.Info("No custom query defined for SLI " + sli + " in project " + project)
+		return "", nil
+	}
+
+	query := customQueries[sli]
 
 	return query, nil
 

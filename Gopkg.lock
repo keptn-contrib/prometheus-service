@@ -103,7 +103,7 @@
   version = "v9"
 
 [[projects]]
-  digest = "1:be7603008af8921305233181a8b1d8580645fdb23ac860ac5db5f850b5555524"
+  digest = "1:cfde971704d2b27e75a8bc5c202cccf67529898f7a078a76560311584f83b6d2"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -142,8 +142,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = "UT"
-  revision = "ec809a616d25460e32811808ca3a731e3d2a42ec"
-  version = "v1.25.27"
+  revision = "e1af1c7236c8be2fd71e8a2a57de65edc01634b4"
+  version = "v1.25.31"
 
 [[projects]]
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
@@ -296,8 +296,8 @@
   name = "github.com/go-openapi/runtime"
   packages = ["."]
   pruneopts = "UT"
-  revision = "553c9d1fb273d9550562d9f76949a413af265138"
-  version = "v0.19.7"
+  revision = "fe6d8ccde74ed2051547fa7590a3932b88a53875"
+  version = "v0.19.8"
 
 [[projects]]
   digest = "1:55d1c09fc8b3320b6842565249a9e4d0f363bead6f9b8be05c3b47f2c4264eda"
@@ -324,12 +324,12 @@
   version = "v0.19.5"
 
 [[projects]]
-  digest = "1:683e8ed8f90886b6338ab90d12aa8f4111383506313173ef02ad0724608512b5"
+  digest = "1:313e98ecd90b82d00c6b480c7458602f2c669b93c396772680fd3a9bb9ad13c0"
   name = "github.com/go-openapi/validate"
   packages = ["."]
   pruneopts = "UT"
-  revision = "80d596e2af47cef147b636dfd76abce249d2b847"
-  version = "v0.19.4"
+  revision = "08232b6614a50c4f62d1efa77e966421d327d3d3"
+  version = "v0.19.5"
 
 [[projects]]
   digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"
@@ -562,7 +562,7 @@
 
 [[projects]]
   branch = "develop"
-  digest = "1:fc5bb2d3294da6316182932be4b8c7c3feb3f35ecda5b0436880790ad727cbe7"
+  digest = "1:6acd1ab11d2c6eff54342b36a11318e05d233f957640da0fa680741824614882"
   name = "github.com/keptn/go-utils"
   packages = [
     "pkg/api/models",
@@ -574,7 +574,7 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "d52fde45ac509c06a4ef812215f25ebb9313473d"
+  revision = "a4a5f8adcc8be0b23ac0280b52798460af4f1d4e"
 
 [[projects]]
   digest = "1:fd7f169f32c221b096c74e756bda16fe22d3bb448bbf74042fd0700407a1f92f"
@@ -817,7 +817,7 @@
   version = "v1.1.3"
 
 [[projects]]
-  digest = "1:b984f402fbabb0e9eb0476f0ecfa51d0b2ff11cd0ac03538d6284091033b39ae"
+  digest = "1:7b6ca9454e8d16e34b251f181a4ae430a25805acca64ea46b0448583b44fcfe6"
   name = "go.opencensus.io"
   packages = [
     ".",
@@ -838,8 +838,8 @@
     "trace/tracestate",
   ]
   pruneopts = "UT"
-  revision = "59d1ce35d30f3c25ba762169da2a37eab6ffa041"
-  version = "v0.22.1"
+  revision = "aad2c527c5defcf89b5afab7f37274304195a6b2"
+  version = "v0.22.2"
 
 [[projects]]
   digest = "1:0bdcb0c740d79d400bd3f7946ac22a715c94db62b20bfd2e01cd50693aba0600"
@@ -882,7 +882,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:306fbbddc88a1a1d0447006c3f6486fd4ae3e568f22494527b56fec97d609af9"
+  digest = "1:846abc585b586fa00fcdebd55dc5788861e357ecbeaf5e1570a8fdbc3684e5c2"
   name = "golang.org/x/crypto"
   packages = [
     "cast5",
@@ -906,7 +906,7 @@
     "ssh/terminal",
   ]
   pruneopts = "UT"
-  revision = "c7e5f84aec591254278750bee18f39e5dd19cdb5"
+  revision = "bd318be0434a57050ed475e0f45c3dbb16c09c2e"
 
 [[projects]]
   branch = "master"
@@ -921,7 +921,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ab87fcd483258ad8fb999dbd24d9175a7ce6b7630021a9a905bfbe6ef4783b96"
+  digest = "1:dab793efa69a66cdfc89b71c613aeb45d0270dd09555c0b9e1fbab3c36e67b51"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -941,7 +941,7 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "a882066a44e04a21d46e51451c71e131344e830e"
+  revision = "daa7c04131f568e31c51927b359a2d197a357058"
 
 [[projects]]
   branch = "master"
@@ -959,7 +959,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:92c957c2713e817f2c5e25735152837312e3e0458e784a5e168d725474ac8995"
+  digest = "1:683021c0af909b8801a05239933ddef473c041ed17a3f9d32f8bb229b6b60ce2"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -967,7 +967,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "c1f44814a5cd81a6d1cb589ef1e528bc5d305e07"
+  revision = "d32e6e3b99c40f2bfaea45ea9596ed539eed1c0d"
 
 [[projects]]
   digest = "1:66a2f252a58b4fbbad0e4e180e1d85a83c222b6bce09c3dcdef3dc87c72eda7c"
@@ -1005,7 +1005,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:24bdfa6b59167b319425261689ebde2f9d15d13680341833ada3551a3da99fb2"
+  digest = "1:06a2c8ccc3d240a260f282a6b65821536f42fed27aa1406a0eea1954ad556d3c"
   name = "golang.org/x/tools"
   packages = [
     "go/analysis",
@@ -1025,7 +1025,7 @@
     "internal/span",
   ]
   pruneopts = "UT"
-  revision = "689d0f08e67ae0c77c260e137ac6a3729498c92f"
+  revision = "97ad0ed33101b39103eaf8aeab62b59dd1cfb89e"
 
 [[projects]]
   digest = "1:82c71bbd81d383e6a0c033029e9de96c665e886c3071987f836afedb8207d494"
@@ -1070,10 +1070,10 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "919d9bdd9fe6f1a5dd95ce5d5e4cdb8fd3c516d0"
+  revision = "16a3f7862a1a494c52b23987ef8a993fd3f9a85e"
 
 [[projects]]
-  digest = "1:0c0ea0f0ccec8a112245dd3ca0c3b304224ede9afd4b7a2b482a7b48471ef894"
+  digest = "1:b59ce3ddb11daeeccccc9cb3183b58ebf8e9a779f1c853308cd91612e817a301"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -1113,8 +1113,8 @@
     "tap",
   ]
   pruneopts = "UT"
-  revision = "9d331e2b02dd47daeecae02790f61cc88dc75a64"
-  version = "v1.25.0"
+  revision = "1a3960e4bd028ac0cec0a2afd27d7d8e67c11514"
+  version = "v1.25.1"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -1419,7 +1419,7 @@
   version = "v11.0.0"
 
 [[projects]]
-  digest = "1:16b818e3a5d2c53dbd8d07c23336ac70297a13936788a67e3e7576fff54b3a62"
+  digest = "1:0edda5ab9678012282714b2776cc68863314c724cdc433ca9280b9f945b09d4d"
   name = "k8s.io/helm"
   packages = [
     "pkg/chartutil",
@@ -1433,8 +1433,8 @@
     "pkg/version",
   ]
   pruneopts = "UT"
-  revision = "8dce272473e5f2a7bf58ce79bb5c3691db54c96b"
-  version = "v2.15.2"
+  revision = "e13bc94621d4ef666270cfbe734aaabf342a49bb"
+  version = "v2.16.0"
 
 [[projects]]
   digest = "1:93e82f25d75aba18436ad1ac042cb49493f096011f2541075721ed6f9e05c044"

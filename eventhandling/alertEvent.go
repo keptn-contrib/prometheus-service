@@ -67,7 +67,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		State:          problemState,
 		ProblemID:      "",
 		ProblemTitle:   event.Alerts[0].Annotations.Summary,
-		ProblemDetails: event.Alerts[0].Annotations.Description,
+		ProblemDetails: json.RawMessage(event.Alerts[0].Annotations.Description),
 		ImpactedEntity: event.Alerts[0].Labels.PodName,
 		Project:        event.Alerts[0].Labels.Project,
 		Stage:          event.Alerts[0].Labels.Stage,

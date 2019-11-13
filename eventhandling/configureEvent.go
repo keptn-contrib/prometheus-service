@@ -43,7 +43,7 @@ const configservice = "CONFIGURATION_SERVICE"
 const eventbroker = "EVENTBROKER"
 const api = "API"
 
-const keptnPrometheusSLIConfigMapName = "prometheus-sli-service-config"
+const keptnPrometheusSLIConfigMapName = "prometheus-sli-config"
 
 type doneEventData struct {
 	Result  string `json:"result"`
@@ -552,7 +552,7 @@ func replaceQueryParameters(query string, project string, stage string, service 
 		sanitizedValue := value
 		sanitizedValue = strings.Replace(sanitizedValue, "'", "", -1)
 		sanitizedValue = strings.Replace(sanitizedValue, "\"", "", -1)
-		query = strings.Replace(query, "$"+key, sanitizedValue, -1)
+		query = strings.Replace(query, "$"+strings.ToUpper(key), sanitizedValue, -1)
 	}
 	// TODO: introduce alert duration concept in SLO?
 	query = strings.Replace(query, "$DURATION_SECONDS", "180s", -1)

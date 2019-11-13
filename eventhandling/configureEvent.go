@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/api/core/v1"
 	"net/url"
 	"os"
 	"strings"
@@ -41,6 +42,8 @@ const ResponseTimeP95 = "response_time_p95"
 const configservice = "CONFIGURATION_SERVICE"
 const eventbroker = "EVENTBROKER"
 const api = "API"
+
+const keptnPrometheusSLIConfigMapName = "prometheus-sli-config"
 
 type doneEventData struct {
 	Result  string `json:"result"`
@@ -549,7 +552,7 @@ func replaceQueryParameters(query string, project string, stage string, service 
 		sanitizedValue := value
 		sanitizedValue = strings.Replace(sanitizedValue, "'", "", -1)
 		sanitizedValue = strings.Replace(sanitizedValue, "\"", "", -1)
-		query = strings.Replace(query, "$"+key, sanitizedValue, -1)
+		query = strings.Replace(query, "$"+strings.ToUpper(key), sanitizedValue, -1)
 	}
 	// TODO: introduce alert duration concept in SLO?
 	query = strings.Replace(query, "$DURATION_SECONDS", "180s", -1)
@@ -564,25 +567,41 @@ func getCustomQuery(project string, sli string, logger keptnutils.LoggerInterfac
 	}
 	logger.Info("Checking for custom SLI queries for project " + project)
 
-	configMap, err := kubeClient.ConfigMaps("keptn").Get("prometheus-sli-service-config-"+project, metav1.GetOptions{})
+	// try to get project-specific configMap
+	configMap, err := kubeClient.ConfigMaps("keptn").Get(keptnPrometheusSLIConfigMapName+"-"+project, metav1.GetOptions{})
 
-	if err != nil || configMap == nil || configMap.Data == nil || configMap.Data["custom-queries"] == "" {
+	if err == nil {
+		query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
+		if err == nil && query != "" {
+			return query, nil
+		}
+	}
+
+	// if no config Map could be found, try to get the global one
+	configMap, err = kubeClient.ConfigMaps("keptn").Get(keptnPrometheusSLIConfigMapName, metav1.GetOptions{})
+
+	query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
+	if err != nil {
+		return "", err
+	}
+
+	return query, nil
+
+}
+
+func extractCustomQueryFromCM(configMap *v1.ConfigMap, logger keptnutils.LoggerInterface, sli string, project string) (string, error) {
+	if configMap == nil || configMap.Data == nil || configMap.Data["custom-queries"] == "" {
 		logger.Info("No custom query defined for SLI " + sli + " in project " + project)
 		return "", nil
 	}
-
 	customQueries := make(map[string]string)
-	err = yaml.Unmarshal([]byte(configMap.Data["custom-queries"]), &customQueries)
-
+	err := yaml.Unmarshal([]byte(configMap.Data["custom-queries"]), &customQueries)
 	if err != nil || customQueries == nil || customQueries[sli] == "" {
 		logger.Info("No custom query defined for SLI " + sli + " in project " + project)
 		return "", nil
 	}
-
 	query := customQueries[sli]
-
 	return query, nil
-
 }
 
 func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *prometheusconfig.Config, project string, stage string, service string, isCanary bool, isPrimary bool) {

@@ -545,16 +545,19 @@ func getDefaultResponseTimeQuery(project string, stage string, service string, f
 }
 
 func replaceQueryParameters(query string, project string, stage string, service string, filters map[string]string) string {
-	query = strings.Replace(query, "$PROJECT", project, -1)
-	query = strings.Replace(query, "$STAGE", stage, -1)
-	query = strings.Replace(query, "$SERVICE", service, -1)
 	for key, value := range filters {
 		sanitizedValue := value
 		sanitizedValue = strings.Replace(sanitizedValue, "'", "", -1)
 		sanitizedValue = strings.Replace(sanitizedValue, "\"", "", -1)
+		query = strings.Replace(query, "$"+key, sanitizedValue, -1)
 		query = strings.Replace(query, "$"+strings.ToUpper(key), sanitizedValue, -1)
 	}
-	// TODO: introduce alert duration concept in SLO?
+	query = strings.Replace(query, "$PROJECT", project, -1)
+	query = strings.Replace(query, "$STAGE", stage, -1)
+	query = strings.Replace(query, "$SERVICE", service, -1)
+	query = strings.Replace(query, "$project", project, -1)
+	query = strings.Replace(query, "$stage", stage, -1)
+	query = strings.Replace(query, "$service", service, -1)
 	query = strings.Replace(query, "$DURATION_SECONDS", "180s", -1)
 	return query
 }

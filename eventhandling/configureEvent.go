@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/api/core/v1"
 	"net/url"
 	"os"
 	"strings"
@@ -20,8 +21,10 @@ import (
 
 	"github.com/keptn-contrib/prometheus-service/utils"
 
+	"github.com/keptn/go-utils/pkg/configuration-service/models"
+	configutils "github.com/keptn/go-utils/pkg/configuration-service/utils"
 	"github.com/keptn/go-utils/pkg/events"
-	"github.com/keptn/go-utils/pkg/models"
+	keptnmodelsv2 "github.com/keptn/go-utils/pkg/models/v2"
 	keptnutils "github.com/keptn/go-utils/pkg/utils"
 
 	prometheus_model "github.com/prometheus/common/model"
@@ -30,9 +33,17 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
 
+const Throughput = "throughput"
+const ErrorRate = "error_rate"
+const ResponseTimeP50 = "response_time_p50"
+const ResponseTimeP90 = "response_time_p90"
+const ResponseTimeP95 = "response_time_p95"
+
 const configservice = "CONFIGURATION_SERVICE"
 const eventbroker = "EVENTBROKER"
 const api = "API"
+
+const keptnPrometheusSLIConfigMapName = "prometheus-sli-config"
 
 type doneEventData struct {
 	Result  string `json:"result"`
@@ -60,6 +71,9 @@ type alertingRule struct {
 type alertingLabel struct {
 	Severity string `json:"severity" yaml:"severity"`
 	PodName  string `json:"pod_name,omitempty" yaml:"pod_name"`
+	Service  string `json:"service,omitempty" yaml:"service"`
+	Stage    string `json:"stage,omitempty" yaml:"stage"`
+	Project  string `json:"project,omitempty" yaml:"project"`
 }
 
 type alertingAnnotations struct {
@@ -78,7 +92,7 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 
 	connData := &keptnutils.ConnectionData{}
 	if err := event.DataAs(connData); err != nil ||
-		connData.ChannelInfo.ChannelID == "" || connData.ChannelInfo.Token == "" {
+		*connData.EventContext.KeptnContext == "" || *connData.EventContext.Token == "" {
 		logger = stdLogger
 		logger.Debug("No Websocket connection data available")
 	} else {
@@ -151,6 +165,14 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 	}
 
 	return nil, nil
+}
+
+func deletePrometheusPod() error {
+
+	if err := keptnutils.RestartPodsWithSelector(os.Getenv("env") == "production", "monitoring", "app=prometheus-server"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func isPrometheusInstalled(logger keptnutils.LoggerInterface) bool {
@@ -247,7 +269,7 @@ func installPrometheusAlertManager(logger keptnutils.LoggerInterface) error {
 }
 
 func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, logger keptnutils.LoggerInterface) error {
-	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
+	resourceHandler := configutils.NewResourceHandler(getConfigurationServiceURL())
 	keptnHandler := keptnutils.NewKeptnHandler(resourceHandler)
 	shipyard, err := keptnHandler.GetShipyard(eventData.Project)
 	if err != nil {
@@ -286,29 +308,23 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 	// update
 	for _, stage := range shipyard.Stages {
 		var scrapeConfig *prometheusconfig.ScrapeConfig
-		scrapeConfigName := eventData.Service + "-" + eventData.Project + "-" + stage.Name
 		// (a) if a scrape config with the same name is available, update that one
-		scrapeConfig = getScrapeConfig(config, scrapeConfigName)
-		// (b) if not, create a new scrape config
-		if scrapeConfig == nil {
-			scrapeConfig = &prometheusconfig.ScrapeConfig{}
-			config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
-		}
-		scrapeConfig.JobName = scrapeConfigName
-		scrapeConfig.MetricsPath = "/prometheus"
-		scrapeConfig.ServiceDiscoveryConfig = prometheus_sd_config.ServiceDiscoveryConfig{
-			StaticConfigs: []*targetgroup.Group{
-				{
-					Targets: []prometheus_model.LabelSet{
-						{prometheus_model.AddressLabel: prometheus_model.LabelValue(eventData.Service + "." + eventData.Project + "-" + stage.Name + "." + gateway + ":80")},
-					},
-				},
-			},
+
+		if stage.DeploymentStrategy == "blue_green_service" {
+			createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, true)
+			createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, true, false)
+		} else {
+			createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false)
 		}
 
-		serviceIndicators, serviceObjectives, err := retrieveMonitoringResources(eventData, stage.Name, logger)
-		if err != nil || serviceIndicators == nil || serviceObjectives == nil {
-			logger.Info("No SRE files found for stage " + stage.Name + ". No alerting rules created for this stage")
+		// only create alerts for stages that use auto-remediation
+		if stage.RemediationStrategy != "automated" {
+			continue
+		}
+
+		slos, err := retrieveSLOs(eventData, stage.Name, logger)
+		if err != nil || slos == nil {
+			logger.Info("No SLO file found for stage " + stage.Name + ". No alerting rules created for this stage")
 			continue
 		}
 
@@ -323,34 +339,51 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 			alertingRulesConfig.Groups = append(alertingRulesConfig.Groups, alertingGroupConfig)
 		}
 
-		for _, objective := range serviceObjectives.Objectives {
+		for _, objective := range slos.Objectives {
 
-			indicator := getServiceIndicatorForObjective(objective, serviceIndicators)
-			if indicator != nil {
-				var newAlertingRule *alertingRule
-				newAlertingRule = getAlertingRuleOfGroup(alertingGroupConfig, objective.Metric)
-				if newAlertingRule == nil {
-					newAlertingRule = &alertingRule{
-						Alert: objective.Metric,
+			expr, err := getSLIQuery(eventData.Project, stage.Name, eventData.Service, objective.SLI, slos.Filter, logger)
+			if err != nil || expr == "" {
+				logger.Error("No query defined for SLI " + objective.SLI + " in project " + eventData.Project)
+				continue
+			}
+
+			if objective.Pass != nil {
+				for _, criteriaGroup := range objective.Pass {
+					for _, criteria := range criteriaGroup.Criteria {
+						if strings.Contains(criteria, "+") || strings.Contains(criteria, "-") || strings.Contains(criteria, "%") || (!strings.Contains(criteria, "<") && !strings.Contains(criteria, ">")) {
+							continue
+						}
+						criteriaString := strings.Replace(criteria, "=", "", -1)
+						if strings.Contains(criteriaString, "<") {
+							criteriaString = strings.Replace(criteriaString, "<", ">", -1)
+						} else {
+							criteriaString = strings.Replace(criteriaString, ">", "<", -1)
+						}
+
+						var newAlertingRule *alertingRule
+						ruleName := objective.SLI + criteriaString
+						newAlertingRule = getAlertingRuleOfGroup(alertingGroupConfig, ruleName)
+						if newAlertingRule == nil {
+							newAlertingRule = &alertingRule{
+								Alert: ruleName,
+							}
+							alertingGroupConfig.Rules = append(alertingGroupConfig.Rules, newAlertingRule)
+						}
+						newAlertingRule.Alert = ruleName
+						newAlertingRule.Expr = expr + criteriaString
+						newAlertingRule.For = "5m" // TODO: introduce alert duration concept in SLO?
+						newAlertingRule.Labels = &alertingLabel{
+							Severity: "webhook",
+							PodName:  eventData.Service + "-primary",
+							Service:  eventData.Service,
+							Project:  eventData.Project,
+							Stage:    stage.Name,
+						}
+						newAlertingRule.Annotations = &alertingAnnotations{
+							Summary:     ruleName,
+							Description: "Pod name {{ $labels.pod_name }}",
+						}
 					}
-					alertingGroupConfig.Rules = append(alertingGroupConfig.Rules, newAlertingRule)
-				}
-
-				indicatorQueryString := strings.Replace(indicator.Query, "$DURATION_MINUTES", "$DURATION", -1)
-				indicatorQueryString = strings.Replace(indicator.Query, "$DURATIONm", "$DURATION", -1)
-				indicatorQueryString = strings.Replace(indicatorQueryString, "$DURATION", objective.Timeframe, -1)
-				expr := indicatorQueryString + ">" + fmt.Sprintf("%f", objective.Threshold)
-				expr = strings.Replace(expr, "$ENVIRONMENT", stage.Name, -1)
-				newAlertingRule.Alert = objective.Metric
-				newAlertingRule.Expr = expr
-				newAlertingRule.For = objective.Timeframe
-				newAlertingRule.Labels = &alertingLabel{
-					Severity: "webhook",
-					PodName:  eventData.Service + "-primary",
-				}
-				newAlertingRule.Annotations = &alertingAnnotations{
-					Summary:     objective.Metric,
-					Description: "Pod name {{ $labels.pod_name }}",
 				}
 			}
 		}
@@ -367,6 +400,242 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 		return err
 	}
 	return nil
+}
+
+func getDefaultFilterExpression(project string, stage string, service string, filters map[string]string) string {
+	filterExpression := "job='" + service + "-" + project + "-" + stage + "'"
+	if filters != nil && len(filters) > 0 {
+		for key, value := range filters {
+			/* if no operator has been included in the label filter, use exact matching (=), e.g.
+			e.g.:
+			key: handler
+			value: ItemsController
+			*/
+			sanitizedValue := value
+			if !strings.HasPrefix(sanitizedValue, "=") && !strings.HasPrefix(sanitizedValue, "!=") && !strings.HasPrefix(sanitizedValue, "=~") && !strings.HasPrefix(sanitizedValue, "!~") {
+				sanitizedValue = strings.Replace(sanitizedValue, "'", "", -1)
+				sanitizedValue = strings.Replace(sanitizedValue, "\"", "", -1)
+				filterExpression = filterExpression + "," + key + "='" + sanitizedValue + "'"
+			} else {
+				/* if a valid operator (=, !=, =~, !~) is prepended to the value, use that one
+				e.g.:
+				key: handler
+				value: !=HealthCheckController
+
+				OR
+
+				key: handler
+				value: =~.+ItemsController|.+VersionController
+				*/
+				sanitizedValue = strings.Replace(sanitizedValue, "\"", "'", -1)
+				filterExpression = filterExpression + "," + key + sanitizedValue
+			}
+		}
+	}
+	return filterExpression
+}
+
+func getSLIQuery(project string, stage string, service string, sli string, filters map[string]string, logger keptnutils.LoggerInterface) (string, error) {
+	query, err := getCustomQuery(project, sli, logger)
+	if err == nil && query != "" {
+		query = replaceQueryParameters(query, project, stage, service, filters)
+
+		return query, nil
+	}
+	switch sli {
+	case Throughput:
+		logger.Info("Using default query for throughput")
+		query = getDefaultThroughputQuery(project, stage, service, filters)
+	case ErrorRate:
+		logger.Info("Using default query for error_rate")
+		query = getDefaultErrorRateQuery(project, stage, service, filters)
+	case ResponseTimeP50:
+		logger.Info("Using default query for response_time_p50")
+		query = getDefaultResponseTimeQuery(project, stage, service, filters, "50")
+	case ResponseTimeP90:
+		logger.Info("Using default query for response_time_p90")
+		query = getDefaultResponseTimeQuery(project, stage, service, filters, "90")
+	case ResponseTimeP95:
+		logger.Info("Using default query for response_time_p95")
+		query = getDefaultResponseTimeQuery(project, stage, service, filters, "95")
+	default:
+		return "", errors.New("unsupported SLI")
+	}
+	query = replaceQueryParameters(query, project, stage, service, filters)
+	return query, nil
+}
+
+func getDefaultThroughputQuery(project string, stage string, service string, filters map[string]string) string {
+	filterExpr := getDefaultFilterExpression(project, stage, service, filters)
+	// e.g. sum(rate(http_requests_total{job="carts-sockshop-dev"}[30m]))&time=1571649085
+	/*
+		{
+		    "status": "success",
+		    "data": {
+		        "resultType": "vector",
+		        "result": [
+		            {
+		                "metric": {},
+		                "value": [
+		                    1571649085,
+		                    "0.20111420612813372"
+		                ]
+		            }
+		        ]
+		    }
+		}
+	*/
+	return "sum(rate(http_requests_total{" + filterExpr + "}[180s]))"
+}
+
+func getDefaultErrorRateQuery(project string, stage string, service string, filters map[string]string) string {
+	filterExpr := getDefaultFilterExpression(project, stage, service, filters)
+	// e.g. sum(rate(http_requests_total{job="carts-sockshop-dev",status!~'2..'}[30m]))/sum(rate(http_requests_total{job="carts-sockshop-dev"}[30m]))&time=1571649085
+	/*
+		with value:
+		{
+		    "status": "success",
+		    "data": {
+		        "resultType": "vector",
+		        "result": [
+		            {
+		                "metric": {},
+		                "value": [
+		                    1571649085,
+		                    "1.00505917125441"
+		                ]
+		            }
+		        ]
+		    }
+		}
+
+		no value (error rate 0):
+		{
+		    "status": "success",
+		    "data": {
+		        "resultType": "vector",
+		        "result": []
+		    }
+		}
+	*/
+	return "sum(rate(http_requests_total{" + filterExpr + ",status!~'2..'}[180s]))/sum(rate(http_requests_total{" + filterExpr + "}[180s]))"
+}
+
+func getDefaultResponseTimeQuery(project string, stage string, service string, filters map[string]string, percentile string) string {
+	filterExpr := getDefaultFilterExpression(project, stage, service, filters)
+	// e.g. histogram_quantile(0.95, sum(rate(http_response_time_milliseconds_bucket{job='carts-sockshop-dev'}[30m])) by (le))&time=1571649085
+	/*
+		{
+		    "status": "success",
+		    "data": {
+		        "resultType": "vector",
+		        "result": [
+		            {
+		                "metric": {},
+		                "value": [
+		                    1571649085,
+		                    "4.607481671642585"
+		                ]
+		            }
+		        ]
+		    }
+		}
+	*/
+	return "histogram_quantile(0." + percentile + ",sum(rate(http_response_time_milliseconds_bucket{" + filterExpr + "}[180s]))by(le))"
+}
+
+func replaceQueryParameters(query string, project string, stage string, service string, filters map[string]string) string {
+	for key, value := range filters {
+		sanitizedValue := value
+		sanitizedValue = strings.Replace(sanitizedValue, "'", "", -1)
+		sanitizedValue = strings.Replace(sanitizedValue, "\"", "", -1)
+		query = strings.Replace(query, "$"+key, sanitizedValue, -1)
+		query = strings.Replace(query, "$"+strings.ToUpper(key), sanitizedValue, -1)
+	}
+	query = strings.Replace(query, "$PROJECT", project, -1)
+	query = strings.Replace(query, "$STAGE", stage, -1)
+	query = strings.Replace(query, "$SERVICE", service, -1)
+	query = strings.Replace(query, "$project", project, -1)
+	query = strings.Replace(query, "$stage", stage, -1)
+	query = strings.Replace(query, "$service", service, -1)
+	query = strings.Replace(query, "$DURATION_SECONDS", "180s", -1)
+	return query
+}
+
+func getCustomQuery(project string, sli string, logger keptnutils.LoggerInterface) (string, error) {
+	kubeClient, err := keptnutils.GetKubeAPI(true)
+	if err != nil {
+		logger.Error("could not create kube client")
+		return "", errors.New("could not create kube client")
+	}
+	logger.Info("Checking for custom SLI queries for project " + project)
+
+	// try to get project-specific configMap
+	configMap, err := kubeClient.ConfigMaps("keptn").Get(keptnPrometheusSLIConfigMapName+"-"+project, metav1.GetOptions{})
+
+	if err == nil {
+		query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
+		if err == nil && query != "" {
+			return query, nil
+		}
+	}
+
+	// if no config Map could be found, try to get the global one
+	configMap, err = kubeClient.ConfigMaps("keptn").Get(keptnPrometheusSLIConfigMapName, metav1.GetOptions{})
+
+	query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
+	if err != nil {
+		return "", err
+	}
+
+	return query, nil
+
+}
+
+func extractCustomQueryFromCM(configMap *v1.ConfigMap, logger keptnutils.LoggerInterface, sli string, project string) (string, error) {
+	if configMap == nil || configMap.Data == nil || configMap.Data["custom-queries"] == "" {
+		logger.Info("No custom query defined for SLI " + sli + " in project " + project)
+		return "", nil
+	}
+	customQueries := make(map[string]string)
+	err := yaml.Unmarshal([]byte(configMap.Data["custom-queries"]), &customQueries)
+	if err != nil || customQueries == nil || customQueries[sli] == "" {
+		logger.Info("No custom query defined for SLI " + sli + " in project " + project)
+		return "", nil
+	}
+	query := customQueries[sli]
+	return query, nil
+}
+
+func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *prometheusconfig.Config, project string, stage string, service string, isCanary bool, isPrimary bool) {
+	scrapeConfigName := service + "-" + project + "-" + stage
+	var scrapeEndpoint string
+	if isCanary {
+		scrapeConfigName = scrapeConfigName + "-canary"
+		scrapeEndpoint = service + "-canary." + project + "-" + stage + ":80"
+	} else if isPrimary {
+		scrapeEndpoint = service + "-primary." + project + "-" + stage + ":80"
+	} else {
+		scrapeEndpoint = service + "." + project + "-" + stage + ":80"
+	}
+
+	scrapeConfig = getScrapeConfig(config, scrapeConfigName)
+	// (b) if not, create a new scrape config
+	if scrapeConfig == nil {
+		scrapeConfig = &prometheusconfig.ScrapeConfig{}
+		config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
+	}
+	scrapeConfig.JobName = scrapeConfigName
+	scrapeConfig.MetricsPath = "/prometheus"
+	scrapeConfig.ServiceDiscoveryConfig = prometheus_sd_config.ServiceDiscoveryConfig{
+		StaticConfigs: []*targetgroup.Group{
+			{
+				Targets: []prometheus_model.LabelSet{
+					{prometheus_model.AddressLabel: prometheus_model.LabelValue(scrapeEndpoint)},
+				},
+			},
+		},
+	}
 }
 
 func getAlertingRuleOfGroup(alertingGroup *alertingGroup, alertName string) *alertingRule {
@@ -403,50 +672,22 @@ func getConfigurationServiceURL() string {
 	return "localhost:6060"
 }
 
-func getServiceIndicatorForObjective(objective *models.ServiceObjective, indicators *models.ServiceIndicators) *models.ServiceIndicator {
-	for _, indicator := range indicators.Indicators {
-		if indicator.Metric == objective.Metric && strings.ToLower(indicator.Source) == "prometheus" {
-			return indicator
-		}
-	}
-	return nil
-}
+func retrieveSLOs(eventData events.ConfigureMonitoringEventData, stage string, logger keptnutils.LoggerInterface) (*keptnmodelsv2.ServiceLevelObjectives, error) {
+	resourceHandler := configutils.NewResourceHandler(getConfigurationServiceURL())
 
-func deletePrometheusPod() error {
-
-	if err := keptnutils.RestartPodsWithSelector(os.Getenv("env") == "production", "monitoring", "app=prometheus-server"); err != nil {
-		return err
-	}
-	return nil
-}
-
-func retrieveMonitoringResources(eventData events.ConfigureMonitoringEventData, stage string, logger keptnutils.LoggerInterface) (*models.ServiceIndicators, *models.ServiceObjectives, error) {
-	resourceHandler := keptnutils.NewResourceHandler(getConfigurationServiceURL())
-
-	resource, err := resourceHandler.GetServiceResource(eventData.Project, stage, eventData.Service, "service-indicators.yaml")
+	resource, err := resourceHandler.GetServiceResource(eventData.Project, stage, eventData.Service, "slo.yaml")
 	if err != nil || resource.ResourceContent == "" {
-		return nil, nil, errors.New("No Service indicators file available for service " + eventData.Service + " in stage " + stage)
+		return nil, errors.New("No SLO file available for service " + eventData.Service + " in stage " + stage)
 	}
-	var serviceIndicators models.ServiceIndicators
+	var slos keptnmodelsv2.ServiceLevelObjectives
 
-	err = yaml.Unmarshal([]byte(resource.ResourceContent), &serviceIndicators)
+	err = yaml.Unmarshal([]byte(resource.ResourceContent), &slos)
+
 	if err != nil {
-		return nil, nil, errors.New("Invalid Service indicators file format")
+		return nil, errors.New("Invalid SLO file format")
 	}
 
-	resource, err = resourceHandler.GetServiceResource(eventData.Project, stage, eventData.Service, "service-objectives.yaml")
-	if err != nil || resource.ResourceContent == "" {
-		return nil, nil, errors.New("No Service objectives file available for service " + eventData.Service + " in stage " + stage)
-	}
-	var serviceObjectives models.ServiceObjectives
-
-	err = yaml.Unmarshal([]byte(resource.ResourceContent), &serviceObjectives)
-	if err != nil {
-		return nil, nil, errors.New("Invalid Service objectives file format")
-	}
-
-	return &serviceIndicators, &serviceObjectives, nil
-
+	return &slos, nil
 }
 
 // logErrAndRespondWithDoneEvent sends a keptn done event to the keptn eventbroker
@@ -548,7 +789,7 @@ func sendDoneEvent(receivedEvent cloudevents.Event, result string, message strin
 		return errors.New("Failed to create HTTP client: " + err.Error())
 	}
 
-	if _, err := client.Send(context.Background(), doneEvent); err != nil {
+	if _, _, err := client.Send(context.Background(), doneEvent); err != nil {
 		return errors.New("Failed to send cloudevent sh.keptn.events.done: " + err.Error())
 	}
 

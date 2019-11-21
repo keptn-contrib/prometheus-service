@@ -38,6 +38,9 @@ type labels struct {
 	Namespace string `json:"namespace,omitempty"`
 	PodName   string `json:"pod_name,omitempty"`
 	Severity  string `json:"severity,omitempty"`
+	Service   string `json:"service,omitempty" yaml:"service"`
+	Stage     string `json:"stage,omitempty" yaml:"stage"`
+	Project   string `json:"project,omitempty" yaml:"project"`
 }
 
 type annotations struct {
@@ -64,8 +67,11 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		State:          problemState,
 		ProblemID:      "",
 		ProblemTitle:   event.Alerts[0].Annotations.Summary,
-		ProblemDetails: event.Alerts[0].Annotations.Description,
+		ProblemDetails: json.RawMessage(`{"problemDetails":"` + event.Alerts[0].Annotations.Description + `"}`),
 		ImpactedEntity: event.Alerts[0].Labels.PodName,
+		Project:        event.Alerts[0].Labels.Project,
+		Stage:          event.Alerts[0].Labels.Stage,
+		Service:        event.Alerts[0].Labels.Service,
 	}
 
 	logger.Debug("Sending event to eventbroker")
@@ -110,7 +116,7 @@ func createAndSendCE(eventbroker string, problemData keptnevents.ProblemEventDat
 		return errors.New("Failed to create HTTP client:" + err.Error())
 	}
 
-	if _, err := c.Send(context.Background(), ce); err != nil {
+	if _, _, err := c.Send(context.Background(), ce); err != nil {
 		return errors.New("Failed to send cloudevent:, " + err.Error())
 	}
 

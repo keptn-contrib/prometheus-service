@@ -136,7 +136,9 @@ func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnu
 	if err := event.DataAs(eventData); err != nil {
 		return nil, err
 	}
-
+	if eventData.Type != "prometheus" {
+		return nil, nil
+	}
 	// (1) check if prometheus is installed, otherwise install prometheus and alert manager
 	if !isPrometheusInstalled(logger) {
 		logger.Debug("Installing prometheus monitoring")

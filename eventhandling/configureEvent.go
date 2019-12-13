@@ -86,32 +86,6 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	var shkeptncontext string
 	_ = event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
 
-	stdLogger := keptnutils.NewLogger(shkeptncontext, event.Context.GetID(), "helm-service")
-
-	var logger keptnutils.LoggerInterface
-
-	connData := &keptnutils.ConnectionData{}
-	if err := event.DataAs(connData); err != nil ||
-		*connData.EventContext.KeptnContext == "" || *connData.EventContext.Token == "" {
-		logger = stdLogger
-		logger.Debug("No Websocket connection data available")
-	} else {
-		apiServiceURL, err := utils.GetServiceEndpoint(api)
-		if err != nil {
-			logger.Error(err.Error())
-			return nil
-		}
-		ws, _, err := keptnutils.OpenWS(*connData, apiServiceURL)
-		defer ws.Close()
-		if err != nil {
-			stdLogger.Error(fmt.Sprintf("Opening websocket connection failed. %s", err.Error()))
-			return nil
-		}
-		combinedLogger := keptnutils.NewCombinedLogger(stdLogger, ws, shkeptncontext)
-		defer combinedLogger.Terminate()
-		logger = combinedLogger
-	}
-
 	// process event
 	if event.Type() == events.ConfigureMonitoringEventType {
 		eventData := &events.ConfigureMonitoringEventData{}
@@ -121,6 +95,33 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 		if eventData.Type != "prometheus" {
 			return nil
 		}
+
+		stdLogger := keptnutils.NewLogger(shkeptncontext, event.Context.GetID(), "prometheus-service")
+
+		var logger keptnutils.LoggerInterface
+
+		connData := &keptnutils.ConnectionData{}
+		if err := event.DataAs(connData); err != nil ||
+			*connData.EventContext.KeptnContext == "" || *connData.EventContext.Token == "" {
+			logger = stdLogger
+			logger.Debug("No Websocket connection data available")
+		} else {
+			apiServiceURL, err := utils.GetServiceEndpoint(api)
+			if err != nil {
+				logger.Error(err.Error())
+				return nil
+			}
+			ws, _, err := keptnutils.OpenWS(*connData, apiServiceURL)
+			defer ws.Close()
+			if err != nil {
+				stdLogger.Error(fmt.Sprintf("Opening websocket connection failed. %s", err.Error()))
+				return nil
+			}
+			combinedLogger := keptnutils.NewCombinedLogger(stdLogger, ws, shkeptncontext)
+			defer combinedLogger.Terminate()
+			logger = combinedLogger
+		}
+
 		version, err := configurePrometheusAndStoreResources(eventData, logger)
 		if err := logErrAndRespondWithDoneEvent(event, version, err, logger); err != nil {
 			return err

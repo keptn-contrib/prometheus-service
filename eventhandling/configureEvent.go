@@ -114,7 +114,14 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 
 	// process event
 	if event.Type() == events.ConfigureMonitoringEventType {
-		version, err := configurePrometheusAndStoreResources(event, logger)
+		eventData := &events.ConfigureMonitoringEventData{}
+		if err := event.DataAs(eventData); err != nil {
+			return err
+		}
+		if eventData.Type != "prometheus" {
+			return nil
+		}
+		version, err := configurePrometheusAndStoreResources(eventData, logger)
 		if err := logErrAndRespondWithDoneEvent(event, version, err, logger); err != nil {
 			return err
 		}
@@ -131,14 +138,7 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 }
 
 // configurePrometheusAndStoreResources
-func configurePrometheusAndStoreResources(event cloudevents.Event, logger keptnutils.LoggerInterface) (*models.Version, error) {
-	eventData := &events.ConfigureMonitoringEventData{}
-	if err := event.DataAs(eventData); err != nil {
-		return nil, err
-	}
-	if eventData.Type != "prometheus" {
-		return nil, nil
-	}
+func configurePrometheusAndStoreResources(eventData *events.ConfigureMonitoringEventData, logger keptnutils.LoggerInterface) (*models.Version, error) {
 	// (1) check if prometheus is installed, otherwise install prometheus and alert manager
 	if !isPrometheusInstalled(logger) {
 		logger.Debug("Installing prometheus monitoring")

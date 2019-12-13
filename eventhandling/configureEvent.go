@@ -134,7 +134,6 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	// if err := websocketutil.WriteWSLog(ws, createEventCopy(event, "sh.keptn.events.log"), errorMsg, true, "INFO"); err != nil {
 	// 	logger.Error(fmt.Sprintf("Could not write log to websocket. %s", err.Error()))
 	// }
-	logger.Error(errorMsg)
 	return errors.New(errorMsg)
 }
 

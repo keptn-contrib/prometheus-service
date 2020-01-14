@@ -363,7 +363,7 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 						}
 
 						var newAlertingRule *alertingRule
-						ruleName := objective.SLI + criteriaString
+						ruleName := objective.SLI
 						newAlertingRule = getAlertingRuleOfGroup(alertingGroupConfig, ruleName)
 						if newAlertingRule == nil {
 							newAlertingRule = &alertingRule{
@@ -373,7 +373,7 @@ func updatePrometheusConfigMap(eventData events.ConfigureMonitoringEventData, lo
 						}
 						newAlertingRule.Alert = ruleName
 						newAlertingRule.Expr = expr + criteriaString
-						newAlertingRule.For = "5m" // TODO: introduce alert duration concept in SLO?
+						newAlertingRule.For = "10m" // TODO: introduce alert duration concept in SLO?
 						newAlertingRule.Labels = &alertingLabel{
 							Severity: "webhook",
 							PodName:  eventData.Service + "-primary",

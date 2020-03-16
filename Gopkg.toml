@@ -38,7 +38,7 @@
   version = "1.4.0"
 
 [[constraint]]
-  version = "0.6.0"
+  version = "0.6.1-a"
   name = "github.com/keptn/go-utils"
 
 [[constraint]]

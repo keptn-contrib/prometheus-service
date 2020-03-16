@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: prometheus-service
-        image: keptn/prometheus-service:latest
+        image: keptn/prometheus-service:0.3.2
         ports:
         - containerPort: 8080
         resources:
@@ -24,7 +24,7 @@ spec:
             memory: "32Mi"
             cpu: "50m"
           limits:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "500m"
         env:
         - name: CONFIGURATION_SERVICE
@@ -66,7 +66,7 @@ spec:
     spec:
       containers:
       - name: distributor
-        image: keptn/distributor:latest
+        image: keptn/distributor:0.6.0
         ports:
         - containerPort: 8080
         resources:

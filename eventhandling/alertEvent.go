@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go"
@@ -31,6 +33,7 @@ type alert struct {
 	Annotations annotations `json:"annotations"`
 	//StartsAt time   `json:"startsAt"`
 	//EndsAt   time   `json:"endsAt"`
+	Fingerprint string `json:"fingerprint"`
 }
 
 type labels struct {
@@ -51,16 +54,19 @@ type annotations struct {
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud Event to the keptn event broker
 func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, logger *keptnutils.Logger, shkeptncontext string) {
 	var event alertManagerEvent
-
+	logger.Info("Received alert from Prometheus Alertmanager:" + string(requestBody))
 	err := json.Unmarshal(requestBody, &event)
 	if err != nil {
-		return
 		logger.Error("Could not map received event to datastructure: " + err.Error())
+		return
 	}
 
 	problemState := ""
 	if event.Status == "firing" {
 		problemState = "OPEN"
+	} else if event.Status == "resolved" {
+		logger.Info("Don't forward resolved problem.")
+		return
 	}
 
 	newProblemData := keptnevents.ProblemEventData{
@@ -72,6 +78,10 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		Project:        event.Alerts[0].Labels.Project,
 		Stage:          event.Alerts[0].Labels.Stage,
 		Service:        event.Alerts[0].Labels.Service,
+	}
+
+	if event.Alerts[0].Fingerprint != "" {
+		shkeptncontext = createOrApplyKeptnContext(event.Alerts[0].Fingerprint)
 	}
 
 	logger.Debug("Sending event to eventbroker")
@@ -121,4 +131,26 @@ func createAndSendCE(eventbroker string, problemData keptnevents.ProblemEventDat
 	}
 
 	return nil
+}
+
+func createOrApplyKeptnContext(contextID string) string {
+	uuid.SetRand(nil)
+	keptnContext := uuid.New().String()
+	if contextID != "" {
+		_, err := uuid.Parse(contextID)
+		if err != nil {
+			if len(contextID) < 16 {
+				paddedContext := fmt.Sprintf("%-16v", contextID)
+				uuid.SetRand(strings.NewReader(paddedContext))
+			} else {
+				uuid.SetRand(strings.NewReader(contextID))
+			}
+
+			keptnContext = uuid.New().String()
+			uuid.SetRand(nil)
+		} else {
+			keptnContext = contextID
+		}
+	}
+	return keptnContext
 }

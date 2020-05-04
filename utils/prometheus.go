@@ -7,11 +7,9 @@ import (
 	"k8s.io/api/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"os"
+	"k8s.io/client-go/rest"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	keptnutils "github.com/keptn/go-utils/pkg/utils"
 )
 
 const alertManagerYml = `global:
@@ -340,12 +338,18 @@ type PrometheusHelper struct {
 
 // NewPrometheusHelper creates a new PrometheusHelper
 func NewPrometheusHelper() (*PrometheusHelper, error) {
-	api, err := keptnutils.GetClientset(os.Getenv("env") == "production")
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return &PrometheusHelper{KubeApi: api}, nil
+	return &PrometheusHelper{KubeApi: clientset}, nil
 }
 
 // CreateOrUpdatePrometheusNamespace creates or updates the Prometheus namespace

@@ -37,7 +37,7 @@ jobs:
       services: []
       language: go
       go:
-        - 1.12.x
+        - 1.13.x
       # skip install
       install: true
       script:

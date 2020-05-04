@@ -26,3 +26,5 @@ require (
 	k8s.io/apimachinery v0.17.3
 	k8s.io/client-go v0.17.3
 )
+
+replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible

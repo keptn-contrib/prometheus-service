@@ -15,8 +15,7 @@ import (
 	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
 	"github.com/google/uuid"
-	keptnevents "github.com/keptn/go-utils/pkg/events"
-	keptnutils "github.com/keptn/go-utils/pkg/utils"
+	"github.com/keptn/go-utils/pkg/lib"
 
 	"github.com/keptn-contrib/prometheus-service/utils"
 )
@@ -52,7 +51,7 @@ type annotations struct {
 }
 
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud Event to the keptn event broker
-func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, logger *keptnutils.Logger, shkeptncontext string) {
+func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, logger *keptn.Logger, shkeptncontext string) {
 	var event alertManagerEvent
 	logger.Info("Received alert from Prometheus Alertmanager:" + string(requestBody))
 	err := json.Unmarshal(requestBody, &event)
@@ -69,7 +68,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		return
 	}
 
-	newProblemData := keptnevents.ProblemEventData{
+	newProblemData := keptn.ProblemEventData{
 		State:          problemState,
 		ProblemID:      "",
 		ProblemTitle:   event.Alerts[0].Annotations.Summary,
@@ -95,7 +94,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 	}
 }
 
-func createAndSendCE(eventbroker string, problemData keptnevents.ProblemEventData, shkeptncontext string) error {
+func createAndSendCE(eventbroker string, problemData keptn.ProblemEventData, shkeptncontext string) error {
 	source, _ := url.Parse("prometheus")
 	contentType := "application/json"
 
@@ -105,7 +104,7 @@ func createAndSendCE(eventbroker string, problemData keptnevents.ProblemEventDat
 		Context: cloudevents.EventContextV02{
 			ID:          uuid.New().String(),
 			Time:        &types.Timestamp{Time: time.Now()},
-			Type:        keptnevents.ProblemOpenEventType,
+			Type:        keptn.ProblemOpenEventType,
 			Source:      types.URLRef{URL: *source},
 			ContentType: &contentType,
 			Extensions:  map[string]interface{}{"shkeptncontext": shkeptncontext},

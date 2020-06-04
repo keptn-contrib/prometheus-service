@@ -465,6 +465,11 @@ func (p *PrometheusHelper) CreateOrUpdatePrometheusDeployment() error {
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: int32Ptr(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "prometheus-server",
+				},
+			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{

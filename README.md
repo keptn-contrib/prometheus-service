@@ -17,7 +17,9 @@ Please always double check the version of Keptn you are using compared to the ve
 | Keptn Version    | [Prometheus Service Image](https://hub.docker.com/r/keptn/prometheus-service/tags) |
 |:----------------:|:----------------------------------------:|
 |       0.5.x      | keptn/prometheus-service:0.2.0  |
-|       0.6.x      | keptn/prometheus-service:0.3.0  |
+|       0.6.0     | keptn/prometheus-service:0.3.0  |
+|       0.6.1      | keptn/prometheus-service:0.3.2  |
+|       0.6.2      | keptn/prometheus-service:0.3.4  |
 |      develop     | keptn/prometheus-service:latest |
 
 # Installation

@@ -2,7 +2,7 @@ package utils
 
 import (
 	"gopkg.in/yaml.v2"
-	appsv1beta1 "k8s.io/api/apps/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -458,12 +458,12 @@ func (p *PrometheusHelper) CreateOrUpdatePrometheusClusterRole() error {
 
 // CreateOrUpdatePrometheusDeployment creates or updates the Prometheus config map
 func (p *PrometheusHelper) CreateOrUpdatePrometheusDeployment() error {
-	deployment := &appsv1beta1.Deployment{
+	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "prometheus-deployment",
 			Namespace: "monitoring",
 		},
-		Spec: appsv1beta1.DeploymentSpec{
+		Spec: appsv1.DeploymentSpec{
 			Replicas: int32Ptr(1),
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -563,10 +563,10 @@ func (p *PrometheusHelper) createOrUpdateService(service *v1.Service) error {
 	return nil
 }
 
-func (p *PrometheusHelper) createOrUpdateDeployment(deployment *appsv1beta1.Deployment) error {
-	_, err := p.KubeApi.AppsV1beta1().Deployments("monitoring").Create(deployment)
+func (p *PrometheusHelper) createOrUpdateDeployment(deployment *appsv1.Deployment) error {
+	_, err := p.KubeApi.AppsV1().Deployments("monitoring").Create(deployment)
 	if err != nil {
-		_, err := p.KubeApi.AppsV1beta1().Deployments("monitoring").Update(deployment)
+		_, err := p.KubeApi.AppsV1().Deployments("monitoring").Update(deployment)
 		if err != nil {
 			return err
 		}
@@ -627,12 +627,12 @@ func (p *PrometheusHelper) CreateOrUpdateAlertManagerTemplatesConfigMap() error 
 
 // CreateOrUpdateAlertManagerDeployment creates or updates the Prometheus config map
 func (p *PrometheusHelper) CreateOrUpdateAlertManagerDeployment() error {
-	deployment := &appsv1beta1.Deployment{
+	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "alertmanager",
 			Namespace: "monitoring",
 		},
-		Spec: appsv1beta1.DeploymentSpec{
+		Spec: appsv1.DeploymentSpec{
 			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{

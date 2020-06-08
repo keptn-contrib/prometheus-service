@@ -14,9 +14,8 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/hashicorp/serf v0.8.3 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/keptn/go-utils v0.6.3-0.20200603112854-f7ffea1cffb6
+	github.com/keptn/go-utils v0.6.3-0.20200605114920-3fedaaa17fcc
 	github.com/keptn/kubernetes-utils v0.1.0
-	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/prometheus/common v0.9.1
 	github.com/prometheus/prometheus v0.0.0-20200326161412-ae041f97cfc6
 	github.com/prometheus/tsdb v0.10.0 // indirect

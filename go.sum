@@ -15,6 +15,7 @@ github.com/Azure/azure-sdk-for-go v40.1.0+incompatible/go.mod h1:9XXNKU+eRnpl9mo
 github.com/Azure/azure-sdk-for-go v42.0.0+incompatible h1:yz6sFf5bHZ+gEOQVuK5JhPqTTAmv+OvSLSaqgzqaCwY=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/Azure/go-autorest v10.8.1+incompatible/go.mod h1:r+4oMnoxhatjLLJ6zxSWATqVooLgysK6ZNox3g/xq24=
+github.com/Azure/go-autorest v13.3.2+incompatible h1:VxzPyuhtnlBOzc4IWCZHqpyH2d+QMLQEuy3wREyY4oc=
 github.com/Azure/go-autorest v13.3.2+incompatible/go.mod h1:r+4oMnoxhatjLLJ6zxSWATqVooLgysK6ZNox3g/xq24=
 github.com/Azure/go-autorest/autorest v0.2.0 h1:zBtSTOQTtjzHVRe+mhkiHvHwRTKHhjBEyo1m6DfI3So=
 github.com/Azure/go-autorest/autorest v0.2.0/go.mod h1:AKyIcETwSUFxIcs/Wnq/C+kwCtlEYGUVd7FPNb2slmg=
@@ -479,6 +480,8 @@ github.com/keptn/go-utils v0.6.2 h1:QpnshZ6cv64T+RZaLaqw6WEnKwV/A1YN3AVLrckva6k=
 github.com/keptn/go-utils v0.6.2/go.mod h1:aDNFm3olvCZd7AE6/Xyir4g5Mw6E89mjhKt0zoJHC6g=
 github.com/keptn/go-utils v0.6.3-0.20200603112854-f7ffea1cffb6 h1:TPiiqB1SvvegBchYA+4KjOkB8zh/vEKVLZJkoBH3lRg=
 github.com/keptn/go-utils v0.6.3-0.20200603112854-f7ffea1cffb6/go.mod h1:aDNFm3olvCZd7AE6/Xyir4g5Mw6E89mjhKt0zoJHC6g=
+github.com/keptn/go-utils v0.6.3-0.20200605114920-3fedaaa17fcc h1:f9kY/CQawXAHDtDNynhHstinQEpwpzO2kfp98AXHHkk=
+github.com/keptn/go-utils v0.6.3-0.20200605114920-3fedaaa17fcc/go.mod h1:aDNFm3olvCZd7AE6/Xyir4g5Mw6E89mjhKt0zoJHC6g=
 github.com/keptn/kubernetes-utils v0.1.0 h1:CJxvb710Dk3bJc5CxnMGdmkiJkcstwq1+h3WIvnt8+E=
 github.com/keptn/kubernetes-utils v0.1.0/go.mod h1:YoWRuV28Guz5/mzjo9jVxtMsWAEn0MDXwxK/ScAQlZc=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=

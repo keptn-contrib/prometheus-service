@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	keptn "github.com/keptn/go-utils/pkg/lib"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,7 +16,6 @@ import (
 	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
 	"github.com/google/uuid"
-	"github.com/keptn/go-utils/pkg/lib"
 
 	"github.com/keptn-contrib/prometheus-service/utils"
 )
@@ -32,7 +32,8 @@ type alert struct {
 	Annotations annotations `json:"annotations"`
 	//StartsAt time   `json:"startsAt"`
 	//EndsAt   time   `json:"endsAt"`
-	Fingerprint string `json:"fingerprint"`
+	Fingerprint  string `json:"fingerprint"`
+	GeneratorURL string `json:"generatorURL"`
 }
 
 type labels struct {
@@ -73,6 +74,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		ProblemID:      "",
 		ProblemTitle:   event.Alerts[0].Annotations.Summary,
 		ProblemDetails: json.RawMessage(`{"problemDetails":"` + event.Alerts[0].Annotations.Description + `"}`),
+		ProblemURL:     event.Alerts[0].GeneratorURL,
 		ImpactedEntity: event.Alerts[0].Labels.PodName,
 		Project:        event.Alerts[0].Labels.Project,
 		Stage:          event.Alerts[0].Labels.Stage,

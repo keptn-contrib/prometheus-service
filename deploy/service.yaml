@@ -1,3 +1,185 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring 
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keptn-prometheus-service
+  namespace: keptn
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keptn-create-get-monitoring-namespace
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
+      - update
+    resourceNames:
+      - "monitoring"
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keptn-create-prom-clusterrole
+rules:
+  - apiGroups:
+      - "rbac.authorization.k8s.io"
+    resources:
+      - clusterroles
+      - clusterrolebindings
+    verbs:
+      - get
+      - create
+      - update
+    resourceNames:
+      - "prometheus"
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keptn-prom-prometheus
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+      - nodes
+      - nodes/proxy
+      - pods
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "extensions"
+    resources:
+      - "ingresses"
+    verbs:
+      - get
+      - list
+      - watch
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: keptn-prometheus-service
+  namespace: monitoring
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - configmaps
+    verbs:
+      - get
+      - create
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - "apps"
+    resources:
+      - deployments
+    verbs:
+      - create
+      - update
+      - get 
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: keptn-prometheus-service-get-monitoring-ns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole 
+  name: keptn-create-get-monitoring-namespace
+subjects:
+  - kind: ServiceAccount
+    name: keptn-prometheus-service
+    namespace: keptn
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: keptn-create-prom-clusterrole
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: keptn-create-prom-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: keptn-prometheus-service
+    namespace: keptn
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: keptn-prom-prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: keptn-prom-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: keptn-prometheus-service
+    namespace: keptn
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keptn-prometheus-service
+  namespace: monitoring 
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: keptn-prometheus-service 
+subjects:
+  - kind: ServiceAccount
+    name: keptn-prometheus-service
+    namespace: keptn
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keptn-keptndomain-prom-service
+  namespace: keptn
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: keptn-read-keptndomain
+subjects:
+  - kind: ServiceAccount
+    name: keptn-prometheus-service
+    namespace: keptn
+
+
 ---    
 apiVersion: apps/v1
 kind: Deployment
@@ -33,6 +215,7 @@ spec:
           value: 'http://event-broker.keptn.svc.cluster.local/keptn'
         - name: API
           value: 'ws://api-service.keptn.svc.cluster.local:8080'
+      serviceAccountName: keptn-prometheus-service
 ---
 apiVersion: v1
 kind: Service
@@ -83,3 +266,4 @@ spec:
           value: 'sh.keptn.event.monitoring.configure'
         - name: PUBSUB_RECIPIENT
           value: 'prometheus-service'
+      serviceAccountName: keptn-default

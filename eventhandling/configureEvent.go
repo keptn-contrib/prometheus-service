@@ -304,13 +304,6 @@ func updatePrometheusConfigMap(eventData keptn.ConfigureMonitoringEventData, log
 	}
 	fmt.Println(config)
 
-	cmKeptnDomain, err := api.CoreV1().ConfigMaps("keptn").Get("keptn-domain", metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	gateway := cmKeptnDomain.Data["app_domain"]
-	fmt.Println(gateway)
-
 	// check if alerting rules are already availablre
 	var alertingRulesConfig alertingRules
 	if cmPrometheus.Data["prometheus.rules"] != "" {

@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 
-	"k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	cloudevents "github.com/cloudevents/sdk-go"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
@@ -27,7 +28,7 @@ import (
 
 	"github.com/keptn/go-utils/pkg/api/models"
 	configutils "github.com/keptn/go-utils/pkg/api/utils"
-	"github.com/keptn/go-utils/pkg/lib"
+	keptn "github.com/keptn/go-utils/pkg/lib"
 
 	prometheus_model "github.com/prometheus/common/model"
 	prometheusconfig "github.com/prometheus/prometheus/config"
@@ -146,19 +147,19 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 
 // configurePrometheusAndStoreResources
 func configurePrometheusAndStoreResources(eventData *keptn.ConfigureMonitoringEventData, logger keptn.LoggerInterface, keptnHandler *keptn.Keptn) (*models.Version, error) {
-	// (1) check if prometheus is installed, otherwise install prometheus and alert manager
+	// (1) check if prometheus is installed, otherwise show error message
 	if !isPrometheusInstalled(logger) {
-		logger.Debug("Installing prometheus monitoring")
-		err := installPrometheus(logger)
-		if err != nil {
-			return nil, err
-		}
+		fmt.Println("Prometheus is not installed on cluster")
+		fmt.Println("# ATTENTION # ------------------------------------------------------------------------------------")
+		fmt.Println("The behavior has changed and Prometheus will NOT be installed automatically.")
+		fmt.Println("If you want to roll-out the Prometheus: ")
+		fmt.Println("1.) Deploy Prometheus:")
+		fmt.Println("https://coreos.com/operators/prometheus/docs/latest/user-guides/getting-started.html")
+		fmt.Println("2.) Then, re-deploy the prometheus-service: ")
+		fmt.Println("kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/<VERSION>/deploy/service.yaml")
+		fmt.Println("--------------------------------------------------------------------------------------------------")
 
-		logger.Debug("Installing prometheus alert manager")
-		err = installPrometheusAlertManager(logger)
-		if err != nil {
-			return nil, err
-		}
+		return nil, errors.New("Prometheus is not installed on cluster")
 	}
 	fmt.Println("prometheus is installed, updating config maps")
 
@@ -206,81 +207,6 @@ func isPrometheusInstalled(logger keptn.LoggerInterface) bool {
 
 	logger.Debug("Prometheus service in monitoring namespace is available")
 	return true
-}
-
-func installPrometheus(logger keptn.LoggerInterface) error {
-	logger.Info("Installing Prometheus...")
-	prometheusHelper, err := utils.NewPrometheusHelper()
-	if err != nil {
-		logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
-		return err
-	}
-	logger.Debug("Apply namespace for prometheus monitoring")
-	err = prometheusHelper.CreateOrUpdatePrometheusNamespace()
-	if err != nil {
-		return err
-	}
-
-	//config-map.yaml
-	logger.Debug("Apply config map for prometheus monitoring")
-	err = prometheusHelper.CreateOrUpdatePrometheusConfigMap()
-	if err != nil {
-		return err
-	}
-
-	//cluster-role.yaml
-	logger.Debug("Apply cluster role for prometheus monitoring")
-	err = prometheusHelper.CreateOrUpdatePrometheusClusterRole()
-	if err != nil {
-		return err
-	}
-
-	//prometheus.yaml
-	logger.Debug("Apply service and deployment for prometheus monitoring")
-	err = prometheusHelper.CreateOrUpdatePrometheusDeployment()
-	if err != nil {
-		return err
-	}
-
-	logger.Info("Prometheus installed successfully")
-
-	return nil
-}
-
-func installPrometheusAlertManager(logger keptn.LoggerInterface) error {
-	logger.Info("Installing Prometheus AlertManager...")
-	prometheusHelper, err := utils.NewPrometheusHelper()
-	//alertmanager-configmap.yaml
-	logger.Debug("Apply configmap for prometheus alert manager")
-	err = prometheusHelper.CreateOrUpdateAlertManagerConfigMap()
-	if err != nil {
-		return err
-	}
-
-	//alertmanager-template.yaml
-	logger.Debug("Apply configmap template for prometheus alert manager")
-	err = prometheusHelper.CreateOrUpdateAlertManagerTemplatesConfigMap()
-	if err != nil {
-		return err
-	}
-
-	//alertmanager-deployment.yaml
-	logger.Debug("Apply deployment for prometheus alert manager")
-	err = prometheusHelper.CreateOrUpdateAlertManagerDeployment()
-	if err != nil {
-		return err
-	}
-
-	//alertmanager-svc.yaml
-	logger.Debug("Apply service for prometheus alert manager")
-	err = prometheusHelper.CreateOrUpdateAlertManagerService()
-	if err != nil {
-		return err
-	}
-
-	logger.Info("Prometheus AlertManager installed successfully")
-
-	return nil
 }
 
 func updatePrometheusConfigMap(eventData keptn.ConfigureMonitoringEventData, logger keptn.LoggerInterface, keptnHandler *keptn.Keptn) error {

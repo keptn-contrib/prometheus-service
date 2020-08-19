@@ -215,6 +215,10 @@ spec:
           value: 'http://event-broker/keptn'
         - name: API
           value: 'ws://api-service:8080/websocket'
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
       serviceAccountName: keptn-prometheus-service
 ---
 apiVersion: v1

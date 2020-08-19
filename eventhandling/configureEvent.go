@@ -83,6 +83,8 @@ type alertingAnnotations struct {
 	Description string `json:"description" yaml:"descriptions"`
 }
 
+var namespace = os.Getenv("POD_NAMESPACE")
+
 // GotEvent is the event handler of cloud events
 func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	var shkeptncontext string
@@ -589,7 +591,7 @@ func getCustomQuery(project string, sli string, logger keptn.LoggerInterface) (s
 	logger.Info("Checking for custom SLI queries for project " + project)
 
 	// try to get project-specific configMap
-	configMap, err := kubeClient.CoreV1().ConfigMaps("keptn").Get(keptnPrometheusSLIConfigMapName+"-"+project, metav1.GetOptions{})
+	configMap, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(keptnPrometheusSLIConfigMapName+"-"+project, metav1.GetOptions{})
 
 	if err == nil {
 		query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
@@ -599,7 +601,7 @@ func getCustomQuery(project string, sli string, logger keptn.LoggerInterface) (s
 	}
 
 	// if no config Map could be found, try to get the global one
-	configMap, err = kubeClient.CoreV1().ConfigMaps("keptn").Get(keptnPrometheusSLIConfigMapName, metav1.GetOptions{})
+	configMap, err = kubeClient.CoreV1().ConfigMaps(namespace).Get(keptnPrometheusSLIConfigMapName, metav1.GetOptions{})
 
 	query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
 	if err != nil {

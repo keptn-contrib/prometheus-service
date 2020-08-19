@@ -83,7 +83,7 @@ type alertingAnnotations struct {
 	Description string `json:"description" yaml:"descriptions"`
 }
 
-var namespace = setParameterValue(os.Getenv("POD_NAMESPACE"), "keptn")
+var namespace = os.Getenv("POD_NAMESPACE")
 
 // GotEvent is the event handler of cloud events
 func GotEvent(ctx context.Context, event cloudevents.Event) error {
@@ -814,11 +814,4 @@ func sendDoneEvent(receivedEvent cloudevents.Event, result string, message strin
 	}
 
 	return nil
-}
-
-func setParameterValue(value string, defaultValue string) string {
-	if len(value) == 0 {
-		return defaultValue
-	}
-	return value
 }

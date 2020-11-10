@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+const eventbroker = "EVENTBROKER"
+
 // GetServiceEndpoint retrieves an endpoint stored in an environment variable and sets http as default scheme
 func GetServiceEndpoint(service string) (url.URL, error) {
 	url, err := url.Parse(os.Getenv(service))
@@ -18,4 +20,18 @@ func GetServiceEndpoint(service string) (url.URL, error) {
 	}
 
 	return *url, nil
+}
+
+// GetEventBrokerURL godoc
+func GetEventBrokerURL() (string, error) {
+	var eventBrokerURL string
+	endpoint, err := GetServiceEndpoint(eventbroker)
+	if err != nil {
+		eventBrokerURL = "http://localhost:8081/event"
+		return "", fmt.Errorf("Could not parse EVENTBROKER URL %s: %s. Using default: %s", os.Getenv(eventbroker), err.Error(), eventBrokerURL)
+	} else {
+		eventBrokerURL = endpoint.String()
+		return "", fmt.Errorf("EVENTBROKER URL: %s", eventBrokerURL)
+	}
+	return eventBrokerURL, nil
 }

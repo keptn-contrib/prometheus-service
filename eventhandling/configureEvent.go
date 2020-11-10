@@ -4,30 +4,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
+	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
-	cloudevents "github.com/cloudevents/sdk-go"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
-	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
-	"gopkg.in/yaml.v2"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/google/uuid"
 	kubeutils "github.com/keptn/kubernetes-utils/pkg"
 
 	"github.com/keptn-contrib/prometheus-service/utils"
 
 	"github.com/keptn/go-utils/pkg/api/models"
 	configutils "github.com/keptn/go-utils/pkg/api/utils"
-	"github.com/keptn/go-utils/pkg/lib"
+	keptnevents "github.com/keptn/go-utils/pkg/lib"
+	"github.com/keptn/go-utils/pkg/lib/keptn"
+	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 
 	prometheus_model "github.com/prometheus/common/model"
 	prometheusconfig "github.com/prometheus/prometheus/config"
@@ -42,7 +40,6 @@ const ResponseTimeP90 = "response_time_p90"
 const ResponseTimeP95 = "response_time_p95"
 
 const configservice = "CONFIGURATION_SERVICE"
-const eventbroker = "EVENTBROKER"
 const api = "API"
 
 const keptnPrometheusSLIConfigMapName = "prometheus-sli-config"
@@ -91,8 +88,8 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 	_ = event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
 
 	// process event
-	if event.Type() == keptn.ConfigureMonitoringEventType {
-		eventData := &keptn.ConfigureMonitoringEventData{}
+	if event.Type() == keptnevents.ConfigureMonitoringEventType {
+		eventData := &keptnevents.ConfigureMonitoringEventData{}
 		if err := event.DataAs(eventData); err != nil {
 			return err
 		}
@@ -122,17 +119,26 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 				return nil
 			}
 			combinedLogger := keptn.NewCombinedLogger(stdLogger, ws, shkeptncontext)
-			defer combinedLogger.Terminate()
+			defer combinedLogger.Terminate("")
 			logger = combinedLogger
 		}
 
-		keptnHandler, err := keptn.NewKeptn(&event, keptn.KeptnOpts{})
+		eventBrokerURL, err := utils.GetEventBrokerURL()
+		if err != nil {
+			logger.Error(err.Error())
+			return err
+		}
+		keptnHandler, err := keptnv2.NewKeptn(&event, keptn.KeptnOpts{
+			EventBrokerURL: eventBrokerURL,
+		})
 		if err != nil {
 			logger.Error("Could not initialize Keptn handler: " + err.Error())
+			return err
 		}
+		keptnHandler.Logger = logger
 
 		version, err := configurePrometheusAndStoreResources(eventData, logger, keptnHandler)
-		if err := logErrAndRespondWithDoneEvent(event, version, err, logger); err != nil {
+		if err := logErrAndRespondWithDoneEvent(event, version, err, keptnHandler); err != nil {
 			return err
 		}
 
@@ -147,7 +153,7 @@ func GotEvent(ctx context.Context, event cloudevents.Event) error {
 }
 
 // configurePrometheusAndStoreResources
-func configurePrometheusAndStoreResources(eventData *keptn.ConfigureMonitoringEventData, logger keptn.LoggerInterface, keptnHandler *keptn.Keptn) (*models.Version, error) {
+func configurePrometheusAndStoreResources(eventData *keptnevents.ConfigureMonitoringEventData, logger keptn.LoggerInterface, keptnHandler *keptnv2.Keptn) (*models.Version, error) {
 	// (1) check if prometheus is installed, otherwise install prometheus and alert manager
 	if !isPrometheusInstalled(logger) {
 		logger.Debug("Installing prometheus monitoring")
@@ -285,7 +291,7 @@ func installPrometheusAlertManager(logger keptn.LoggerInterface) error {
 	return nil
 }
 
-func updatePrometheusConfigMap(eventData keptn.ConfigureMonitoringEventData, logger keptn.LoggerInterface, keptnHandler *keptn.Keptn) error {
+func updatePrometheusConfigMap(eventData keptnevents.ConfigureMonitoringEventData, logger keptn.LoggerInterface, keptnHandler *keptnv2.Keptn) error {
 	shipyard, err := keptnHandler.GetShipyard()
 	if err != nil {
 		return err
@@ -314,21 +320,16 @@ func updatePrometheusConfigMap(eventData keptn.ConfigureMonitoringEventData, log
 		alertingRulesConfig = alertingRules{}
 	}
 	// update
-	for _, stage := range shipyard.Stages {
+	for _, stage := range shipyard.Spec.Stages {
 		var scrapeConfig *prometheusconfig.ScrapeConfig
 		// (a) if a scrape config with the same name is available, update that one
 
-		if stage.DeploymentStrategy == "blue_green_service" {
-			createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, true)
-			createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, true, false)
-		} else {
-			createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false)
-		}
-
-		// only create alerts for stages that use auto-remediation
-		if stage.RemediationStrategy != "automated" {
-			continue
-		}
+		// <service>-primary.<project>-<stage>
+		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, true)
+		// <service>-canary.<project>-<stage>
+		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, true, false)
+		// <service>.<project>-<stage>
+		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false)
 
 		slos, err := retrieveSLOs(eventData, stage.Name, logger)
 		if err != nil || slos == nil {
@@ -692,14 +693,14 @@ func getConfigurationServiceURL() string {
 	return "localhost:6060"
 }
 
-func retrieveSLOs(eventData keptn.ConfigureMonitoringEventData, stage string, logger keptn.LoggerInterface) (*keptn.ServiceLevelObjectives, error) {
+func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage string, logger keptn.LoggerInterface) (*keptnevents.ServiceLevelObjectives, error) {
 	resourceHandler := configutils.NewResourceHandler(getConfigurationServiceURL())
 
 	resource, err := resourceHandler.GetServiceResource(eventData.Project, stage, eventData.Service, "slo.yaml")
 	if err != nil || resource.ResourceContent == "" {
 		return nil, errors.New("No SLO file available for service " + eventData.Service + " in stage " + stage)
 	}
-	var slos keptn.ServiceLevelObjectives
+	var slos keptnevents.ServiceLevelObjectives
 
 	err = yaml.Unmarshal([]byte(resource.ResourceContent), &slos)
 
@@ -711,7 +712,7 @@ func retrieveSLOs(eventData keptn.ConfigureMonitoringEventData, stage string, lo
 }
 
 // logErrAndRespondWithDoneEvent sends a keptn done event to the keptn eventbroker
-func logErrAndRespondWithDoneEvent(event cloudevents.Event, version *models.Version, err error, logger keptn.LoggerInterface) error {
+func logErrAndRespondWithDoneEvent(event cloudevents.Event, version *models.Version, err error, keptnHandler *keptnv2.Keptn) error {
 	var result = "success"
 	//var webSocketMessage = "Prometheus successfully configured"
 	var eventMessage = "Prometheus successfully configured and rule created"
@@ -720,16 +721,16 @@ func logErrAndRespondWithDoneEvent(event cloudevents.Event, version *models.Vers
 		result = "error"
 		eventMessage = fmt.Sprintf("%s.", err.Error())
 		//webSocketMessage = eventMessage
-		logger.Error(eventMessage)
+		keptnHandler.Logger.Error(eventMessage)
 	} else { // success
-		logger.Info(eventMessage)
+		keptnHandler.Logger.Info(eventMessage)
 	}
 
 	// if err := websocketutil.WriteWSLog(ws, createEventCopy(event, "sh.keptn.events.log"), webSocketMessage, true, "INFO"); err != nil {
 	// 	logger.Error(fmt.Sprintf("Could not write log to websocket. %s", err.Error()))
 	// }
-	if err := sendDoneEvent(event, result, eventMessage, version); err != nil {
-		logger.Error(fmt.Sprintf("No sh.keptn.event.done event sent. %s", err.Error()))
+	if err := sendDoneEvent(event, result, eventMessage, version, keptnHandler); err != nil {
+		keptnHandler.Logger.Error(fmt.Sprintf("No sh.keptn.event.done event sent. %s", err.Error()))
 	}
 
 	return err
@@ -749,30 +750,24 @@ func createEventCopy(eventSource cloudevents.Event, eventType string) cloudevent
 	eventSource.Context.ExtensionAs("shkeptnstep", &shkeptnstep)
 
 	source, _ := url.Parse("prometheus-service")
-	contentType := "application/json"
 
-	event := cloudevents.Event{
-		Context: cloudevents.EventContextV02{
-			ID:          uuid.New().String(),
-			Time:        &types.Timestamp{Time: time.Now()},
-			Type:        eventType,
-			Source:      types.URLRef{URL: *source},
-			ContentType: &contentType,
-			Extensions: map[string]interface{}{
-				"shkeptncontext": shkeptncontext,
-				"shkeptnphaseid": shkeptnphaseid,
-				"shkeptnphase":   shkeptnphase,
-				"shkeptnstepid":  shkeptnstepid,
-				"shkeptnstep":    shkeptnstep,
-			},
-		}.AsV02(),
-	}
+	event := cloudevents.NewEvent()
+	event.SetID(uuid.New().String())
+	event.SetTime(time.Now())
+	event.SetType(eventType)
+	event.SetSource(source.String())
+	event.SetExtension("shkeptncontext", shkeptncontext)
+	event.SetExtension("shkeptnphaseid", shkeptnphaseid)
+	event.SetExtension("shkeptnphase", shkeptnphase)
+	event.SetExtension("shkeptnstepid", shkeptnstepid)
+	event.SetExtension("shkeptnstep", shkeptnstep)
+	event.SetDataContentType(cloudevents.ApplicationJSON)
 
 	return event
 }
 
 // sendDoneEvent prepares a keptn done event and sends it to the eventbroker
-func sendDoneEvent(receivedEvent cloudevents.Event, result string, message string, version *models.Version) error {
+func sendDoneEvent(receivedEvent cloudevents.Event, result string, message string, version *models.Version, keptnHandler *keptnv2.Keptn) error {
 
 	doneEvent := createEventCopy(receivedEvent, "sh.keptn.events.done")
 
@@ -785,32 +780,10 @@ func sendDoneEvent(receivedEvent cloudevents.Event, result string, message strin
 		eventData.Version = version.Version
 	}
 
-	doneEvent.Data = eventData
+	doneEvent.SetData(cloudevents.ApplicationJSON, eventData)
 
-	endPoint, err := utils.GetServiceEndpoint(eventbroker)
-	if err != nil {
-		return errors.New("Failed to retrieve endpoint of eventbroker. %s" + err.Error())
-	}
-
-	if endPoint.Host == "" {
-		return errors.New("Host of eventbroker not set")
-	}
-
-	transport, err := cloudeventshttp.New(
-		cloudeventshttp.WithTarget(endPoint.String()),
-		cloudeventshttp.WithEncoding(cloudeventshttp.StructuredV02),
-	)
-	if err != nil {
-		return errors.New("Failed to create transport: " + err.Error())
-	}
-
-	client, err := client.New(transport)
-	if err != nil {
-		return errors.New("Failed to create HTTP client: " + err.Error())
-	}
-
-	if _, _, err := client.Send(context.Background(), doneEvent); err != nil {
-		return errors.New("Failed to send cloudevent sh.keptn.events.done: " + err.Error())
+	if err := keptnHandler.SendCloudEvent(doneEvent); err != nil {
+		keptnHandler.Logger.Error("could not send event: " + err.Error())
 	}
 
 	return nil

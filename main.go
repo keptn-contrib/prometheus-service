@@ -5,16 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/uuid"
 	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
-	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
 	"github.com/kelseyhightower/envconfig"
-	keptnutils "github.com/keptn/go-utils/pkg/lib"
+	keptnutils "github.com/keptn/go-utils/pkg/lib/keptn"
 )
 
 type envConfig struct {
@@ -44,25 +44,18 @@ func main() {
 }
 
 func _main(args []string, env envConfig) int {
-	shkeptncontext := ""
-	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
-
 	ctx := context.Background()
+	ctx = cloudevents.WithEncodingStructured(ctx)
 
-	t, err := cloudeventshttp.New(
-		cloudeventshttp.WithPort(env.Port),
-		cloudeventshttp.WithPath(env.Path),
-	)
+	p, err := cloudevents.NewHTTP(cloudevents.WithPath(env.Path), cloudevents.WithPort(env.Port))
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to create transport: %v", err))
+		log.Fatalf("failed to create client, %v", err)
 	}
-
-	c, err := client.New(t)
+	c, err := cloudevents.NewClient(p)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to create client: %v", err))
+		log.Fatalf("failed to create client, %v", err)
 	}
-	logger.Debug("Starting server for receiving Cloud Events on 8081 for internal use")
-	logger.Error(fmt.Sprintf("Failed to start receiver: %s", c.StartReceiver(ctx, eventhandling.GotEvent)))
+	log.Fatal(c.StartReceiver(ctx, eventhandling.GotEvent))
 
 	return 0
 }

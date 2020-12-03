@@ -184,7 +184,7 @@ func configurePrometheusAndStoreResources(eventData *keptnevents.ConfigureMonito
 
 func deletePrometheusPod() error {
 
-	if err := kubeutils.RestartPodsWithSelector(utils.GetEnvironAndCompareTo(environmentEnvName, "production"), "monitoring", "app=prometheus-server"); err != nil {
+	if err := kubeutils.RestartPodsWithSelector(utils.EnvVarEqualsTo(environmentEnvName, "production"), "monitoring", "app=prometheus-server"); err != nil {
 		return err
 	}
 	return nil
@@ -590,7 +590,7 @@ func getCustomQuery(project string, sli string, logger keptn.LoggerInterface) (s
 	logger.Info("Checking for custom SLI queries for project " + project)
 
 	// try to get project-specific configMap
-	configMap, err := kubeClient.CoreV1().ConfigMaps(utils.GetEnviron(podNamespaceEnvName)).Get(keptnPrometheusSLIConfigMapName+"-"+project, metav1.GetOptions{})
+	configMap, err := kubeClient.CoreV1().ConfigMaps(utils.EnvVar(podNamespaceEnvName)).Get(keptnPrometheusSLIConfigMapName+"-"+project, metav1.GetOptions{})
 
 	if err == nil {
 		query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
@@ -600,7 +600,7 @@ func getCustomQuery(project string, sli string, logger keptn.LoggerInterface) (s
 	}
 
 	// if no config Map could be found, try to get the global one
-	configMap, err = kubeClient.CoreV1().ConfigMaps(utils.GetEnviron(podNamespaceEnvName)).Get(keptnPrometheusSLIConfigMapName, metav1.GetOptions{})
+	configMap, err = kubeClient.CoreV1().ConfigMaps(utils.EnvVar(podNamespaceEnvName)).Get(keptnPrometheusSLIConfigMapName, metav1.GetOptions{})
 
 	query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
 	if err != nil {
@@ -645,7 +645,7 @@ func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *
 		config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
 	}
 	scrapeConfig.JobName = scrapeConfigName
-	scrapeConfig.MetricsPath = utils.GetEnvironOrDefault(metricsScrapePathEnvName, "/metrics")
+	scrapeConfig.MetricsPath = utils.EnvVarOrDefault(metricsScrapePathEnvName, "/metrics")
 	scrapeConfig.ServiceDiscoveryConfig = prometheus_sd_config.ServiceDiscoveryConfig{
 		StaticConfigs: []*targetgroup.Group{
 			{
@@ -685,7 +685,7 @@ func getScrapeConfig(config *prometheusconfig.Config, name string) *prometheusco
 }
 
 func getConfigurationServiceURL() string {
-	if utils.GetEnvironAndCompareTo(environmentEnvName, "production") {
+	if utils.EnvVarEqualsTo(environmentEnvName, "production") {
 		return "configuration-service.keptn.svc.cluster.local:8080"
 	}
 	return "localhost:6060"

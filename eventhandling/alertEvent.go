@@ -1,20 +1,17 @@
 package eventhandling
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	keptn "github.com/keptn/go-utils/pkg/lib"
+	keptnevents "github.com/keptn/go-utils/pkg/lib"
+	"github.com/keptn/go-utils/pkg/lib/keptn"
+	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	cloudevents "github.com/cloudevents/sdk-go"
-	cloudeventsclient "github.com/cloudevents/sdk-go/pkg/cloudevents/client"
-	cloudeventshttp "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/uuid"
 
 	"github.com/keptn-contrib/prometheus-service/utils"
@@ -69,7 +66,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		return
 	}
 
-	newProblemData := keptn.ProblemEventData{
+	newProblemData := keptnevents.ProblemEventData{
 		State:          problemState,
 		ProblemID:      "",
 		ProblemTitle:   event.Alerts[0].Annotations.Summary,
@@ -86,7 +83,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 	}
 
 	logger.Debug("Sending event to eventbroker")
-	err = createAndSendCE(eventbroker, newProblemData, shkeptncontext)
+	err = createAndSendCE(newProblemData, shkeptncontext)
 	if err != nil {
 		logger.Error("Could not send cloud event: " + err.Error())
 		rw.WriteHeader(500)
@@ -96,39 +93,29 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 	}
 }
 
-func createAndSendCE(eventbroker string, problemData keptn.ProblemEventData, shkeptncontext string) error {
+func createAndSendCE(problemData keptnevents.ProblemEventData, shkeptncontext string) error {
 	source, _ := url.Parse("prometheus")
-	contentType := "application/json"
 
-	endPoint, err := utils.GetServiceEndpoint(eventbroker)
+	eventBrokerURL, err := utils.GetEventBrokerURL()
 
-	ce := cloudevents.Event{
-		Context: cloudevents.EventContextV02{
-			ID:          uuid.New().String(),
-			Time:        &types.Timestamp{Time: time.Now()},
-			Type:        keptn.ProblemOpenEventType,
-			Source:      types.URLRef{URL: *source},
-			ContentType: &contentType,
-			Extensions:  map[string]interface{}{"shkeptncontext": shkeptncontext},
-		}.AsV02(),
-		Data: problemData,
-	}
+	event := cloudevents.NewEvent()
+	event.SetID(uuid.New().String())
+	event.SetTime(time.Now())
+	event.SetType(keptnevents.ProblemEventType)
+	event.SetSource(source.String())
+	event.SetExtension("shkeptncontext", shkeptncontext)
+	event.SetDataContentType(cloudevents.ApplicationJSON)
+	event.SetData(cloudevents.ApplicationJSON, problemData)
 
-	t, err := cloudeventshttp.New(
-		cloudeventshttp.WithTarget(endPoint.String()),
-		cloudeventshttp.WithEncoding(cloudeventshttp.StructuredV02),
-	)
+	keptnHandler, err := keptnv2.NewKeptn(&event, keptn.KeptnOpts{
+		EventBrokerURL: eventBrokerURL,
+	})
 	if err != nil {
-		return errors.New("Failed to create transport:" + err.Error())
+		return fmt.Errorf("could not initialize Keptn Handler: %s", err.Error())
 	}
 
-	c, err := cloudeventsclient.New(t)
-	if err != nil {
-		return errors.New("Failed to create HTTP client:" + err.Error())
-	}
-
-	if _, _, err := c.Send(context.Background(), ce); err != nil {
-		return errors.New("Failed to send cloudevent:, " + err.Error())
+	if err := keptnHandler.SendCloudEvent(event); err != nil {
+		return fmt.Errorf("could not send event: %s", err.Error())
 	}
 
 	return nil

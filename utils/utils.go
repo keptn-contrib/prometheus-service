@@ -35,3 +35,23 @@ func GetEventBrokerURL() (string, error) {
 	}
 	return eventBrokerURL, nil
 }
+
+// EnvVarOrDefault returns the value of the environment variable named "envName" if found or "defaultVal" otherwise
+func EnvVarOrDefault(envName, defaultVal string) string {
+	if val := os.Getenv(envName); val == "" {
+		return defaultVal
+	} else {
+		return val
+	}
+}
+
+// EnvVar returns the value of the environment variable named "envName" if found or empty string otherwise
+func EnvVar(envName string) string {
+	return os.Getenv(envName)
+}
+
+// EnvVarEqualsTo compares the value of the environment variable named "envName" to "equalsTo"
+// and returns true if they are equal, false otherwise
+func EnvVarEqualsTo(envName, equalsTo string) bool {
+	return EnvVar(envName) == equalsTo
+}

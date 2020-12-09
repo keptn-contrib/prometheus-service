@@ -73,6 +73,7 @@ type alertingAnnotations struct {
 	Description string `json:"description" yaml:"descriptions"`
 }
 
+// HandleEvent processes an event
 func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
 	var shkeptncontext string
 	_ = eh.event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
@@ -669,7 +670,7 @@ func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(c
 		},
 	}
 	keptnContext, _ := eh.event.Context.GetExtension("shkeptncontext")
-	triggeredId := eh.event.Context.GetID()
+	triggeredID := eh.event.Context.GetID()
 
 	event := cloudevents.NewEvent()
 	event.SetSource("dynatrace-service")
@@ -677,7 +678,7 @@ func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(c
 	event.SetType(keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName))
 	event.SetData(cloudevents.ApplicationJSON, cmFinishedEvent)
 	event.SetExtension("shkeptncontext", keptnContext)
-	event.SetExtension("triggeredid", triggeredId)
+	event.SetExtension("triggeredid", triggeredID)
 
 	if err := eh.keptnHandler.SendCloudEvent(event); err != nil {
 		return fmt.Errorf("could not send %s event: %s", keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName), err.Error())

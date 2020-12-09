@@ -48,7 +48,7 @@ type annotations struct {
 	Description string `json:"descriptions,omitempty"`
 }
 
-// ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud Event to the keptn event broker
+// ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud event to the keptn event broker
 func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, logger *keptn.Logger, shkeptncontext string) {
 	var event alertManagerEvent
 	logger.Info("Received alert from Prometheus Alertmanager:" + string(requestBody))
@@ -88,7 +88,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		logger.Error("Could not send cloud event: " + err.Error())
 		rw.WriteHeader(500)
 	} else {
-		logger.Debug("Event successfully dispatched to eventbroker")
+		logger.Debug("event successfully dispatched to eventbroker")
 		rw.WriteHeader(201)
 	}
 }

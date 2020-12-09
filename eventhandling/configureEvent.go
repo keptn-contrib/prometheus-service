@@ -1,26 +1,20 @@
 package eventhandling
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"time"
-
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"net/url"
 	"strings"
 
 	kubeutils "github.com/keptn/kubernetes-utils/pkg"
 
 	"github.com/keptn-contrib/prometheus-service/utils"
 
-	"github.com/keptn/go-utils/pkg/api/models"
 	configutils "github.com/keptn/go-utils/pkg/api/utils"
 	keptnevents "github.com/keptn/go-utils/pkg/lib"
 	"github.com/keptn/go-utils/pkg/lib/keptn"
@@ -37,17 +31,16 @@ const ErrorRate = "error_rate"
 const ResponseTimeP50 = "response_time_p50"
 const ResponseTimeP90 = "response_time_p90"
 const ResponseTimeP95 = "response_time_p95"
-const configservice = "CONFIGURATION_SERVICE"
-const api = "API"
 const keptnPrometheusSLIConfigMapName = "prometheus-sli-config"
 const podNamespaceEnvName = "POD_NAMESPACE"
 const metricsScrapePathEnvName = "METRICS_SCRAPE_PATH"
 const environmentEnvName = "env"
 
-type doneEventData struct {
-	Result  string `json:"result"`
-	Message string `json:"message"`
-	Version string `json:"version"`
+// ConfigureMonitoringEventHandler is responsible for processing configure monitoring events
+type ConfigureMonitoringEventHandler struct {
+	logger       keptn.LoggerInterface
+	event        cloudevents.Event
+	keptnHandler *keptnv2.Keptn
 }
 
 type alertingRules struct {
@@ -80,109 +73,63 @@ type alertingAnnotations struct {
 	Description string `json:"description" yaml:"descriptions"`
 }
 
-// GotEvent is the event handler of cloud events
-func GotEvent(ctx context.Context, event cloudevents.Event) error {
+func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
 	var shkeptncontext string
-	_ = event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
+	_ = eh.event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
 
-	// process event
-	if event.Type() == keptnevents.ConfigureMonitoringEventType {
-		eventData := &keptnevents.ConfigureMonitoringEventData{}
-		if err := event.DataAs(eventData); err != nil {
-			return err
-		}
-		if eventData.Type != "prometheus" {
-			return nil
-		}
-
-		stdLogger := keptn.NewLogger(shkeptncontext, event.Context.GetID(), "prometheus-service")
-
-		var logger keptn.LoggerInterface
-
-		connData := &keptn.ConnectionData{}
-		if err := event.DataAs(connData); err != nil ||
-			*connData.EventContext.KeptnContext == "" || *connData.EventContext.Token == "" {
-			logger = stdLogger
-			logger.Debug("No Websocket connection data available")
-		} else {
-			apiServiceURL, err := utils.GetServiceEndpoint(api)
-			if err != nil {
-				logger.Error(err.Error())
-				return nil
-			}
-			ws, _, err := keptn.OpenWS(*connData, apiServiceURL)
-			defer ws.Close()
-			if err != nil {
-				stdLogger.Error(fmt.Sprintf("Opening websocket connection failed. %s", err.Error()))
-				return nil
-			}
-			combinedLogger := keptn.NewCombinedLogger(stdLogger, ws, shkeptncontext)
-			defer combinedLogger.Terminate("")
-			logger = combinedLogger
-		}
-
-		eventBrokerURL, err := utils.GetEventBrokerURL()
-		if err != nil {
-			logger.Error(err.Error())
-			return err
-		}
-		keptnHandler, err := keptnv2.NewKeptn(&event, keptn.KeptnOpts{
-			EventBrokerURL: eventBrokerURL,
-		})
-		if err != nil {
-			logger.Error("Could not initialize Keptn handler: " + err.Error())
-			return err
-		}
-		keptnHandler.Logger = logger
-
-		version, err := configurePrometheusAndStoreResources(eventData, logger, keptnHandler)
-		if err := logErrAndRespondWithDoneEvent(event, version, err, keptnHandler); err != nil {
-			return err
-		}
-
+	eventData := &keptnevents.ConfigureMonitoringEventData{}
+	if err := eh.event.DataAs(eventData); err != nil {
+		return err
+	}
+	if eventData.Type != "prometheus" {
 		return nil
 	}
 
-	const errorMsg = "Received unexpected keptn event that cannot be processed"
-	// if err := websocketutil.WriteWSLog(ws, createEventCopy(event, "sh.keptn.events.log"), errorMsg, true, "INFO"); err != nil {
-	// 	logger.Error(fmt.Sprintf("Could not write log to websocket. %s", err.Error()))
-	// }
-	return errors.New(errorMsg)
+	err := eh.configurePrometheusAndStoreResources(eventData)
+	if err != nil {
+		eh.logger.Error(err.Error())
+		return eh.handleError(eventData, err.Error())
+	}
+
+	if err = eh.sendConfigureMonitoringFinishedEvent(eventData, keptnv2.StatusSucceeded, keptnv2.ResultPass, "Prometheus successfully configured and rule created"); err != nil {
+		eh.logger.Error(err.Error())
+	}
+	return nil
 }
 
 // configurePrometheusAndStoreResources
-func configurePrometheusAndStoreResources(eventData *keptnevents.ConfigureMonitoringEventData, logger keptn.LoggerInterface, keptnHandler *keptnv2.Keptn) (*models.Version, error) {
+func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(eventData *keptnevents.ConfigureMonitoringEventData) error {
 	// (1) check if prometheus is installed, otherwise install prometheus and alert manager
-	if !isPrometheusInstalled(logger) {
-		logger.Debug("Installing prometheus monitoring")
-		err := installPrometheus(logger)
+	if !eh.isPrometheusInstalled() {
+		eh.logger.Debug("Installing prometheus monitoring")
+		err := eh.installPrometheus()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		logger.Debug("Installing prometheus alert manager")
-		err = installPrometheusAlertManager(logger)
+		eh.logger.Debug("Installing prometheus alert manager")
+		err = eh.installPrometheusAlertManager()
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	fmt.Println("prometheus is installed, updating config maps")
 
 	// (2) update config map with alert rule
-	if err := updatePrometheusConfigMap(*eventData, logger, keptnHandler); err != nil {
-		return nil, err
+	if err := eh.updatePrometheusConfigMap(*eventData); err != nil {
+		return err
 	}
 
 	// (2.1) delete prometheus pod
-	err := deletePrometheusPod()
+	err := eh.deletePrometheusPod()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return nil, nil
+	return nil
 }
 
-func deletePrometheusPod() error {
+func (eh ConfigureMonitoringEventHandler) deletePrometheusPod() error {
 
 	if err := kubeutils.RestartPodsWithSelector(utils.EnvVarEqualsTo(environmentEnvName, "production"), "monitoring", "app=prometheus-server"); err != nil {
 		return err
@@ -190,107 +137,107 @@ func deletePrometheusPod() error {
 	return nil
 }
 
-func isPrometheusInstalled(logger keptn.LoggerInterface) bool {
-	logger.Debug("Check if prometheus service in monitoring namespace is available")
+func (eh ConfigureMonitoringEventHandler) isPrometheusInstalled() bool {
+	eh.logger.Debug("Check if prometheus service in monitoring namespace is available")
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
+		eh.logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
 		return false
 	}
 	api, err := kubernetes.NewForConfig(config)
 
 	if err != nil {
-		logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
+		eh.logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
 		return false
 	}
 
 	_, err = api.CoreV1().Services("monitoring").Get("prometheus-service", metav1.GetOptions{})
 	if err != nil {
-		logger.Debug(fmt.Sprintf("Prometheus service in monitoring namespace is not available. %s", err.Error()))
+		eh.logger.Debug(fmt.Sprintf("Prometheus service in monitoring namespace is not available. %s", err.Error()))
 		return false
 	}
 
-	logger.Debug("Prometheus service in monitoring namespace is available")
+	eh.logger.Debug("Prometheus service in monitoring namespace is available")
 	return true
 }
 
-func installPrometheus(logger keptn.LoggerInterface) error {
-	logger.Info("Installing Prometheus...")
+func (eh ConfigureMonitoringEventHandler) installPrometheus() error {
+	eh.logger.Info("Installing Prometheus...")
 	prometheusHelper, err := utils.NewPrometheusHelper()
 	if err != nil {
-		logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
+		eh.logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
 		return err
 	}
-	logger.Debug("Apply namespace for prometheus monitoring")
+	eh.logger.Debug("Apply namespace for prometheus monitoring")
 	err = prometheusHelper.CreateOrUpdatePrometheusNamespace()
 	if err != nil {
 		return err
 	}
 
 	//config-map.yaml
-	logger.Debug("Apply config map for prometheus monitoring")
+	eh.logger.Debug("Apply config map for prometheus monitoring")
 	err = prometheusHelper.CreateOrUpdatePrometheusConfigMap()
 	if err != nil {
 		return err
 	}
 
 	//cluster-role.yaml
-	logger.Debug("Apply cluster role for prometheus monitoring")
+	eh.logger.Debug("Apply cluster role for prometheus monitoring")
 	err = prometheusHelper.CreateOrUpdatePrometheusClusterRole()
 	if err != nil {
 		return err
 	}
 
 	//prometheus.yaml
-	logger.Debug("Apply service and deployment for prometheus monitoring")
+	eh.logger.Debug("Apply service and deployment for prometheus monitoring")
 	err = prometheusHelper.CreateOrUpdatePrometheusDeployment()
 	if err != nil {
 		return err
 	}
 
-	logger.Info("Prometheus installed successfully")
+	eh.logger.Info("Prometheus installed successfully")
 
 	return nil
 }
 
-func installPrometheusAlertManager(logger keptn.LoggerInterface) error {
-	logger.Info("Installing Prometheus AlertManager...")
+func (eh ConfigureMonitoringEventHandler) installPrometheusAlertManager() error {
+	eh.logger.Info("Installing Prometheus AlertManager...")
 	prometheusHelper, err := utils.NewPrometheusHelper()
 	//alertmanager-configmap.yaml
-	logger.Debug("Apply configmap for prometheus alert manager")
+	eh.logger.Debug("Apply configmap for prometheus alert manager")
 	err = prometheusHelper.CreateOrUpdateAlertManagerConfigMap()
 	if err != nil {
 		return err
 	}
 
 	//alertmanager-template.yaml
-	logger.Debug("Apply configmap template for prometheus alert manager")
+	eh.logger.Debug("Apply configmap template for prometheus alert manager")
 	err = prometheusHelper.CreateOrUpdateAlertManagerTemplatesConfigMap()
 	if err != nil {
 		return err
 	}
 
 	//alertmanager-deployment.yaml
-	logger.Debug("Apply deployment for prometheus alert manager")
+	eh.logger.Debug("Apply deployment for prometheus alert manager")
 	err = prometheusHelper.CreateOrUpdateAlertManagerDeployment()
 	if err != nil {
 		return err
 	}
 
 	//alertmanager-svc.yaml
-	logger.Debug("Apply service for prometheus alert manager")
+	eh.logger.Debug("Apply service for prometheus alert manager")
 	err = prometheusHelper.CreateOrUpdateAlertManagerService()
 	if err != nil {
 		return err
 	}
 
-	logger.Info("Prometheus AlertManager installed successfully")
+	eh.logger.Info("Prometheus AlertManager installed successfully")
 
 	return nil
 }
 
-func updatePrometheusConfigMap(eventData keptnevents.ConfigureMonitoringEventData, logger keptn.LoggerInterface, keptnHandler *keptnv2.Keptn) error {
-	shipyard, err := keptnHandler.GetShipyard()
+func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData keptnevents.ConfigureMonitoringEventData) error {
+	shipyard, err := eh.keptnHandler.GetShipyard()
 	if err != nil {
 		return err
 	}
@@ -329,9 +276,9 @@ func updatePrometheusConfigMap(eventData keptnevents.ConfigureMonitoringEventDat
 		// <service>.<project>-<stage>
 		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false)
 
-		slos, err := retrieveSLOs(eventData, stage.Name, logger)
+		slos, err := retrieveSLOs(eventData, stage.Name, eh.logger)
 		if err != nil || slos == nil {
-			logger.Info("No SLO file found for stage " + stage.Name + ". No alerting rules created for this stage")
+			eh.logger.Info("No SLO file found for stage " + stage.Name + ". No alerting rules created for this stage")
 			continue
 		}
 
@@ -348,9 +295,9 @@ func updatePrometheusConfigMap(eventData keptnevents.ConfigureMonitoringEventDat
 
 		for _, objective := range slos.Objectives {
 
-			expr, err := getSLIQuery(eventData.Project, stage.Name, eventData.Service, objective.SLI, slos.Filter, logger)
+			expr, err := eh.getSLIQuery(eventData.Project, stage.Name, eventData.Service, objective.SLI, slos.Filter)
 			if err != nil || expr == "" {
-				logger.Error("No query defined for SLI " + objective.SLI + " in project " + eventData.Project)
+				eh.logger.Error("No query defined for SLI " + objective.SLI + " in project " + eventData.Project)
 				continue
 			}
 
@@ -454,8 +401,8 @@ func getDefaultFilterExpression(project string, stage string, service string, fi
 	return filterExpression
 }
 
-func getSLIQuery(project string, stage string, service string, sli string, filters map[string]string, logger keptn.LoggerInterface) (string, error) {
-	query, err := getCustomQuery(project, sli, logger)
+func (eh ConfigureMonitoringEventHandler) getSLIQuery(project string, stage string, service string, sli string, filters map[string]string) (string, error) {
+	query, err := eh.getCustomQuery(project, sli)
 	if err == nil && query != "" {
 		query = replaceQueryParameters(query, project, stage, service, filters)
 
@@ -463,19 +410,19 @@ func getSLIQuery(project string, stage string, service string, sli string, filte
 	}
 	switch sli {
 	case Throughput:
-		logger.Info("Using default query for throughput")
+		eh.logger.Info("Using default query for throughput")
 		query = getDefaultThroughputQuery(project, stage, service, filters)
 	case ErrorRate:
-		logger.Info("Using default query for error_rate")
+		eh.logger.Info("Using default query for error_rate")
 		query = getDefaultErrorRateQuery(project, stage, service, filters)
 	case ResponseTimeP50:
-		logger.Info("Using default query for response_time_p50")
+		eh.logger.Info("Using default query for response_time_p50")
 		query = getDefaultResponseTimeQuery(project, stage, service, filters, "50")
 	case ResponseTimeP90:
-		logger.Info("Using default query for response_time_p90")
+		eh.logger.Info("Using default query for response_time_p90")
 		query = getDefaultResponseTimeQuery(project, stage, service, filters, "90")
 	case ResponseTimeP95:
-		logger.Info("Using default query for response_time_p95")
+		eh.logger.Info("Using default query for response_time_p95")
 		query = getDefaultResponseTimeQuery(project, stage, service, filters, "95")
 	default:
 		return "", errors.New("unsupported SLI")
@@ -581,19 +528,20 @@ func replaceQueryParameters(query string, project string, stage string, service 
 	return query
 }
 
-func getCustomQuery(project string, sli string, logger keptn.LoggerInterface) (string, error) {
+func (eh ConfigureMonitoringEventHandler) getCustomQuery(project string, sli string) (string, error) {
 	kubeClient, err := getKubeClient()
 	if err != nil {
-		logger.Error("could not create kube client")
+		eh.logger.Error("could not create kube client")
 		return "", errors.New("could not create kube client")
 	}
-	logger.Info("Checking for custom SLI queries for project " + project)
+
+	eh.logger.Info("Checking for custom SLI queries for project " + project)
 
 	// try to get project-specific configMap
 	configMap, err := kubeClient.CoreV1().ConfigMaps(utils.EnvVar(podNamespaceEnvName)).Get(keptnPrometheusSLIConfigMapName+"-"+project, metav1.GetOptions{})
 
 	if err == nil {
-		query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
+		query, err := eh.extractCustomQueryFromCM(configMap, sli, project)
 		if err == nil && query != "" {
 			return query, nil
 		}
@@ -602,7 +550,7 @@ func getCustomQuery(project string, sli string, logger keptn.LoggerInterface) (s
 	// if no config Map could be found, try to get the global one
 	configMap, err = kubeClient.CoreV1().ConfigMaps(utils.EnvVar(podNamespaceEnvName)).Get(keptnPrometheusSLIConfigMapName, metav1.GetOptions{})
 
-	query, err := extractCustomQueryFromCM(configMap, logger, sli, project)
+	query, err := eh.extractCustomQueryFromCM(configMap, sli, project)
 	if err != nil {
 		return "", err
 	}
@@ -611,15 +559,15 @@ func getCustomQuery(project string, sli string, logger keptn.LoggerInterface) (s
 
 }
 
-func extractCustomQueryFromCM(configMap *v1.ConfigMap, logger keptn.LoggerInterface, sli string, project string) (string, error) {
+func (eh ConfigureMonitoringEventHandler) extractCustomQueryFromCM(configMap *v1.ConfigMap, sli string, project string) (string, error) {
 	if configMap == nil || configMap.Data == nil || configMap.Data["custom-queries"] == "" {
-		logger.Info("No custom query defined for SLI " + sli + " in project " + project)
+		eh.logger.Info("No custom query defined for SLI " + sli + " in project " + project)
 		return "", nil
 	}
 	customQueries := make(map[string]string)
 	err := yaml.Unmarshal([]byte(configMap.Data["custom-queries"]), &customQueries)
 	if err != nil || customQueries == nil || customQueries[sli] == "" {
-		logger.Info("No custom query defined for SLI " + sli + " in project " + project)
+		eh.logger.Info("No custom query defined for SLI " + sli + " in project " + project)
 		return "", nil
 	}
 	query := customQueries[sli]
@@ -709,80 +657,39 @@ func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage stri
 	return &slos, nil
 }
 
-// logErrAndRespondWithDoneEvent sends a keptn done event to the keptn eventbroker
-func logErrAndRespondWithDoneEvent(event cloudevents.Event, version *models.Version, err error, keptnHandler *keptnv2.Keptn) error {
-	var result = "success"
-	//var webSocketMessage = "Prometheus successfully configured"
-	var eventMessage = "Prometheus successfully configured and rule created"
+func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(configureMonitoringData *keptnevents.ConfigureMonitoringEventData, status keptnv2.StatusType, result keptnv2.ResultType, msg string) error {
 
-	if err != nil { // error
-		result = "error"
-		eventMessage = fmt.Sprintf("%s.", err.Error())
-		//webSocketMessage = eventMessage
-		keptnHandler.Logger.Error(eventMessage)
-	} else { // success
-		keptnHandler.Logger.Info(eventMessage)
+	cmFinishedEvent := &keptnv2.ConfigureMonitoringFinishedEventData{
+		EventData: keptnv2.EventData{
+			Project: configureMonitoringData.Project,
+			Service: configureMonitoringData.Service,
+			Status:  status,
+			Result:  result,
+			Message: msg,
+		},
 	}
-
-	// if err := websocketutil.WriteWSLog(ws, createEventCopy(event, "sh.keptn.events.log"), webSocketMessage, true, "INFO"); err != nil {
-	// 	logger.Error(fmt.Sprintf("Could not write log to websocket. %s", err.Error()))
-	// }
-	if err := sendDoneEvent(event, result, eventMessage, version, keptnHandler); err != nil {
-		keptnHandler.Logger.Error(fmt.Sprintf("No sh.keptn.event.done event sent. %s", err.Error()))
-	}
-
-	return err
-}
-
-// createEventCopy creates a deep copy of a CloudEvent
-func createEventCopy(eventSource cloudevents.Event, eventType string) cloudevents.Event {
-	var shkeptncontext string
-	eventSource.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
-	var shkeptnphaseid string
-	eventSource.Context.ExtensionAs("shkeptnphaseid", &shkeptnphaseid)
-	var shkeptnphase string
-	eventSource.Context.ExtensionAs("shkeptnphase", &shkeptnphase)
-	var shkeptnstepid string
-	eventSource.Context.ExtensionAs("shkeptnstepid", &shkeptnstepid)
-	var shkeptnstep string
-	eventSource.Context.ExtensionAs("shkeptnstep", &shkeptnstep)
-
-	source, _ := url.Parse("prometheus-service")
+	keptnContext, _ := eh.event.Context.GetExtension("shkeptncontext")
+	triggeredId := eh.event.Context.GetID()
 
 	event := cloudevents.NewEvent()
-	event.SetID(uuid.New().String())
-	event.SetTime(time.Now())
-	event.SetType(eventType)
-	event.SetSource(source.String())
-	event.SetExtension("shkeptncontext", shkeptncontext)
-	event.SetExtension("shkeptnphaseid", shkeptnphaseid)
-	event.SetExtension("shkeptnphase", shkeptnphase)
-	event.SetExtension("shkeptnstepid", shkeptnstepid)
-	event.SetExtension("shkeptnstep", shkeptnstep)
+	event.SetSource("dynatrace-service")
 	event.SetDataContentType(cloudevents.ApplicationJSON)
+	event.SetType(keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName))
+	event.SetData(cloudevents.ApplicationJSON, cmFinishedEvent)
+	event.SetExtension("shkeptncontext", keptnContext)
+	event.SetExtension("triggeredid", triggeredId)
 
-	return event
-}
-
-// sendDoneEvent prepares a keptn done event and sends it to the eventbroker
-func sendDoneEvent(receivedEvent cloudevents.Event, result string, message string, version *models.Version, keptnHandler *keptnv2.Keptn) error {
-
-	doneEvent := createEventCopy(receivedEvent, "sh.keptn.events.done")
-
-	eventData := doneEventData{
-		Result:  result,
-		Message: message,
-	}
-
-	if version != nil {
-		eventData.Version = version.Version
-	}
-
-	doneEvent.SetData(cloudevents.ApplicationJSON, eventData)
-
-	if err := keptnHandler.SendCloudEvent(doneEvent); err != nil {
-		keptnHandler.Logger.Error("could not send event: " + err.Error())
+	if err := eh.keptnHandler.SendCloudEvent(event); err != nil {
+		return fmt.Errorf("could not send %s event: %s", keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName), err.Error())
 	}
 
 	return nil
+}
+
+func (eh ConfigureMonitoringEventHandler) handleError(e *keptnevents.ConfigureMonitoringEventData, msg string) error {
+	//logger.Error(msg)
+	if err := eh.sendConfigureMonitoringFinishedEvent(e, keptnv2.StatusErrored, keptnv2.ResultFailed, msg); err != nil {
+		eh.logger.Error(err.Error())
+	}
+	return errors.New(msg)
 }

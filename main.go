@@ -8,13 +8,15 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/uuid"
 	"github.com/keptn-contrib/prometheus-service/eventhandling"
+	"github.com/keptn-contrib/prometheus-service/utils"
+	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/kelseyhightower/envconfig"
-	keptnutils "github.com/keptn/go-utils/pkg/lib/keptn"
+	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
 )
 
 type envConfig struct {
@@ -29,8 +31,7 @@ type ceTest struct {
 
 func main() {
 	// listen on port 8080 for any event
-	shkeptncontext := ""
-	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
+	logger := keptncommon.NewLogger("", "", "prometheus-service")
 	logger.Debug("Starting server for receiving events on exposed port 8080")
 	http.HandleFunc("/", Handler)
 	go http.ListenAndServe(":8080", nil)
@@ -40,10 +41,10 @@ func main() {
 	if err := envconfig.Process("", &env); err != nil {
 		logger.Error(fmt.Sprintf("Failed to process env var: %s", err))
 	}
-	os.Exit(_main(os.Args[1:], env))
+	os.Exit(_main(env))
 }
 
-func _main(args []string, env envConfig) int {
+func _main(env envConfig) int {
 	ctx := context.Background()
 	ctx = cloudevents.WithEncodingStructured(ctx)
 
@@ -55,15 +56,42 @@ func _main(args []string, env envConfig) int {
 	if err != nil {
 		log.Fatalf("failed to create client, %v", err)
 	}
-	log.Fatal(c.StartReceiver(ctx, eventhandling.GotEvent))
+	log.Fatal(c.StartReceiver(ctx, gotEvent))
 
 	return 0
+}
+
+func gotEvent(event cloudevents.Event) error {
+	var shkeptncontext string
+	_ = event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
+
+	logger := keptncommon.NewLogger(shkeptncontext, event.Context.GetID(), "prometheus-service")
+
+	eventBrokerURL, err := utils.GetEventBrokerURL()
+	if err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+
+	keptnHandler, err := keptnv2.NewKeptn(&event, keptncommon.KeptnOpts{
+		EventBrokerURL: eventBrokerURL,
+	})
+
+	if err != nil {
+		return fmt.Errorf("could not create Keptn handler: %v", err)
+	}
+
+	if err = eventhandling.NewEventHandler(event, logger, keptnHandler).HandleEvent(); err != nil {
+		return err
+	}
+	return nil
+
 }
 
 // Handler takes request and forwards it to the corresponding event handler
 func Handler(rw http.ResponseWriter, req *http.Request) {
 	shkeptncontext := uuid.New().String()
-	logger := keptnutils.NewLogger(shkeptncontext, "", "prometheus-service")
+	logger := keptncommon.NewLogger(shkeptncontext, "", "prometheus-service")
 	logger.Debug("Receiving event which will be dispatched")
 
 	event := ceTest{}
@@ -90,7 +118,7 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 			logger.Error(fmt.Sprintf("Could not send cloud event: %s", err.Error()))
 			rw.WriteHeader(500)
 		} else {
-			logger.Debug("Event successfully sent to port 8081")
+			logger.Debug("event successfully sent to port 8081")
 			rw.WriteHeader(201)
 		}
 	}

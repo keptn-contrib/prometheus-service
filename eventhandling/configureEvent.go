@@ -36,6 +36,8 @@ const podNamespaceEnvName = "POD_NAMESPACE"
 const metricsScrapePathEnvName = "METRICS_SCRAPE_PATH"
 const environmentEnvName = "env"
 
+const sliResourceURI = "prometheus/sli.yaml"
+
 // ConfigureMonitoringEventHandler is responsible for processing configure monitoring events
 type ConfigureMonitoringEventHandler struct {
 	logger       keptn.LoggerInterface
@@ -258,7 +260,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	}
 	fmt.Println(config)
 
-	// check if alerting rules are already availablre
+	// check if alerting rules are already available
 	var alertingRulesConfig alertingRules
 	if cmPrometheus.Data["prometheus.rules"] != "" {
 		yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &alertingRulesConfig)
@@ -370,7 +372,7 @@ func getKubeClient() (*kubernetes.Clientset, error) {
 }
 
 func getDefaultFilterExpression(project string, stage string, service string, filters map[string]string) string {
-	filterExpression := "job='" + service + "-" + project + "-" + stage + "'"
+	filterExpression := "job='" + service + "-" + project + "-" + stage + "-primary'"
 	if filters != nil && len(filters) > 0 {
 		for key, value := range filters {
 			/* if no operator has been included in the label filter, use exact matching (=), e.g.
@@ -403,7 +405,7 @@ func getDefaultFilterExpression(project string, stage string, service string, fi
 }
 
 func (eh ConfigureMonitoringEventHandler) getSLIQuery(project string, stage string, service string, sli string, filters map[string]string) (string, error) {
-	query, err := eh.getCustomQuery(project, sli)
+	query, err := eh.getCustomQuery(project, stage, service, sli)
 	if err == nil && query != "" {
 		query = replaceQueryParameters(query, project, stage, service, filters)
 
@@ -529,35 +531,15 @@ func replaceQueryParameters(query string, project string, stage string, service 
 	return query
 }
 
-func (eh ConfigureMonitoringEventHandler) getCustomQuery(project string, sli string) (string, error) {
-	kubeClient, err := getKubeClient()
-	if err != nil {
-		eh.logger.Error("could not create kube client")
-		return "", errors.New("could not create kube client")
-	}
+func (eh ConfigureMonitoringEventHandler) getCustomQuery(project, stage, service string, sli string) (string, error) {
 
-	eh.logger.Info("Checking for custom SLI queries for project " + project)
+	customQueries, err := eh.keptnHandler.GetSLIConfiguration(project, stage, service, sliResourceURI)
 
-	// try to get project-specific configMap
-	configMap, err := kubeClient.CoreV1().ConfigMaps(utils.EnvVar(podNamespaceEnvName)).Get(keptnPrometheusSLIConfigMapName+"-"+project, metav1.GetOptions{})
-
-	if err == nil {
-		query, err := eh.extractCustomQueryFromCM(configMap, sli, project)
-		if err == nil && query != "" {
-			return query, nil
-		}
-	}
-
-	// if no config Map could be found, try to get the global one
-	configMap, err = kubeClient.CoreV1().ConfigMaps(utils.EnvVar(podNamespaceEnvName)).Get(keptnPrometheusSLIConfigMapName, metav1.GetOptions{})
-
-	query, err := eh.extractCustomQueryFromCM(configMap, sli, project)
 	if err != nil {
 		return "", err
 	}
 
-	return query, nil
-
+	return customQueries[sli], nil
 }
 
 func (eh ConfigureMonitoringEventHandler) extractCustomQueryFromCM(configMap *v1.ConfigMap, sli string, project string) (string, error) {
@@ -636,7 +618,7 @@ func getScrapeConfig(config *prometheusconfig.Config, name string) *prometheusco
 
 func getConfigurationServiceURL() string {
 	if utils.EnvVarEqualsTo(environmentEnvName, "production") {
-		return "configuration-service.keptn.svc.cluster.local:8080"
+		return "configuration-service:8080"
 	}
 	return "localhost:6060"
 }

@@ -114,8 +114,8 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != 202 {
-			logger.Error(fmt.Sprintf("Could not send cloud event: %s", err.Error()))
+		if resp.StatusCode < 200 && resp.StatusCode > 299 {
+			logger.Error(fmt.Sprintf("Could not process cloud event: Handler returned status %s", resp.Status))
 			rw.WriteHeader(500)
 		} else {
 			logger.Debug("event successfully sent to port 8081")

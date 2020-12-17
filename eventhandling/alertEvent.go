@@ -101,7 +101,7 @@ func createAndSendCE(problemData keptnevents.ProblemEventData, shkeptncontext st
 	event := cloudevents.NewEvent()
 	event.SetID(uuid.New().String())
 	event.SetTime(time.Now())
-	event.SetType(keptnevents.ProblemEventType)
+	event.SetType(keptnevents.ProblemOpenEventType)
 	event.SetSource(source.String())
 	event.SetExtension("shkeptncontext", shkeptncontext)
 	event.SetDataContentType(cloudevents.ApplicationJSON)

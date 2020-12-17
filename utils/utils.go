@@ -29,10 +29,8 @@ func GetEventBrokerURL() (string, error) {
 	if err != nil {
 		eventBrokerURL = "http://localhost:8081/event"
 		return "", fmt.Errorf("Could not parse EVENTBROKER URL %s: %s. Using default: %s", os.Getenv(eventbroker), err.Error(), eventBrokerURL)
-	} else {
-		eventBrokerURL = endpoint.String()
-		return "", fmt.Errorf("EVENTBROKER URL: %s", eventBrokerURL)
 	}
+	eventBrokerURL = endpoint.String()
 	return eventBrokerURL, nil
 }
 

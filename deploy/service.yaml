@@ -214,7 +214,7 @@ spec:
         - name: CONFIGURATION_SERVICE
           value: 'http://configuration-service:8080'
         - name: EVENTBROKER
-          value: 'http://localhost:8081/event'
+          value: 'http://localhost:8082/event'
         - name: API
           value: 'ws://api-service:8080/websocket'
         - name: POD_NAMESPACE
@@ -239,6 +239,8 @@ spec:
             value: 'sh.keptn.event.monitoring.configure'
           - name: PUBSUB_RECIPIENT
             value: '127.0.0.1'
+          - name: RCV_PORT
+            value: '8082'
       serviceAccountName: keptn-prometheus-service
 ---
 apiVersion: v1

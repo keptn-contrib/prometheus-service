@@ -582,6 +582,7 @@ func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *
 		scrapeConfigName = scrapeConfigName + "-canary"
 		scrapeEndpoint = service + "-canary." + project + "-" + stage + ":80"
 	} else if isPrimary {
+		scrapeConfigName = scrapeConfigName + "-primary"
 		scrapeEndpoint = service + "-primary." + project + "-" + stage + ":80"
 	} else {
 		scrapeEndpoint = service + "." + project + "-" + stage + ":80"

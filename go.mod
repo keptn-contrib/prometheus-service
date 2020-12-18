@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/serf v0.8.3 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/keptn/go-utils v0.6.3-0.20201203142252-6e5e0dca0b12
+	github.com/keptn/go-utils v0.6.3-0.20201217115623-17e6dc4eb089
 	github.com/keptn/kubernetes-utils v0.1.0
 	github.com/prometheus/common v0.9.1
 	github.com/prometheus/prometheus v0.0.0-20200326161412-ae041f97cfc6

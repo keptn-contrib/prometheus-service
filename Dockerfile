@@ -57,8 +57,8 @@ COPY --from=builder /go/src/github.com/keptn-contrib/prometheus-service/promethe
 ENV GOTRACEBACK=all
 
 # KEEP THE FOLLOWING LINES COMMENTED OUT!!! (they will be included within the travis-ci build)
-#build-uncomment ADD MANIFEST /
-#build-uncomment COPY entrypoint.sh /
+#build-uncomment ADD docker/MANIFEST /
+#build-uncomment COPY docker/entrypoint.sh /
 #build-uncomment ENTRYPOINT ["/entrypoint.sh"]
 
 # Run the web service on container startup.

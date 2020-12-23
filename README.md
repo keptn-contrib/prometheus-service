@@ -14,14 +14,15 @@ The *prometheus-service* is a [Keptn](https://keptn.sh) service that is responsi
 Please always double check the version of Keptn you are using compared to the version of this service, and follow the compatibility matrix below.
 
 
-| Keptn Version    | [Prometheus Service Image](https://hub.docker.com/r/keptn/prometheus-service/tags) |
+| Keptn Version    | [Prometheus Service Image](https://hub.docker.com/r/keptncontrib/prometheus-service/tags) |
 |:----------------:|:----------------------------------------:|
-|       0.5.x      | keptn/prometheus-service:0.2.0  |
-|       0.6.x      | keptn/prometheus-service:0.3.0  |
-|       0.6.1      | keptn/prometheus-service:0.3.2  |
-|       0.6.2      | keptn/prometheus-service:0.3.4  |
-|       0.7.0, 0.7.1      | keptn/prometheus-service:0.3.5  |
-|       0.7.2      | keptn/prometheus-service:0.3.6  |
+|       0.5.x      | keptncontrib/prometheus-service:0.2.0  |
+|       0.6.x      | keptncontrib/prometheus-service:0.3.0  |
+|       0.6.1      | keptncontrib/prometheus-service:0.3.2  |
+|       0.6.2      | keptncontrib/prometheus-service:0.3.4  |
+|   0.7.0, 0.7.1   | keptncontrib/prometheus-service:0.3.5  |
+|       0.7.2      | keptncontrib/prometheus-service:0.3.6  |
+|   0.8.0-alpha    | keptncontrib/prometheus-service:0.4.0-alpha  |
 
 # Installation
 

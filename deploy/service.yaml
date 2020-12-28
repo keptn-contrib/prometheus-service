@@ -198,7 +198,7 @@ spec:
     spec:
       containers:
       - name: prometheus-service
-        image: keptncontrib/prometheus-service:0.3.7-dev
+        image: keptncontrib/prometheus-service:0.4.0-alpha
         ports:
         - containerPort: 8080
         resources:

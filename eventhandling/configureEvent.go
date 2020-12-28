@@ -642,7 +642,6 @@ func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage stri
 }
 
 func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(configureMonitoringData *keptnevents.ConfigureMonitoringEventData, status keptnv2.StatusType, result keptnv2.ResultType, msg string) error {
-
 	cmFinishedEvent := &keptnv2.ConfigureMonitoringFinishedEventData{
 		EventData: keptnv2.EventData{
 			Project: configureMonitoringData.Project,
@@ -656,7 +655,7 @@ func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(c
 	triggeredID := eh.event.Context.GetID()
 
 	event := cloudevents.NewEvent()
-	event.SetSource("dynatrace-service")
+	event.SetSource("prometheus-service")
 	event.SetDataContentType(cloudevents.ApplicationJSON)
 	event.SetType(keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName))
 	event.SetData(cloudevents.ApplicationJSON, cmFinishedEvent)

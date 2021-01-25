@@ -56,9 +56,9 @@ COPY --from=builder /go/src/github.com/keptn-contrib/prometheus-service/promethe
 # required for external tools to detect this as a go binary
 ENV GOTRACEBACK=all
 
-# KEEP THE FOLLOWING LINES COMMENTED OUT!!! (they will be included within the travis-ci build)
-#build-uncomment ADD docker/MANIFEST /
-#build-uncomment COPY docker/entrypoint.sh /
+# KEEP THE FOLLOWING LINES COMMENTED OUT!!! (they will be included within the CI build)
+#build-uncomment ADD MANIFEST /
+#build-uncomment COPY entrypoint.sh /
 #build-uncomment ENTRYPOINT ["/entrypoint.sh"]
 
 # Run the web service on container startup.

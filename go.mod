@@ -15,7 +15,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/keptn/go-utils v0.6.3-0.20201217115623-17e6dc4eb089
 	github.com/keptn/kubernetes-utils v0.1.0
-	github.com/prometheus/common v0.9.1
+	github.com/prometheus/common v0.15.0
 	github.com/prometheus/prometheus v0.0.0-20200326161412-ae041f97cfc6
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0

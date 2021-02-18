@@ -8,7 +8,6 @@ require (
 	github.com/armon/go-metrics v0.0.0-20190430140413-ec5e00d3c878 // indirect
 	github.com/cloudevents/sdk-go/v2 v2.3.1
 	github.com/google/uuid v1.2.0
-	github.com/googleapis/gnostic v0.3.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.1.0 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/serf v0.8.3 // indirect
@@ -20,7 +19,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.17.3
-	k8s.io/apimachinery v0.17.3
+	k8s.io/apimachinery v0.20.3
 	k8s.io/client-go v0.17.3
 )
 

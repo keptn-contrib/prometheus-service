@@ -239,7 +239,7 @@ spec:
             value: 'sh.keptn.event.monitoring.configure'
           - name: PUBSUB_RECIPIENT
             value: '127.0.0.1'
-          - name: RCV_PORT
+          - name: API_PROXY_PORT
             value: '8082'
       serviceAccountName: keptn-prometheus-service
 ---

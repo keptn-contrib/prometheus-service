@@ -16,7 +16,7 @@ require (
 	github.com/keptn/go-utils v0.8.0
 	github.com/keptn/kubernetes-utils v0.1.0
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
-	github.com/prometheus/common v0.9.1
+	github.com/prometheus/common v0.18.0
 	github.com/prometheus/prometheus v0.0.0-20200326161412-ae041f97cfc6
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0

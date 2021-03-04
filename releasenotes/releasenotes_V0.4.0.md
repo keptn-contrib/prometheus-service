@@ -8,4 +8,4 @@
 - Removed Websocket Communication [#70](https://github.com/keptn-contrib/prometheus-service/issues/70)
 
 ## Known Limitations
-- A know limitiation is that the same keptn context is calcualted for different problems [#60](https://github.com/keptn-contrib/prometheus-service/issues/60)
+- A know limitation is that the same keptn context is calculated for different problems [#60](https://github.com/keptn-contrib/prometheus-service/issues/60)

@@ -241,6 +241,16 @@ spec:
             value: '127.0.0.1'
           - name: RCV_PORT
             value: '8082'
+          - name: PROMETHEUS_CM_NAME
+            value: ''
+          - name: PROMETHEUS_LABEL
+            value: ''
+          - name: ALERTMGR_CM_NAME
+            value: ''
+          - name: ALERTMGR_TEMPL_CM_NAME
+            value: ''
+          - name: PROMETHEUS_NAMESPACE
+            value: ''
       serviceAccountName: keptn-prometheus-service
 ---
 apiVersion: v1

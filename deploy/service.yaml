@@ -1,10 +1,3 @@
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: monitoring
-
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -217,6 +210,18 @@ spec:
               value: 'http://localhost:8082/event'
             - name: API
               value: 'ws://api-service:8080/websocket'
+            - name: PROMETHEUS_NS
+              value: 'monitoring'
+            - name: PROMETHEUS_CM
+              value: 'prometheus-config'
+            - name: PROMETHEUS_LABEL
+              value: 'app=prometheus'
+            - name: ALERT_MANAGER_CM
+              value: 'alertmanager-config'
+            - name: ALERT_MANAGER_LABEL
+              value: 'app=alertmanager'
+            - name: ALERT_MANAGER_NS
+              value: 'monitoring'
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:

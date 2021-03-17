@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"os"
 	"strings"
 
 	kubeutils "github.com/keptn/kubernetes-utils/pkg"
@@ -88,15 +89,15 @@ func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
 		return nil
 	}
 
-	//err := eh.configurePrometheusAndStoreResources(eventData)
-	//if err != nil {
-	//	eh.logger.Error(err.Error())
-	//	return eh.handleError(eventData, err.Error())
-	//}
+	err := eh.configurePrometheusAndStoreResources(eventData)
+	if err != nil {
+		eh.logger.Error(err.Error())
+		return eh.handleError(eventData, err.Error())
+	}
 
-	//if err = eh.sendConfigureMonitoringFinishedEvent(eventData, keptnv2.StatusSucceeded, keptnv2.ResultPass, "Prometheus successfully configured and rule created"); err != nil {
-	//	eh.logger.Error(err.Error())
-	//}
+	if err = eh.sendConfigureMonitoringFinishedEvent(eventData, keptnv2.StatusSucceeded, keptnv2.ResultPass, "Prometheus successfully configured and rule created"); err != nil {
+		eh.logger.Error(err.Error())
+	}
 	return nil
 }
 
@@ -109,6 +110,8 @@ func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(e
 		if err != nil {
 			return err
 		}
+
+
 	//
 	//	//eh.logger.Debug("Installing prometheus alert manager")
 	//	//err = eh.installPrometheusAlertManager()
@@ -166,15 +169,44 @@ func (eh ConfigureMonitoringEventHandler) isPrometheusInstalled() bool {
 
 func (eh ConfigureMonitoringEventHandler) installPrometheus() error {
 	eh.logger.Info("Installing Prometheus...")
-	//prometheusHelper, err := utils.NewPrometheusHelper()
-	//if err != nil {
-	//	eh.logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
-	//	return err
-	//}
-	//err = prometheusHelper.UpdatePrometheusConfigMap()
-	//if err != nil {
-	//	return err
-	//}
+	PROMETHEUS_NS := os.Getenv("PROMETHEUS_NS")
+	PROMETHEUS_CM := os.Getenv("PROMETHEUS_CM")
+	PROMETHEUS_LABEL := os.Getenv("PROMETHEUS_LABEL")
+	ALERT_MANAGER_LABEL := os.Getenv("ALERT_MANAGER_LABEL")
+	ALERT_MANAGER_NS := os.Getenv("ALERT_MANAGER_NS")
+	ALERT_MANAGER_CM := os.Getenv("ALERT_MANAGER_CM")
+
+	prometheusHelper, err := utils.NewPrometheusHelper()
+	if err != nil {
+		eh.logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
+		return err
+	}
+	err = prometheusHelper.UpdatePrometheusConfigMap(PROMETHEUS_CM, PROMETHEUS_NS)
+	if err != nil {
+		return err
+	}
+
+	err = prometheusHelper.CreateAMTempConfigMap(ALERT_MANAGER_CM)
+	if err != nil {
+		return err
+	}
+
+	err = prometheusHelper.UpdateAMConfigMap(ALERT_MANAGER_CM, ALERT_MANAGER_NS)
+	if err != nil {
+		return err
+	}
+
+	err = prometheusHelper.RestartPods(PROMETHEUS_LABEL, PROMETHEUS_NS)
+	if err != nil {
+		return err
+	}
+
+
+	err = prometheusHelper.RestartPods(ALERT_MANAGER_LABEL, ALERT_MANAGER_NS)
+	if err != nil {
+		return err
+	}
+
 
 	//eh.logger.Debug("Apply namespace for prometheus monitoring")
 	//err = prometheusHelper.CreateOrUpdatePrometheusNamespace()

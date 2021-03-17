@@ -88,11 +88,11 @@ func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
 		return nil
 	}
 
-	err := eh.configurePrometheusAndStoreResources(eventData)
-	if err != nil {
-		eh.logger.Error(err.Error())
-		return eh.handleError(eventData, err.Error())
-	}
+	//err := eh.configurePrometheusAndStoreResources(eventData)
+	//if err != nil {
+	//	eh.logger.Error(err.Error())
+	//	return eh.handleError(eventData, err.Error())
+	//}
 
 	//if err = eh.sendConfigureMonitoringFinishedEvent(eventData, keptnv2.StatusSucceeded, keptnv2.ResultPass, "Prometheus successfully configured and rule created"); err != nil {
 	//	eh.logger.Error(err.Error())

@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: monitoring 
+  name: monitoring
 
 ---
 apiVersion: v1
@@ -71,8 +71,8 @@ rules:
       - get
       - list
       - watch
-  - nonResourceURLs: ["/metrics"]
-    verbs: ["get"]
+  - nonResourceURLs: [ "/metrics" ]
+    verbs: [ "get" ]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -106,7 +106,7 @@ rules:
     verbs:
       - create
       - update
-      - get 
+      - get
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -115,7 +115,7 @@ metadata:
   name: keptn-prometheus-service-get-monitoring-ns
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole 
+  kind: ClusterRole
   name: keptn-create-get-monitoring-namespace
 subjects:
   - kind: ServiceAccount
@@ -154,11 +154,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: keptn-prometheus-service
-  namespace: monitoring 
+  namespace: monitoring
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: keptn-prometheus-service 
+  name: keptn-prometheus-service
 subjects:
   - kind: ServiceAccount
     name: keptn-prometheus-service
@@ -180,7 +180,7 @@ subjects:
     namespace: keptn
 
 
----    
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -197,60 +197,50 @@ spec:
         run: prometheus-service
     spec:
       containers:
-      - name: prometheus-service
-        image: keptncontrib/prometheus-service:0.3.7-dev
-        ports:
-        - containerPort: 8080
-        resources:
-          requests:
-            memory: "32Mi"
-            cpu: "50m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-        env:
-        - name: METRICS_SCRAPE_PATH
-          value: '/metrics'
-        - name: CONFIGURATION_SERVICE
-          value: 'http://configuration-service:8080'
-        - name: EVENTBROKER
-          value: 'http://localhost:8082/event'
-        - name: API
-          value: 'ws://api-service:8080/websocket'
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-      - name: distributor
-        image: keptn/distributor:0.8.0-alpha # ToDo: change to 0.8.0 once final
-        ports:
-          - containerPort: 8080
-        resources:
-          requests:
-            memory: "16Mi"
-            cpu: "25m"
-          limits:
-            memory: "128Mi"
-            cpu: "250m"
-        env:
-          - name: PUBSUB_URL
-            value: 'nats://keptn-nats-cluster'
-          - name: PUBSUB_TOPIC
-            value: 'sh.keptn.event.monitoring.configure'
-          - name: PUBSUB_RECIPIENT
-            value: '127.0.0.1'
-          - name: RCV_PORT
-            value: '8082'
-          - name: PROMETHEUS_CM_NAME
-            value: ''
-          - name: PROMETHEUS_LABEL
-            value: ''
-          - name: ALERTMGR_CM_NAME
-            value: ''
-          - name: ALERTMGR_TEMPL_CM_NAME
-            value: ''
-          - name: PROMETHEUS_NAMESPACE
-            value: ''
+        - name: prometheus-service
+          image: imrajdas/prometheus-service:ci
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          env:
+            - name: METRICS_SCRAPE_PATH
+              value: '/metrics'
+            - name: CONFIGURATION_SERVICE
+              value: 'http://configuration-service:8080'
+            - name: EVENTBROKER
+              value: 'http://localhost:8082/event'
+            - name: API
+              value: 'ws://api-service:8080/websocket'
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+        - name: distributor
+          image: keptn/distributor:0.8.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "25m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
+          env:
+            - name: PUBSUB_URL
+              value: 'nats://keptn-nats-cluster'
+            - name: PUBSUB_TOPIC
+              value: 'sh.keptn.event.monitoring.configure'
+            - name: PUBSUB_RECIPIENT
+              value: '127.0.0.1'
+            - name: API_PROXY_PORT
+              value: '8082'
       serviceAccountName: keptn-prometheus-service
 ---
 apiVersion: v1
@@ -262,7 +252,7 @@ metadata:
     run: prometheus-service
 spec:
   ports:
-  - port: 8080
-    protocol: TCP
+    - port: 8080
+      protocol: TCP
   selector:
     run: prometheus-service

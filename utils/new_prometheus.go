@@ -420,7 +420,7 @@ func (p *PrometheusHelper) GetConfigMap(name string, namespace string) (*v1.Conf
 	return p.KubeApi.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
 }
 
-func (p *PrometheusHelper) RestartPods(label string, namespace string) error {
+func (p *PrometheusHelper) 	RestartPods(label string, namespace string) error {
 	pod_list, err := p.KubeApi.CoreV1().Pods(namespace).List(metav1.ListOptions{
 		LabelSelector: label,
 	})

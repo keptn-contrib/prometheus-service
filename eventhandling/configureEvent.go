@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"log"
 	"os"
 	"strings"
 
@@ -175,6 +176,13 @@ func (eh ConfigureMonitoringEventHandler) installPrometheus() error {
 	ALERT_MANAGER_LABEL := os.Getenv("ALERT_MANAGER_LABEL")
 	ALERT_MANAGER_NS := os.Getenv("ALERT_MANAGER_NS")
 	ALERT_MANAGER_CM := os.Getenv("ALERT_MANAGER_CM")
+
+	log.Print(PROMETHEUS_NS)
+	log.Print(PROMETHEUS_CM)
+	log.Print(PROMETHEUS_LABEL)
+	log.Print(ALERT_MANAGER_LABEL)
+	log.Print(ALERT_MANAGER_NS)
+	log.Print(ALERT_MANAGER_CM)
 
 	prometheusHelper, err := utils.NewPrometheusHelper()
 	if err != nil {

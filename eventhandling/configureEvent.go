@@ -36,12 +36,12 @@ const environmentEnvName = "env"
 const sliResourceURI = "prometheus/sli.yaml"
 
 var (
-	PROMETHEUS_NS = os.Getenv("PROMETHEUS_NS")
-	PROMETHEUS_CM = os.Getenv("PROMETHEUS_CM")
-	PROMETHEUS_LABELS = os.Getenv("PROMETHEUS_LABEL")
+	PROMETHEUS_NS        = os.Getenv("PROMETHEUS_NS")
+	PROMETHEUS_CM        = os.Getenv("PROMETHEUS_CM")
+	PROMETHEUS_LABELS    = os.Getenv("PROMETHEUS_LABEL")
 	ALERT_MANAGER_LABELS = os.Getenv("ALERT_MANAGER_LABEL")
-	ALERT_MANAGER_NS = os.Getenv("ALERT_MANAGER_NS")
-	ALERT_MANAGER_CM = os.Getenv("ALERT_MANAGER_CM")
+	ALERT_MANAGER_NS     = os.Getenv("ALERT_MANAGER_NS")
+	ALERT_MANAGER_CM     = os.Getenv("ALERT_MANAGER_CM")
 )
 
 // ConfigureMonitoringEventHandler is responsible for processing configure monitoring events

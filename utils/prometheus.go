@@ -394,7 +394,6 @@ func (p *PrometheusHelper) UpdatePrometheusConfigMap(name string, namespace stri
 				}
 			}
 
-
 			cm.Data[key] = fmt.Sprint(config)
 		}
 	} else {
@@ -433,7 +432,7 @@ func (p *PrometheusHelper) DeletePod(label string, namespace string) error {
 	}
 
 	for _, pod := range pod_list.Items {
-		err:= p.KubeApi.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		err := p.KubeApi.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}
@@ -441,8 +440,7 @@ func (p *PrometheusHelper) DeletePod(label string, namespace string) error {
 	return nil
 }
 
-
-func (p *PrometheusHelper) CreateAMTempConfigMap(namespace string) (error){
+func (p *PrometheusHelper) CreateAMTempConfigMap(namespace string) error {
 	cm := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "alertmanager-templates",
@@ -457,7 +455,7 @@ func (p *PrometheusHelper) CreateAMTempConfigMap(namespace string) (error){
 	return p.CreateConfigMap(cm, namespace)
 }
 
-func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) error  {
+func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) error {
 	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Create(cm)
 	if err != nil {
 		return err

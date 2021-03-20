@@ -2,13 +2,12 @@ package utils
 
 import (
 	"fmt"
-	promConfig "github.com/prometheus/prometheus/config"
 	alertConfig "github.com/prometheus/alertmanager/config"
+	promConfig "github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"log"
 	"strings"
 
 	"k8s.io/client-go/rest"
@@ -425,11 +424,10 @@ func (p *PrometheusHelper) GetConfigMap(name string, namespace string) (*v1.Conf
 	return p.KubeApi.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
 }
 
-func (p *PrometheusHelper) 	RestartPods(label string, namespace string) error {
+func (p *PrometheusHelper) DeletePod(label string, namespace string) error {
 	pod_list, err := p.KubeApi.CoreV1().Pods(namespace).List(metav1.ListOptions{
 		LabelSelector: label,
 	})
-	log.Print("pod_list", pod_list)
 	if err != nil {
 		return err
 	}
@@ -493,31 +491,11 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, namespace string) erro
 			config.Receivers = append(config.Receivers, keptnAlertConfig.Receivers...)
 			config.Templates = append(config.Templates, keptnAlertConfig.Templates...)
 			config.Route.Routes = append(config.Route.Routes, keptnAlertConfig.Route.Routes...)
-
-			//for _, sc := range keptnPromConfig.ScrapeConfigs {
-			//	if !IsScrapeConfigcontains(config.ScrapeConfigs, sc.JobName) {
-			//		config.ScrapeConfigs = append(config.ScrapeConfigs, keptnPromConfig.ScrapeConfigs...)
-			//	} else {
-			//		return err
-			//	}
-			//}
-
-
 			cm.Data[key] = fmt.Sprint(config)
 		}
+	} else {
+		cm.Data["config.yml"] = alertManagerYml
 	}
-	//else {
-	//	yamlString, err := yaml.Marshal(keptnPromConfig)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	cm.Data = map[string]string{
-	//		"prometheus.yml": string(yamlString),
-	//	}
-	//}
-
 
 	return p.UpdateConfigMap(cm, namespace)
-
 }

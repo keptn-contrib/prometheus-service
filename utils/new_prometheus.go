@@ -329,6 +329,11 @@ Alerts Resolved:
 {{ end }}
 {{ define "pushover.default.url" }}{{ template "__alertmanagerURL" . }}{{ end }}`
 
+const alertManagerSlackTemplate = `{{ define "slack.devops.text" }}
+{{range .Alerts}}{{.Annotations.DESCRIPTION}}
+{{end}}
+{{ end }}`
+
 type PrometheusHelper struct {
 	KubeApi *kubernetes.Clientset
 }
@@ -448,16 +453,8 @@ func (p *PrometheusHelper) CreateAMTempConfigMap(namespace string) (error){
 		Data: map[string]string{},
 	}
 
-	var configYaml interface{}
-	err := yaml.Unmarshal([]byte(alertManagerDefaultTemplate), &configYaml)
-	if err != nil {
-		return err
-	}
-	yamlString, err := yaml.Marshal(configYaml)
-	if err != nil {
-		return err
-	}
-	cm.Data["default.tmpl"] = string(yamlString)
+	cm.Data["default.tmpl"] = alertManagerDefaultTemplate
+	cm.Data["slack.tmpl"] = alertManagerSlackTemplate
 
 	return p.CreateConfigMap(cm, namespace)
 }

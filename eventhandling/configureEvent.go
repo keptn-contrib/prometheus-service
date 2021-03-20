@@ -194,7 +194,7 @@ func (eh ConfigureMonitoringEventHandler) installPrometheus() error {
 		return err
 	}
 
-	err = prometheusHelper.CreateAMTempConfigMap(ALERT_MANAGER_CM)
+	err = prometheusHelper.CreateAMTempConfigMap(ALERT_MANAGER_NS)
 	if err != nil {
 		return err
 	}

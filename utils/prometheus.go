@@ -8,6 +8,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	k8sError "k8s.io/apimachinery/pkg/api/errors"
+
 	"strings"
 
 	"k8s.io/client-go/rest"
@@ -365,7 +367,26 @@ func IsScrapeConfigcontains(s []*promConfig.ScrapeConfig, str string) bool {
 
 func (p *PrometheusHelper) UpdatePrometheusConfigMap(name string, namespace string) error {
 
-	cm, err := p.GetConfigMap(name, namespace)
+
+	get_cm, err := p.GetConfigMap(name, namespace)
+
+	if k8sError.IsNotFound(err){
+		cm := &v1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Data: map[string]string{
+				"prometheus.yml": prometheusYml,
+			},
+		}
+
+		err = p.CreateConfigMap(cm, namespace)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -376,10 +397,11 @@ func (p *PrometheusHelper) UpdatePrometheusConfigMap(name string, namespace stri
 		return err
 	}
 
-	if strings.Contains(fmt.Sprint(cm.Data), "scrape_configs") {
+
+	if strings.Contains(fmt.Sprint(get_cm.Data), "scrape_configs") {
 		var config promConfig.Config
 
-		for key, proms := range cm.Data {
+		for key, proms := range get_cm.Data {
 
 			err = yaml.Unmarshal([]byte(proms), &config)
 			if err != nil {
@@ -394,7 +416,7 @@ func (p *PrometheusHelper) UpdatePrometheusConfigMap(name string, namespace stri
 				}
 			}
 
-			cm.Data[key] = fmt.Sprint(config)
+			get_cm.Data[key] = fmt.Sprint(config)
 		}
 	} else {
 		yamlString, err := yaml.Marshal(keptnPromConfig)
@@ -402,12 +424,12 @@ func (p *PrometheusHelper) UpdatePrometheusConfigMap(name string, namespace stri
 			return err
 		}
 
-		cm.Data = map[string]string{
+		get_cm.Data = map[string]string{
 			"prometheus.yml": string(yamlString),
 		}
 	}
 
-	return p.UpdateConfigMap(cm, namespace)
+	return p.UpdateConfigMap(get_cm, namespace)
 }
 
 func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) error {
@@ -421,6 +443,15 @@ func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) e
 
 func (p *PrometheusHelper) GetConfigMap(name string, namespace string) (*v1.ConfigMap, error) {
 	return p.KubeApi.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+}
+
+func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) error {
+	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Create(cm)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *PrometheusHelper) DeletePod(label string, namespace string) error {
@@ -455,17 +486,27 @@ func (p *PrometheusHelper) CreateAMTempConfigMap(namespace string) error {
 	return p.CreateConfigMap(cm, namespace)
 }
 
-func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) error {
-	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Create(cm)
-	if err != nil {
-		return err
+func (p *PrometheusHelper) UpdateAMConfigMap(name string, namespace string) error {
+	get_cm, err := p.GetConfigMap(name, namespace)
+
+	if k8sError.IsNotFound(err){
+		cm := &v1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+			},
+			Data: map[string]string{
+				"config.yml": alertManagerYml,
+			},
+		}
+
+		err = p.CreateConfigMap(cm, namespace)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
-	return nil
-}
-
-func (p *PrometheusHelper) UpdateAMConfigMap(name string, namespace string) error {
-	cm, err := p.GetConfigMap(name, namespace)
 	if err != nil {
 		return err
 	}
@@ -476,10 +517,10 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, namespace string) erro
 		return err
 	}
 
-	if strings.Contains(fmt.Sprint(cm.Data), "receivers") {
+	if strings.Contains(fmt.Sprint(get_cm.Data), "receivers") {
 		var config alertConfig.Config
 
-		for key, alert := range cm.Data {
+		for key, alert := range get_cm.Data {
 
 			err = yaml.Unmarshal([]byte(alert), &config)
 			if err != nil {
@@ -489,11 +530,11 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, namespace string) erro
 			config.Receivers = append(config.Receivers, keptnAlertConfig.Receivers...)
 			config.Templates = append(config.Templates, keptnAlertConfig.Templates...)
 			config.Route.Routes = append(config.Route.Routes, keptnAlertConfig.Route.Routes...)
-			cm.Data[key] = fmt.Sprint(config)
+			get_cm.Data[key] = fmt.Sprint(config)
 		}
 	} else {
-		cm.Data["config.yml"] = alertManagerYml
+		get_cm.Data["config.yml"] = alertManagerYml
 	}
 
-	return p.UpdateConfigMap(cm, namespace)
+	return p.UpdateConfigMap(get_cm, namespace)
 }

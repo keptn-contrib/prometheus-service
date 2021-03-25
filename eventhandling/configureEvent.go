@@ -218,7 +218,7 @@ func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager() erro
 	eh.logger.Info("Configuring Prometheus AlertManager...")
 	prometheusHelper, err := utils.NewPrometheusHelper()
 
-	err = prometheusHelper.CreateAMTempConfigMap(ALERT_MANAGER_CM)
+	err = prometheusHelper.CreateAMTempConfigMap(ALERT_MANAGER_NS)
 	if err != nil {
 		return err
 	}

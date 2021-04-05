@@ -1,14 +1,17 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	alertConfig "github.com/prometheus/alertmanager/config"
 	promConfig "github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
+	appsV1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	k8sError "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	k8sError "k8s.io/apimachinery/pkg/api/errors"
+	"time"
 
 	"strings"
 
@@ -36,17 +39,8 @@ receivers:
   webhook_configs:
   - url: http://prometheus-service.keptn.svc.cluster.local:8080`
 
-const prometheusYml = `global:
-  scrape_interval: 5s
-  evaluation_interval: 5s
-rule_files:
+const prometheusYml = `rule_files:
   - /etc/prometheus/prometheus.rules
-alerting:
-  alertmanagers:
-  - scheme: http
-    static_configs:
-    - targets:
-      - "alertmanager.monitoring.svc:9093"
 
 scrape_configs:
   - job_name: 'kubernetes-apiservers'
@@ -332,7 +326,7 @@ Alerts Resolved:
 
 const alertManagerSlackTemplate = `{{ define "slack.devops.text" }}
 {{range .Alerts}}{{.Annotations.DESCRIPTION}}
-{{end}}
+{{end}}alertmanager-templates
 {{ end }}`
 
 type PrometheusHelper struct {
@@ -355,7 +349,7 @@ func NewPrometheusHelper() (*PrometheusHelper, error) {
 	return &PrometheusHelper{KubeApi: clientset}, nil
 }
 
-func IsScrapeConfigcontains(s []*promConfig.ScrapeConfig, str string) bool {
+func IsScrapeConfigPresent(s []*promConfig.ScrapeConfig, str string) bool {
 	for _, v := range s {
 		if v.JobName == str {
 			return true
@@ -366,8 +360,6 @@ func IsScrapeConfigcontains(s []*promConfig.ScrapeConfig, str string) bool {
 }
 
 func (p *PrometheusHelper) UpdatePrometheusConfigMap(name string, namespace string) error {
-
-
 	get_cm, err := p.GetConfigMap(name, namespace)
 
 	if k8sError.IsNotFound(err){
@@ -409,14 +401,18 @@ func (p *PrometheusHelper) UpdatePrometheusConfigMap(name string, namespace stri
 			}
 
 			for _, sc := range keptnPromConfig.ScrapeConfigs {
-				if !IsScrapeConfigcontains(config.ScrapeConfigs, sc.JobName) {
+				if !IsScrapeConfigPresent(config.ScrapeConfigs, sc.JobName) {
 					config.ScrapeConfigs = append(config.ScrapeConfigs, keptnPromConfig.ScrapeConfigs...)
 				} else {
 					return err
 				}
+				config.RuleFiles = append(config.RuleFiles, keptnPromConfig.RuleFiles...)
 			}
-
-			get_cm.Data[key] = fmt.Sprint(config)
+			marConfig, err := json.Marshal(config)
+			if err != nil {
+				return err
+			}
+			get_cm.Data[key] = fmt.Sprint(marConfig)
 		}
 	} else {
 		yamlString, err := yaml.Marshal(keptnPromConfig)
@@ -471,10 +467,10 @@ func (p *PrometheusHelper) DeletePod(label string, namespace string) error {
 	return nil
 }
 
-func (p *PrometheusHelper) CreateAMTempConfigMap(namespace string) error {
+func (p *PrometheusHelper) CreateAMTempConfigMap(name string, namespace string) error {
 	cm := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "alertmanager-templates",
+			Name:      name,
 			Namespace: namespace,
 		},
 		Data: map[string]string{},
@@ -522,7 +518,7 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, namespace string) erro
 
 		for key, alert := range get_cm.Data {
 
-			err = yaml.Unmarshal([]byte(alert), &config)
+			err = yaml.Unmarshal([]byte(alert), config)
 			if err != nil {
 				return err
 			}
@@ -530,11 +526,68 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, namespace string) erro
 			config.Receivers = append(config.Receivers, keptnAlertConfig.Receivers...)
 			config.Templates = append(config.Templates, keptnAlertConfig.Templates...)
 			config.Route.Routes = append(config.Route.Routes, keptnAlertConfig.Route.Routes...)
-			get_cm.Data[key] = fmt.Sprint(config)
+
+			marConfig, err := json.Marshal(config)
+			if err != nil {
+				return err
+			}
+			get_cm.Data[key] = fmt.Sprint(marConfig)
 		}
 	} else {
 		get_cm.Data["config.yml"] = alertManagerYml
 	}
 
 	return p.UpdateConfigMap(get_cm, namespace)
+}
+
+func (p *PrometheusHelper) UpdateAMDeploymentVolumeMount(label string, am_cm string, namespace string) error {
+	deploy_list, err := p.ListDeployment(label, namespace)
+	if err != nil {
+		return nil
+	}
+
+	volume_name := "templates-volume-" + time.Now().Format(time.RFC850)
+	for _, deploy := range deploy_list.Items {
+		deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, v1.Volume{
+			Name: volume_name,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: am_cm,
+					},
+				},
+			},
+		})
+
+		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
+			Name: volume_name,
+			MountPath: "/etc/"+ am_cm,
+		})
+
+		err = p.UpdateDeployment(&deploy, namespace)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *PrometheusHelper) GetDeployment(name string, namespace string) (*appsV1.Deployment, error)  {
+	return p.KubeApi.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+}
+
+func (p *PrometheusHelper) ListDeployment(labels, namespace string) (*appsV1.DeploymentList, error)  {
+	return p.KubeApi.AppsV1().Deployments(namespace).List(metav1.ListOptions{
+		LabelSelector: labels,
+	})
+}
+
+func (p *PrometheusHelper) UpdateDeployment(dep *appsV1.Deployment, namespace string) error {
+	_, err := p.KubeApi.AppsV1().Deployments(namespace).Update(dep)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

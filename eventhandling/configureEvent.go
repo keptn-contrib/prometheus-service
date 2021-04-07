@@ -35,13 +35,15 @@ const environmentEnvName = "env"
 const sliResourceURI = "prometheus/sli.yaml"
 
 type envConfig struct {
-	prometheusNamespace string `envconfig:"PROMETHEUS_NS" default:""`
-	prometheusConfigMap string `envconfig:"PROMETHEUS_CM" default:""`
-	prometheusLabels string `envconfig:"PROMETHEUS_LABELS" default:""`
-	alertManagerLabels string `envconfig:"ALERT_MANAGER_LABELS" default:""`
-	alertManagerNamespace string `envconfig:"ALERT_MANAGER_NS" default:""`
-	alertManagerConfigMap string `envconfig:"ALERT_MANAGER_CM" default:""`
-	alertManagerTemplateConfigMap string `envconfig:"ALERT_MANAGER_TEMPLATE_CM" default:""`
+	PrometheusNamespace string `envconfig:"PROMETHEUS_NS" default:""`
+	PrometheusConfigMap string `envconfig:"PROMETHEUS_CM" default:""`
+	PrometheusLabels string `envconfig:"PROMETHEUS_LABELS" default:""`
+	AlertManagerLabels string `envconfig:"ALERT_MANAGER_LABELS" default:""`
+	AlertManagerNamespace string `envconfig:"ALERT_MANAGER_NS" default:""`
+	AlertManagerConfigMap string `envconfig:"ALERT_MANAGER_CM" default:""`
+	AlertManagerTemplateConfigMap string `envconfig:"ALERT_MANAGER_TEMPLATE_CM" default:"alertmanager-templates"`
+	PrometheusConfigFileName string `envconfig:"PROMETHEUS_CONFIG_FILENAME" default:"prometheus.yml"`
+	AlertManagerConfigFileName string `envconfig:"ALERT_MANAGER_CONFIG_FILENAME" default:"alertmanager.yml"`
 }
 
 // ConfigureMonitoringEventHandler is responsible for processing configure monitoring events
@@ -112,40 +114,31 @@ func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
 // configurePrometheusAndStoreResources
 func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(eventData *keptnevents.ConfigureMonitoringEventData) error {
 
-
 	if err := envconfig.Process("", &env); err != nil {
 		eh.logger.Error("Failed to process env var: " + err.Error())
 	}
 
-	eh.logger.Debug("logging env"+fmt.Sprint(env))
-
 	// (1) check if prometheus is installed
 	if eh.isPrometheusInstalled() {
-		eh.logger.Debug("Configure prometheus monitoring")
-		err := eh.configurePrometheus()
-		if err != nil {
+		eh.logger.Debug("Configure prometheus monitoring with keptn")
+		if err := eh.updatePrometheusConfigMap(*eventData); err != nil {
 			return err
 		}
 
-		eh.logger.Debug("Configure prometheus alert manager")
-		err = eh.configurePrometheusAlertManager()
+		eh.logger.Debug("Configure prometheus alert manager with keptn")
+		err := eh.configurePrometheusAlertManager()
 		if err != nil {
 			return err
 		}
-	}
-
-	// (2) update config map with alert rule
-	if err := eh.updatePrometheusConfigMap(*eventData); err != nil {
-		return err
 	}
 
 	// (2.1) delete prometheus pod
-	if err := eh.deletePod(env.prometheusLabels, env.prometheusNamespace); err != nil {
+	if err := eh.deletePod(env.PrometheusLabels, env.PrometheusNamespace); err != nil {
 		return err
 	}
 
 	// (2.1) delete prometheus alert manager pod
-	if err := eh.deletePod(env.alertManagerLabels, env.alertManagerNamespace); err != nil {
+	if err := eh.deletePod(env.AlertManagerLabels, env.AlertManagerNamespace); err != nil {
 		return err
 	}
 
@@ -175,7 +168,7 @@ func (eh ConfigureMonitoringEventHandler) deletePod(labels string, namespace str
 }
 
 func (eh ConfigureMonitoringEventHandler) isPrometheusInstalled() bool {
-	eh.logger.Debug("Check if prometheus service in " + env.prometheusNamespace + " namespace is available")
+	eh.logger.Debug("Check if prometheus service in " + env.PrometheusNamespace + " namespace is available")
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		eh.logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
@@ -188,59 +181,40 @@ func (eh ConfigureMonitoringEventHandler) isPrometheusInstalled() bool {
 		return false
 	}
 
-	svc, err := api.CoreV1().Services(env.prometheusNamespace).List(metav1.ListOptions{
-		LabelSelector: env.prometheusLabels,
+	svc, err := api.CoreV1().Services(env.PrometheusNamespace).List(metav1.ListOptions{
+		LabelSelector: env.PrometheusLabels,
 	})
 
 	if err != nil {
-		eh.logger.Debug(fmt.Sprintf("Prometheus service in %s namespace is not available. %s", env.prometheusNamespace, err.Error()))
+		eh.logger.Debug(fmt.Sprintf("Prometheus service in %s namespace is not available. %s", env.PrometheusNamespace, err.Error()))
 		return false
 	}
 
 	if len(svc.Items) > 0 {
-		eh.logger.Debug("Prometheus service in " + env.prometheusNamespace + " namespace is available")
+		eh.logger.Debug("Prometheus service in " + env.PrometheusNamespace + " namespace is available")
 		return true
 	}
 
 	return false
 }
 
-func (eh ConfigureMonitoringEventHandler) configurePrometheus() error {
-	eh.logger.Info("Configuring Prometheus...")
-
-	prometheusHelper, err := utils.NewPrometheusHelper()
-	if err != nil {
-		eh.logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
-		return err
-	}
-
-	err = prometheusHelper.UpdatePrometheusConfigMap(env.prometheusConfigMap, env.prometheusNamespace)
-	if err != nil {
-		return err
-	}
-
-	eh.logger.Info("Prometheus configured successfully")
-
-	return nil
-}
-
 func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager() error {
 	eh.logger.Info("Configuring Prometheus AlertManager...")
 	prometheusHelper, err := utils.NewPrometheusHelper()
 
-	err = prometheusHelper.CreateAMTempConfigMap(env.alertManagerTemplateConfigMap, env.alertManagerNamespace)
-	if err != nil {
-		return err
-	}
+	//err = prometheusHelper.CreateAMTempConfigMap(env.AlertManagerTemplateConfigMap, env.AlertManagerNamespace)
+	//if err != nil {
+	//	return err
+	//}
 
-	eh.logger.Info("Updating Prometheus AlertManager volume mount")
-	err = prometheusHelper.UpdateAMDeploymentVolumeMount(env.alertManagerLabels, env.alertManagerTemplateConfigMap, env.alertManagerNamespace)
-	if err != nil {
-		return err
-	}
+	//eh.logger.Info("Updating Prometheus AlertManager volume mount")
+	//err = prometheusHelper.UpdateAMDeploymentVolumeMount(env.AlertManagerLabels, env.AlertManagerTemplateConfigMap, env.AlertManagerNamespace)
+	//if err != nil {
+	//	return err
+	//}
 
 	eh.logger.Info("Updating Prometheus AlertManager configmap...")
-	err = prometheusHelper.UpdateAMConfigMap(env.alertManagerConfigMap, env.alertManagerNamespace)
+	err = prometheusHelper.UpdateAMConfigMap(env.AlertManagerConfigMap, env.AlertManagerConfigFileName, env.AlertManagerNamespace)
 	if err != nil {
 		return err
 	}
@@ -261,15 +235,14 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		return err
 	}
 
-	cmPrometheus, err := api.CoreV1().ConfigMaps(env.prometheusNamespace).Get(env.prometheusConfigMap, metav1.GetOptions{})
+	cmPrometheus, err := api.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(env.PrometheusConfigMap, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	config, err := prometheusconfig.Load(cmPrometheus.Data["prometheus.yml"])
+	config, err := prometheusconfig.Load(cmPrometheus.Data[env.PrometheusConfigFileName])
 	if err != nil {
 		return err
 	}
-	fmt.Println(config)
 
 	// check if alerting rules are already available
 	var alertingRulesConfig alertingRules
@@ -362,8 +335,8 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	}
 	// apply
 	cmPrometheus.Data["prometheus.rules"] = string(alertingRulesYAMLString)
-	cmPrometheus.Data["prometheus.yml"] = config.String()
-	_, err = api.CoreV1().ConfigMaps(env.prometheusNamespace).Update(cmPrometheus)
+	cmPrometheus.Data[env.PrometheusConfigFileName] = config.String()
+	_, err = api.CoreV1().ConfigMaps(env.PrometheusNamespace).Update(cmPrometheus)
 	if err != nil {
 		return err
 	}

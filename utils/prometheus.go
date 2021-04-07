@@ -5,12 +5,9 @@ import (
 	"fmt"
 	alertConfig "github.com/prometheus/alertmanager/config"
 	"gopkg.in/yaml.v2"
-	appsV1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"time"
-
 	"k8s.io/client-go/rest"
 )
 
@@ -264,21 +261,6 @@ func (p *PrometheusHelper) DeletePod(label string, namespace string) error {
 	return nil
 }
 
-func (p *PrometheusHelper) ListDeployment(labels, namespace string) (*appsV1.DeploymentList, error)  {
-	return p.KubeApi.AppsV1().Deployments(namespace).List(metav1.ListOptions{
-		LabelSelector: labels,
-	})
-}
-
-func (p *PrometheusHelper) UpdateDeployment(dep *appsV1.Deployment, namespace string) error {
-	_, err := p.KubeApi.AppsV1().Deployments(namespace).Update(dep)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (p *PrometheusHelper) CreateAMTempConfigMap(name string, namespace string) error {
 	cm := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -328,40 +310,6 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, names
 	config.Templates = append(config.Templates, keptnAlertConfig.Templates...)
 	config.Route.Routes = append(config.Route.Routes, keptnAlertConfig.Route.Routes...)
 	getCM.Data[filename] = fmt.Sprint(config)
-	
+
 	return p.UpdateConfigMap(getCM, namespace)
 }
-
-func (p *PrometheusHelper) UpdateAMDeploymentVolumeMount(label string, filename string, namespace string) error {
-	deploy_list, err := p.ListDeployment(label, namespace)
-	if err != nil {
-		return nil
-	}
-
-	volume_name := "templates-volume-" + time.Now().Format(time.RFC850)
-	for _, deploy := range deploy_list.Items {
-		deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: volume_name,
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
-						Name: filename,
-					},
-				},
-			},
-		})
-
-		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name: volume_name,
-			MountPath: "/etc/"+ filename,
-		})
-
-		err = p.UpdateDeployment(&deploy, namespace)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-

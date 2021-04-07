@@ -6,7 +6,6 @@ require (
 	cloud.google.com/go v0.44.1 // indirect
 	github.com/OneOfOne/xxhash v1.2.5 // indirect
 	github.com/armon/go-metrics v0.0.0-20190430140413-ec5e00d3c878 // indirect
-	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 // indirect
 	github.com/cloudevents/sdk-go/v2 v2.3.1
 	github.com/evanphx/json-patch v4.5.0+incompatible // indirect
 	github.com/google/uuid v1.2.0

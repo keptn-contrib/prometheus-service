@@ -35,15 +35,15 @@ const environmentEnvName = "env"
 const sliResourceURI = "prometheus/sli.yaml"
 
 type envConfig struct {
-	PrometheusNamespace string `envconfig:"PROMETHEUS_NS" default:""`
-	PrometheusConfigMap string `envconfig:"PROMETHEUS_CM" default:""`
-	PrometheusLabels string `envconfig:"PROMETHEUS_LABELS" default:""`
-	AlertManagerLabels string `envconfig:"ALERT_MANAGER_LABELS" default:""`
-	AlertManagerNamespace string `envconfig:"ALERT_MANAGER_NS" default:""`
-	AlertManagerConfigMap string `envconfig:"ALERT_MANAGER_CM" default:""`
+	PrometheusNamespace           string `envconfig:"PROMETHEUS_NS" default:""`
+	PrometheusConfigMap           string `envconfig:"PROMETHEUS_CM" default:""`
+	PrometheusLabels              string `envconfig:"PROMETHEUS_LABELS" default:""`
+	AlertManagerLabels            string `envconfig:"ALERT_MANAGER_LABELS" default:""`
+	AlertManagerNamespace         string `envconfig:"ALERT_MANAGER_NS" default:""`
+	AlertManagerConfigMap         string `envconfig:"ALERT_MANAGER_CM" default:""`
 	AlertManagerTemplateConfigMap string `envconfig:"ALERT_MANAGER_TEMPLATE_CM" default:"alertmanager-templates"`
-	PrometheusConfigFileName string `envconfig:"PROMETHEUS_CONFIG_FILENAME" default:"prometheus.yml"`
-	AlertManagerConfigFileName string `envconfig:"ALERT_MANAGER_CONFIG_FILENAME" default:"alertmanager.yml"`
+	PrometheusConfigFileName      string `envconfig:"PROMETHEUS_CONFIG_FILENAME" default:"prometheus.yml"`
+	AlertManagerConfigFileName    string `envconfig:"ALERT_MANAGER_CONFIG_FILENAME" default:"alertmanager.yml"`
 }
 
 // ConfigureMonitoringEventHandler is responsible for processing configure monitoring events
@@ -202,16 +202,11 @@ func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager() erro
 	eh.logger.Info("Configuring Prometheus AlertManager...")
 	prometheusHelper, err := utils.NewPrometheusHelper()
 
-	//err = prometheusHelper.CreateAMTempConfigMap(env.AlertManagerTemplateConfigMap, env.AlertManagerNamespace)
-	//if err != nil {
-	//	return err
-	//}
-
-	//eh.logger.Info("Updating Prometheus AlertManager volume mount")
-	//err = prometheusHelper.UpdateAMDeploymentVolumeMount(env.AlertManagerLabels, env.AlertManagerTemplateConfigMap, env.AlertManagerNamespace)
-	//if err != nil {
-	//	return err
-	//}
+	eh.logger.Info("Creating Prometheus AlertManager Template configmap...")
+	err = prometheusHelper.CreateAMTempConfigMap(env.AlertManagerTemplateConfigMap, env.AlertManagerNamespace)
+	if err != nil {
+		return err
+	}
 
 	eh.logger.Info("Updating Prometheus AlertManager configmap...")
 	err = prometheusHelper.UpdateAMConfigMap(env.AlertManagerConfigMap, env.AlertManagerConfigFileName, env.AlertManagerNamespace)

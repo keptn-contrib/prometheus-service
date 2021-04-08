@@ -1,32 +1,8 @@
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: monitoring
-
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: keptn-prometheus-service
   namespace: keptn
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: keptn-create-get-monitoring-namespace
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - namespaces
-    verbs:
-      - get
-      - update
-    resourceNames:
-      - "monitoring"
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -44,7 +20,6 @@ rules:
       - update
     resourceNames:
       - "prometheus"
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -73,55 +48,6 @@ rules:
       - watch
   - nonResourceURLs: [ "/metrics" ]
     verbs: [ "get" ]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: keptn-prometheus-service
-  namespace: monitoring
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - services
-      - configmaps
-    verbs:
-      - get
-      - create
-      - update
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-    verbs:
-      - get
-      - create
-      - update
-      - delete
-  - apiGroups:
-      - "apps"
-    resources:
-      - deployments
-    verbs:
-      - create
-      - update
-      - get
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: keptn-prometheus-service-get-monitoring-ns
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: keptn-create-get-monitoring-namespace
-subjects:
-  - kind: ServiceAccount
-    name: keptn-prometheus-service
-    namespace: keptn
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -148,22 +74,6 @@ subjects:
   - kind: ServiceAccount
     name: keptn-prometheus-service
     namespace: keptn
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: keptn-prometheus-service
-  namespace: monitoring
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: keptn-prometheus-service
-subjects:
-  - kind: ServiceAccount
-    name: keptn-prometheus-service
-    namespace: keptn
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -178,8 +88,6 @@ subjects:
   - kind: ServiceAccount
     name: keptn-prometheus-service
     namespace: keptn
-
-
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -217,6 +125,24 @@ spec:
               value: 'http://localhost:8082/event'
             - name: API
               value: 'ws://api-service:8080/websocket'
+            - name: PROMETHEUS_NS
+              value: 'default'
+            - name: PROMETHEUS_CM
+              value: 'prometheus-server'
+            - name: PROMETHEUS_LABELS
+              value: 'component=server'
+            - name: PROMETHEUS_CONFIG_FILENAME
+              value: 'prometheus.yml'
+            - name: ALERT_MANAGER_CONFIG_FILENAME
+              value: 'alertmanager.yml'
+            - name: ALERT_MANAGER_CM
+              value: 'prometheus-alertmanager'
+            - name: ALERT_MANAGER_LABELS
+              value: 'component=alertmanager'
+            - name: ALERT_MANAGER_NS
+              value: 'default'
+            - name: ALERT_MANAGER_TEMPLATE_CM
+              value: 'alertmanager-templates'
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:

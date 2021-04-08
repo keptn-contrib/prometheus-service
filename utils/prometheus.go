@@ -1,15 +1,14 @@
 package utils
 
 import (
+	"errors"
+	"fmt"
+	alertConfig "github.com/prometheus/alertmanager/config"
 	"gopkg.in/yaml.v2"
-	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/rbac/v1beta1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const alertManagerYml = `global:
@@ -32,135 +31,6 @@ receivers:
 - name: keptn_integration
   webhook_configs:
   - url: http://prometheus-service.keptn.svc.cluster.local:8080`
-
-const prometheusYml = `global:
-  scrape_interval: 5s
-  evaluation_interval: 5s
-rule_files:
-  - /etc/prometheus/prometheus.rules
-alerting:
-  alertmanagers:
-  - scheme: http
-    static_configs:
-    - targets:
-      - "alertmanager.monitoring.svc:9093"
-
-scrape_configs:
-  - job_name: 'kubernetes-apiservers'
-
-    kubernetes_sd_configs:
-    - role: endpoints
-    scheme: https
-
-    tls_config:
-      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-
-    relabel_configs:
-    - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
-      action: keep
-      regex: default;kubernetes;https
-
-  - job_name: 'kubernetes-nodes'
-
-    scheme: https
-
-    tls_config:
-      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-
-    kubernetes_sd_configs:
-    - role: node
-
-    relabel_configs:
-    - action: labelmap
-      regex: __meta_kubernetes_node_label_(.+)
-    - target_label: __address__
-      replacement: kubernetes.default.svc:443
-    - source_labels: [__meta_kubernetes_node_name]
-      regex: (.+)
-      target_label: __metrics_path__
-      replacement: /api/v1/nodes/${1}/proxy/metrics
-
-  
-  - job_name: 'kubernetes-pods'
-
-    kubernetes_sd_configs:
-    - role: pod
-
-    relabel_configs:
-    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-      action: keep
-      regex: true
-    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-      action: replace
-      target_label: __metrics_path__
-      regex: (.+)
-    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-      action: replace
-      regex: ([^:]+)(?::\d+)?;(\d+)
-      replacement: $1:$2
-      target_label: __address__
-    - action: labelmap
-      regex: __meta_kubernetes_pod_label_(.+)
-    - source_labels: [__meta_kubernetes_namespace]
-      action: replace
-      target_label: kubernetes_namespace
-    - source_labels: [__meta_kubernetes_pod_name]
-      action: replace
-      target_label: kubernetes_pod_name
-
-  - job_name: 'kubernetes-cadvisor'
-
-    scheme: https
-
-    tls_config:
-      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-
-    kubernetes_sd_configs:
-    - role: node
-
-    relabel_configs:
-    - action: labelmap
-      regex: __meta_kubernetes_node_label_(.+)
-    - target_label: __address__
-      replacement: kubernetes.default.svc:443
-    - source_labels: [__meta_kubernetes_node_name]
-      regex: (.+)
-      target_label: __metrics_path__
-      replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
-  
-  - job_name: 'kubernetes-service-endpoints'
-
-    kubernetes_sd_configs:
-    - role: endpoints
-
-    relabel_configs:
-    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
-      action: keep
-      regex: true
-    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
-      action: replace
-      target_label: __scheme__
-      regex: (https?)
-    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
-      action: replace
-      target_label: __metrics_path__
-      regex: (.+)
-    - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
-      action: replace
-      target_label: __address__
-      regex: ([^:]+)(?::\d+)?;(\d+)
-      replacement: $1:$2
-    - action: labelmap
-      regex: __meta_kubernetes_service_label_(.+)
-    - source_labels: [__meta_kubernetes_namespace]
-      action: replace
-      target_label: kubernetes_namespace
-    - source_labels: [__meta_kubernetes_service_name]
-      action: replace
-      target_label: kubernetes_name`
 
 const alertManagerDefaultTemplate = `{{ define "__alertmanager" }}AlertManager{{ end }}
 {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver }}{{ end }}
@@ -329,7 +199,7 @@ Alerts Resolved:
 
 const alertManagerSlackTemplate = `{{ define "slack.devops.text" }}
 {{range .Alerts}}{{.Annotations.DESCRIPTION}}
-{{end}}
+{{end}}alertmanager-templates
 {{ end }}`
 
 type PrometheusHelper struct {
@@ -343,26 +213,47 @@ func NewPrometheusHelper() (*PrometheusHelper, error) {
 	if err != nil {
 		return nil, err
 	}
-	clientset, err := kubernetes.NewForConfig(config)
+	clientSet, err := kubernetes.NewForConfig(config)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &PrometheusHelper{KubeApi: clientset}, nil
+	return &PrometheusHelper{KubeApi: clientSet}, nil
 }
 
-// CreateOrUpdatePrometheusNamespace creates or updates the Prometheus namespace
-func (p *PrometheusHelper) CreateOrUpdatePrometheusNamespace() error {
-	namespace := &v1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "monitoring",
-		},
-	}
-	_, err := p.KubeApi.CoreV1().Namespaces().Create(namespace)
-
+func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) error {
+	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Update(cm)
 	if err != nil {
-		_, err = p.KubeApi.CoreV1().Namespaces().Update(namespace)
+		return err
+	}
+
+	return nil
+}
+
+func (p *PrometheusHelper) GetConfigMap(name string, namespace string) (*v1.ConfigMap, error) {
+	return p.KubeApi.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+}
+
+func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) error {
+	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Create(cm)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *PrometheusHelper) DeletePod(label string, namespace string) error {
+	pod_list, err := p.KubeApi.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		LabelSelector: label,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, pod := range pod_list.Items {
+		err := p.KubeApi.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}
@@ -370,256 +261,11 @@ func (p *PrometheusHelper) CreateOrUpdatePrometheusNamespace() error {
 	return nil
 }
 
-// CreateOrUpdatePrometheusConfigMap creates or updates the Prometheus config map
-func (p *PrometheusHelper) CreateOrUpdatePrometheusConfigMap() error {
+func (p *PrometheusHelper) CreateAMTempConfigMap(name string, namespace string) error {
 	cm := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus-server-conf",
-			Namespace: "monitoring",
-			Labels:    map[string]string{},
-		},
-		Data: map[string]string{},
-	}
-	cm.ObjectMeta.Labels["name"] = "prometheus-server-conf"
-
-	var configYaml interface{}
-	err := yaml.Unmarshal([]byte(prometheusYml), &configYaml)
-	if err != nil {
-		return err
-	}
-	yamlString, err := yaml.Marshal(configYaml)
-	if err != nil {
-		return err
-	}
-	cm.Data["prometheus.yml"] = string(yamlString)
-
-	return p.createOrUpdateConfigMap(cm)
-}
-
-// CreateOrUpdatePrometheusConfigMap creates or updates the Prometheus config map
-func (p *PrometheusHelper) CreateOrUpdatePrometheusClusterRole() error {
-	role := &v1beta1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "prometheus",
-		},
-		Rules: []v1beta1.PolicyRule{
-			{
-				Verbs:     []string{"get", "list", "watch"},
-				APIGroups: []string{""},
-				Resources: []string{"nodes", "nodes/proxy", "services", "endpoints", "pods"},
-			},
-			{
-				Verbs:     []string{"get", "list", "watch"},
-				APIGroups: []string{"extensions"},
-				Resources: []string{"ingresses"},
-			},
-			{
-				Verbs:           []string{"get"},
-				NonResourceURLs: []string{"/metrics"},
-			},
-		},
-	}
-	_, err := p.KubeApi.RbacV1beta1().ClusterRoles().Create(role)
-	if err != nil {
-		_, err := p.KubeApi.RbacV1beta1().ClusterRoles().Update(role)
-		if err != nil {
-			return err
-		}
-	}
-
-	binding := &v1beta1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "prometheus",
-		},
-		Subjects: []v1beta1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      "default",
-				Namespace: "monitoring",
-			},
-		},
-		RoleRef: v1beta1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "ClusterRole",
-			Name:     "prometheus",
-		},
-	}
-	_, err = p.KubeApi.RbacV1beta1().ClusterRoleBindings().Create(binding)
-
-	if err != nil {
-		_, err = p.KubeApi.RbacV1beta1().ClusterRoleBindings().Update(binding)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// CreateOrUpdatePrometheusDeployment creates or updates the Prometheus config map
-func (p *PrometheusHelper) CreateOrUpdatePrometheusDeployment() error {
-	deployment := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus-deployment",
-			Namespace: "monitoring",
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "prometheus-server",
-				},
-			},
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "prometheus-server",
-					},
-				},
-				Spec: v1.PodSpec{
-					Volumes: []v1.Volume{
-						{
-							Name: "prometheus-config-volume",
-							VolumeSource: v1.VolumeSource{
-								ConfigMap: &v1.ConfigMapVolumeSource{
-									LocalObjectReference: v1.LocalObjectReference{
-										Name: "prometheus-server-conf",
-									},
-									DefaultMode: int32Ptr(420),
-								},
-							},
-						},
-						{
-							Name: "prometheus-storage-volume",
-							VolumeSource: v1.VolumeSource{
-								EmptyDir: &v1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					Containers: []v1.Container{
-						{
-							Name:  "prometheus",
-							Image: "prom/prometheus:v2.12.0",
-							Args:  []string{"--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus/"},
-							Ports: []v1.ContainerPort{
-								{
-									ContainerPort: 9090,
-								},
-							},
-							VolumeMounts: []v1.VolumeMount{
-								{
-									Name:      "prometheus-config-volume",
-									MountPath: "/etc/prometheus/",
-								},
-								{
-									Name:      "prometheus-storage-volume",
-									MountPath: "/prometheus/",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	err := p.createOrUpdateDeployment(deployment)
-	if err != nil {
-		return err
-	}
-
-	service := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus-service",
-			Namespace: "monitoring",
-			Annotations: map[string]string{
-				"prometheus.io/scrape": "true",
-				"prometheus.io/path":   "/",
-				"prometheus.io.port":   "8080",
-			},
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Port: 8080,
-					TargetPort: intstr.IntOrString{
-						IntVal: 9090,
-						Type:   intstr.Int,
-					},
-					NodePort: 30000,
-				},
-			},
-			Selector: map[string]string{
-				"app": "prometheus-server",
-			},
-			Type: "NodePort",
-		},
-	}
-	return p.createOrUpdateService(service)
-}
-
-func (p *PrometheusHelper) createOrUpdateService(service *v1.Service) error {
-	_, err := p.KubeApi.CoreV1().Services("monitoring").Create(service)
-	if err != nil {
-		_, err = p.KubeApi.CoreV1().Services("monitoring").Update(service)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (p *PrometheusHelper) createOrUpdateDeployment(deployment *appsv1.Deployment) error {
-	_, err := p.KubeApi.AppsV1().Deployments("monitoring").Create(deployment)
-	if err != nil {
-		_, err := p.KubeApi.AppsV1().Deployments("monitoring").Update(deployment)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// CreateOrUpdateAlertManagerConfigMap creates or updates the Prometheus config map
-func (p *PrometheusHelper) CreateOrUpdateAlertManagerConfigMap() error {
-	cm := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "alertmanager-config",
-			Namespace: "monitoring",
-		},
-		Data: map[string]string{},
-	}
-
-	var configYaml interface{}
-	err := yaml.Unmarshal([]byte(alertManagerYml), &configYaml)
-	if err != nil {
-		return err
-	}
-	yamlString, err := yaml.Marshal(configYaml)
-	if err != nil {
-		return err
-	}
-	cm.Data["config.yml"] = string(yamlString)
-
-	return p.createOrUpdateConfigMap(cm)
-}
-
-func (p *PrometheusHelper) createOrUpdateConfigMap(cm *v1.ConfigMap) error {
-	_, err := p.KubeApi.CoreV1().ConfigMaps("monitoring").Create(cm)
-	if err != nil {
-		_, err := p.KubeApi.CoreV1().ConfigMaps("monitoring").Update(cm)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// CreateOrUpdateAlertManagerTemplatesConfigMap creates or updates the Prometheus config map
-func (p *PrometheusHelper) CreateOrUpdateAlertManagerTemplatesConfigMap() error {
-	cm := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "alertmanager-templates",
-			Namespace: "monitoring",
+			Name:      name,
+			Namespace: namespace,
 		},
 		Data: map[string]string{},
 	}
@@ -627,130 +273,43 @@ func (p *PrometheusHelper) CreateOrUpdateAlertManagerTemplatesConfigMap() error 
 	cm.Data["default.tmpl"] = alertManagerDefaultTemplate
 	cm.Data["slack.tmpl"] = alertManagerSlackTemplate
 
-	return p.createOrUpdateConfigMap(cm)
+	return p.CreateConfigMap(cm, namespace)
 }
 
-// CreateOrUpdateAlertManagerDeployment creates or updates the Prometheus config map
-func (p *PrometheusHelper) CreateOrUpdateAlertManagerDeployment() error {
-	deployment := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "alertmanager",
-			Namespace: "monitoring",
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "alertmanager",
-				},
-			},
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "alertmanager",
-					},
-				},
-				Spec: v1.PodSpec{
-					Volumes: []v1.Volume{
-						{
-							Name: "config-volume",
-							VolumeSource: v1.VolumeSource{
-								ConfigMap: &v1.ConfigMapVolumeSource{
-									LocalObjectReference: v1.LocalObjectReference{
-										Name: "alertmanager-config",
-									},
-								},
-							},
-						},
-						{
-							Name: "templates-volume",
-							VolumeSource: v1.VolumeSource{
-								ConfigMap: &v1.ConfigMapVolumeSource{
-									LocalObjectReference: v1.LocalObjectReference{
-										Name: "alertmanager-templates",
-									},
-								},
-							},
-						},
-						{
-							Name: "alertmanager",
-							VolumeSource: v1.VolumeSource{
-								EmptyDir: &v1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					Containers: []v1.Container{
-						{
-							Name:  "alertmanager",
-							Image: "prom/alertmanager:latest",
-							Args: []string{
-								"--config.file=/etc/alertmanager/config.yml",
-								"--storage.path=/alertmanager",
-							},
-							Ports: []v1.ContainerPort{
-								{
-									Name:          "alertmanager",
-									ContainerPort: 9093,
-								},
-							},
-							VolumeMounts: []v1.VolumeMount{
-								{
-									Name:      "config-volume",
-									MountPath: "/etc/alertmanager",
-								},
-								{
-									Name:      "templates-volume",
-									MountPath: "/etc/alertmanager-templates",
-								},
-								{
-									Name:      "alertmanager",
-									MountPath: "/alertmanager",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	err := p.createOrUpdateDeployment(deployment)
+func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, namespace string) error {
+	getCM, err := p.GetConfigMap(name, namespace)
 	if err != nil {
 		return err
 	}
-	return nil
-}
 
-// CreateOrUpdateAlertManagerService creates or updates the Prometheus config map
-func (p *PrometheusHelper) CreateOrUpdateAlertManagerService() error {
-	service := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "alertmanager",
-			Namespace: "monitoring",
-			Annotations: map[string]string{
-				"prometheus.io/scrape": "true",
-				"prometheus.io/path":   "/",
-				"prometheus.io.port":   "8080",
-			},
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Port: 9093,
-					TargetPort: intstr.IntOrString{
-						IntVal: 9093,
-						Type:   intstr.Int,
-					},
-					NodePort: 31000,
-				},
-			},
-			Selector: map[string]string{
-				"app": "alertmanager",
-			},
-			Type: "NodePort",
-		},
+	var config alertConfig.Config
+	err = yaml.Unmarshal([]byte(getCM.Data[filename]), &config)
+	if err != nil {
+		return err
 	}
 
-	return p.createOrUpdateService(service)
-}
+	var keptnAlertConfig alertConfig.Config
+	err = yaml.Unmarshal([]byte(alertManagerYml), &keptnAlertConfig)
+	if err != nil {
+		return err
+	}
 
-func int32Ptr(i int32) *int32 { return &i }
+	for _, rec := range config.Receivers {
+		if rec.Name == "keptn_integration" {
+			return errors.New("keptn_integration reciever is already present")
+		}
+	}
+
+	for _, route := range config.Route.Routes {
+		if route.Receiver == "keptn_integration" {
+			return errors.New("keptn_integration reciever is already present in routes")
+		}
+	}
+
+	config.Receivers = append(config.Receivers, keptnAlertConfig.Receivers...)
+	config.Templates = append(config.Templates, keptnAlertConfig.Templates...)
+	config.Route.Routes = append(config.Route.Routes, keptnAlertConfig.Route.Routes...)
+	getCM.Data[filename] = fmt.Sprint(config)
+
+	return p.UpdateConfigMap(getCM, namespace)
+}

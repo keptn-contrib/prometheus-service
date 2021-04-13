@@ -85,9 +85,9 @@ keptn configure monitoring prometheus --project=sockshop --service=carts
 
 ### Optional: Verify Prometheus setup in your cluster
 
-* To verify that the Prometheus scrape jobs are correctly set up, you can access Prometheus by enabling port-forwarding for the prometheus-service:
+* To verify that the Prometheus scrape jobs are correctly set up, you can access Prometheus by enabling port-forwarding for the prometheus-server:
 ```bash
-kubectl port-forward svc/prometheus-service 8080 -n <PROMETHEUS_NS>
+kubectl port-forward svc/prometheus-server 8080 -n <PROMETHEUS_NS>
 ```
 
 Prometheus is then available on [localhost:8080/targets](http://localhost:8080/targets) where you can see the targets for the service.

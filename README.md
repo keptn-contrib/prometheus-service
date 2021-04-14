@@ -24,7 +24,7 @@ Please always double check the version of Keptn you are using compared to the ve
 |       0.7.2      | keptncontrib/prometheus-service:0.3.6  |
 |   0.8.0-alpha    | keptncontrib/prometheus-service:0.4.0-alpha  |
 |   0.8.0    | keptncontrib/prometheus-service:0.4.0  |
-|   0.8.x    | keptncontrib/prometheus-service:0.5.0  |
+|   0.8.1    | keptncontrib/prometheus-service:0.5.0  |
 
 
 ## Setup Prometheus Monitoring

@@ -6,12 +6,12 @@
 The *prometheus-service* is a [Keptn](https://keptn.sh) service that is responsible for
 
 1. configuring Prometheus for monitoring services managed by Keptn, and
-1. receiving alerts from Prometheus Alertmanager and translating the alert payload to a cloud event that is sent to the Keptn eventbroker.
+1. receiving alerts from Prometheus Alertmanager and translating the alert payload to a cloud event that is sent to the Keptn API.
 
 
 ## Compatibility Matrix
 
-Please always double check the version of Keptn you are using compared to the version of this service, and follow the compatibility matrix below.
+Please always double-check the version of Keptn you are using compared to the version of this service, and follow the compatibility matrix below.
 
 
 | Keptn Version    | [Prometheus Service Image](https://hub.docker.com/r/keptncontrib/prometheus-service/tags) |
@@ -24,7 +24,7 @@ Please always double check the version of Keptn you are using compared to the ve
 |       0.7.2      | keptncontrib/prometheus-service:0.3.6  |
 |   0.8.0-alpha    | keptncontrib/prometheus-service:0.4.0-alpha  |
 |   0.8.0    | keptncontrib/prometheus-service:0.4.0  |
-|   0.8.1    | keptncontrib/prometheus-service:0.5.0  |
+|   0.8.1, 0.8.2    | keptncontrib/prometheus-service:0.5.0  |
 
 
 ## Setup Prometheus Monitoring
@@ -98,5 +98,5 @@ You are welcome to contribute using Pull Requests against the **master** branch.
 
 # Travis-CI setup
 
-Travis is configured with CI to automatically build docker images for pull requests and commits. The  pipeline can be viewed at https://travis-ci.org/keptn-contrib/prometheus-service.
-The travis pipeline needs to be configured with the `REGISTRY_USER` and `REGISTRY_PASSWORD` variables. 
+Travis is configured with CI to automatically build docker images for pull requests and commits. The pipeline can be viewed at https://travis-ci.org/keptn-contrib/prometheus-service.
+The Travis pipeline needs to be configured with the `REGISTRY_USER` and `REGISTRY_PASSWORD` variables. 

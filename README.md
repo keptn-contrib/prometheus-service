@@ -66,7 +66,7 @@ Some environment variables have to set up in the prometheus-service deployment
 
 * Download the Keptn's Prometheus service manifest
 ```bash
-wget https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.4.0/deploy/service.yaml
+wget https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.5.0/deploy/service.yaml
 ```
 
 * Replace the environment variable value according to the use case and apply the manifest

@@ -36,7 +36,7 @@ const serviceName = "prometheus-sli-service"
 
 type envConfig struct {
 	// Port on which to listen for cloudevents
-	Port int    `envconfig:"RCV_PORT" default:"8081"`
+	Port int    `envconfig:"RCV_PORT" default:"8080"`
 	Path string `envconfig:"RCV_PATH" default:"/"`
 }
 
@@ -132,7 +132,7 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 	if json.Unmarshal(body, &event) != nil || event.Specversion == "" {
 		eventhandling.ProcessAndForwardAlertEvent(rw, body, logger, shkeptncontext)
 	} else {
-		proxyReq, err := http.NewRequest(req.Method, "http://localhost:8081", bytes.NewReader(body))
+		proxyReq, err := http.NewRequest(req.Method, "http://localhost:8080", bytes.NewReader(body))
 		proxyReq.Header.Set("Content-Type", "application/cloudevents+json")
 		resp, err := http.DefaultClient.Do(proxyReq)
 		if err != nil {
@@ -277,8 +277,8 @@ func getPrometheusApiURL(project string, kubeClient v1.CoreV1Interface, logger k
 	// return cluster-internal prometheus URL if no secret has been found
 	if err != nil {
 		logger.Info("could not retrieve or read secret: " + err.Error())
-		logger.Info("No external prometheus instance defined for project " + project + ". Using default: http://prometheus-service.monitoring.svc.cluster.local:8080")
-		return "http://prometheus-service.monitoring.svc.cluster.local:8080", nil
+		logger.Info("No external prometheus instance defined for project " + project + ". Using default: http://prometheus-server.monitoring.svc.cluster.local:8080")
+		return "http://prometheus-server.monitoring.svc.cluster.local:8080", nil
 	}
 
 	pc := &prometheusCredentials{}

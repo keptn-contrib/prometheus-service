@@ -142,17 +142,18 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
+          imagePullPolicy: Always
           env:
             - name: METRICS_SCRAPE_PATH
               value: '/metrics'
             - name: CONFIGURATION_SERVICE
               value: 'http://configuration-service:8080'
             - name: EVENTBROKER
-              value: 'http://localhost:8082/event'
+              value: 'http://localhost:8081/event'
             - name: API
               value: 'ws://api-service:8080/websocket'
             - name: PROMETHEUS_NS
-              value: 'default'
+              value: 'monitoring'
             - name: PROMETHEUS_CM
               value: 'prometheus-server'
             - name: PROMETHEUS_LABELS
@@ -166,7 +167,7 @@ spec:
             - name: ALERT_MANAGER_LABELS
               value: 'component=alertmanager'
             - name: ALERT_MANAGER_NS
-              value: 'default'
+              value: 'monitoring'
             - name: ALERT_MANAGER_TEMPLATE_CM
               value: 'alertmanager-templates'
             - name: POD_NAMESPACE
@@ -174,7 +175,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
         - name: distributor
-          image: keptn/distributor:0.8.1
+          image: keptn/distributor:0.8.2
           ports:
             - containerPort: 8080
           resources:
@@ -184,15 +185,16 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "250m"
+          imagePullPolicy: Always
           env:
             - name: PUBSUB_URL
               value: 'nats://keptn-nats-cluster'
             - name: PUBSUB_TOPIC
               value: 'sh.keptn.event.monitoring.configure,sh.keptn.event.get-sli.triggered'
             - name: PUBSUB_RECIPIENT
-              value: '127.0.0.1'
-            - name: API_PROXY_PORT
-              value: '8082'
+              value: 'prometheus-service'
+#            - name: API_PROXY_PORT
+#              value: '8082'
       serviceAccountName: keptn-prometheus-service
 ---
 apiVersion: v1

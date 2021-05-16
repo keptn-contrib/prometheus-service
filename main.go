@@ -50,7 +50,10 @@ type ceTest struct {
 	Specversion string `json:"specversion" yaml:"specversion"`
 }
 
-var namespace = os.Getenv("POD_NAMESPACE")
+var (
+	namespace = os.Getenv("POD_NAMESPACE")
+	prometheusEndpoint = os.Getenv("PROMETHEUS_ENDPOINT")
+)
 
 func main() {
 	// listen on port 8080 for any event
@@ -277,8 +280,8 @@ func getPrometheusApiURL(project string, kubeClient v1.CoreV1Interface, logger k
 	// return cluster-internal prometheus URL if no secret has been found
 	if err != nil {
 		logger.Info("could not retrieve or read secret: " + err.Error())
-		logger.Info("No external prometheus instance defined for project " + project + ". Using default: http://prometheus-server.monitoring.svc.cluster.local:8080")
-		return "http://prometheus-server.monitoring.svc.cluster.local:8080", nil
+		logger.Info("No external prometheus instance defined for project " + project + ". Using default: " + prometheusEndpoint)
+		return prometheusEndpoint, nil
 	}
 
 	pc := &prometheusCredentials{}

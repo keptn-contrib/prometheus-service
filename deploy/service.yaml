@@ -132,7 +132,7 @@ spec:
     spec:
       containers:
         - name: prometheus-service
-          image: keptn/prometheus-service:ci
+          image: keptn/prometheus-service:0.5.0
           ports:
             - containerPort: 8080
           resources:
@@ -157,6 +157,8 @@ spec:
               value: 'prometheus-server'
             - name: PROMETHEUS_LABELS
               value: 'component=server'
+            - name: PROMETHEUS_ENDPOINT
+              value: "http://prometheus-server.monitoring.svc.cluster.local:80"
             - name: PROMETHEUS_CONFIG_FILENAME
               value: 'prometheus.yml'
             - name: ALERT_MANAGER_CONFIG_FILENAME

@@ -132,7 +132,7 @@ spec:
     spec:
       containers:
         - name: prometheus-service
-          image: imrajdas/prometheus-service:ci
+          image: keptn/prometheus-service:ci
           ports:
             - containerPort: 8080
           resources:
@@ -142,7 +142,6 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
-          imagePullPolicy: Always
           env:
             - name: METRICS_SCRAPE_PATH
               value: '/metrics'
@@ -185,7 +184,6 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "250m"
-          imagePullPolicy: Always
           env:
             - name: PUBSUB_URL
               value: 'nats://keptn-nats-cluster'
@@ -193,8 +191,6 @@ spec:
               value: 'sh.keptn.event.monitoring.configure,sh.keptn.event.get-sli.triggered'
             - name: PUBSUB_RECIPIENT
               value: 'prometheus-service'
-#            - name: API_PROXY_PORT
-#              value: '8082'
       serviceAccountName: keptn-prometheus-service
 ---
 apiVersion: v1

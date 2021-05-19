@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/serf v0.8.3 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/keptn/go-utils v0.8.0
+	github.com/keptn/go-utils v0.8.4
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
 	github.com/prometheus/alertmanager v0.21.0
 	github.com/prometheus/common v0.10.0

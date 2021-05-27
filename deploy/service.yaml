@@ -50,6 +50,32 @@ rules:
     verbs: [ "get" ]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keptn-read-secret-prometheus
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: keptn-prometheus-sli-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: keptn-read-secret-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: keptn-prometheus-service
+    namespace: keptn
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: keptn-create-prom-clusterrole
@@ -122,15 +148,17 @@ spec:
             - name: CONFIGURATION_SERVICE
               value: 'http://configuration-service:8080'
             - name: EVENTBROKER
-              value: 'http://localhost:8082/event'
+              value: 'http://localhost:8081/event'
             - name: API
               value: 'ws://api-service:8080/websocket'
             - name: PROMETHEUS_NS
-              value: 'default'
+              value: 'monitoring'
             - name: PROMETHEUS_CM
               value: 'prometheus-server'
             - name: PROMETHEUS_LABELS
               value: 'component=server'
+            - name: PROMETHEUS_ENDPOINT
+              value: "http://prometheus-server.monitoring.svc.cluster.local:80"
             - name: PROMETHEUS_CONFIG_FILENAME
               value: 'prometheus.yml'
             - name: ALERT_MANAGER_CONFIG_FILENAME
@@ -140,7 +168,7 @@ spec:
             - name: ALERT_MANAGER_LABELS
               value: 'component=alertmanager'
             - name: ALERT_MANAGER_NS
-              value: 'default'
+              value: 'monitoring'
             - name: ALERT_MANAGER_TEMPLATE_CM
               value: 'alertmanager-templates'
             - name: POD_NAMESPACE
@@ -148,7 +176,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
         - name: distributor
-          image: keptn/distributor:0.8.1
+          image: keptn/distributor:0.8.2
           ports:
             - containerPort: 8080
           resources:
@@ -162,11 +190,9 @@ spec:
             - name: PUBSUB_URL
               value: 'nats://keptn-nats-cluster'
             - name: PUBSUB_TOPIC
-              value: 'sh.keptn.event.monitoring.configure'
+              value: 'sh.keptn.event.monitoring.configure,sh.keptn.event.get-sli.triggered'
             - name: PUBSUB_RECIPIENT
-              value: '127.0.0.1'
-            - name: API_PROXY_PORT
-              value: '8082'
+              value: 'prometheus-service'
       serviceAccountName: keptn-prometheus-service
 ---
 apiVersion: v1

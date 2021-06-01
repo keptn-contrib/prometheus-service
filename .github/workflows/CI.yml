@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.3.4
         with:
           fetch-depth: 0 # need to checkout "all commits" for certain features to work (e.g., get all changed files)
 
@@ -49,7 +49,7 @@ jobs:
 
       - name: 'Get Previous tag'
         id: get_previous_tag
-        uses: "WyriHaximus/github-action-get-previous-tag@v1.0.1"
+        uses: "WyriHaximus/github-action-get-previous-tag@v1.1"
       - name: 'Get next patch version'
         id: get_next_semver_tag
         uses: "WyriHaximus/github-action-next-semvers@v1.1"
@@ -103,7 +103,7 @@ jobs:
         with:
           go-version: ^1.13
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.3.4
 
       - name: Load CI Environment from .ci_env
         id: load_ci_env
@@ -130,7 +130,7 @@ jobs:
       GIT_SHA: ${{ needs.prepare_ci_run.outputs.GIT_SHA }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.3.4
 
       - name: Load CI Environment from .ci_env
         id: load_ci_env
@@ -144,7 +144,7 @@ jobs:
         if: (github.event_name == 'push') || (github.event.pull_request.head.repo.full_name == github.repository)
         # note: GH does not allow to access secrets for PRs from a forked repositories due to security reasons
         # that's fine, but it means we can't push images to dockerhub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v1.9.0
         with:
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
@@ -170,7 +170,7 @@ jobs:
         # This only works for PRs coming from inside of the repo, not from forks
         name: Report Docker Build to PR
         if: (github.event_name == 'pull_request') && (github.event.pull_request.head.repo.full_name == github.repository)
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v2.1.0
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           path: docker_build_report_final.txt

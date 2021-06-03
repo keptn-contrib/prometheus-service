@@ -15,9 +15,8 @@ require (
 	github.com/hashicorp/serf v0.8.3 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/keptn/go-utils v0.8.4
-	github.com/mitchellh/mapstructure v1.2.2 // indirect
-	github.com/prometheus/alertmanager v0.21.0
-	github.com/prometheus/common v0.10.0
+	github.com/prometheus/alertmanager v0.22.2
+	github.com/prometheus/common v0.23.0
 	github.com/prometheus/prometheus v0.0.0-20200326161412-ae041f97cfc6
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0

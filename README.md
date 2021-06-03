@@ -11,13 +11,13 @@ The *prometheus-service* is a [Keptn](https://keptn.sh) service that is responsi
    (`prometheus-service.monitoring.svc.cluster.local:8080`), but it can also be configured to use any reachable Prometheus endpoint using basic authentication by providing the credentials
    via a secret in the `keptn` namespace of the cluster.
 
-The supported default SLIs are:
-
-- throughput
-- error_rate
-- response_time_p50
-- response_time_p90
-- response_time_p95
+    The supported default SLIs are:
+    
+    - throughput
+    - error_rate
+    - response_time_p50
+    - response_time_p90
+    - response_time_p95
 
 The provided SLIs are based on the [RED metrics](https://grafana.com/files/grafanacon_eu_2018/Tom_Wilkie_GrafanaCon_EU_2018.pdf)
 

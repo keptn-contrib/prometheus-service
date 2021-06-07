@@ -37,7 +37,7 @@ Please always double-check the version of Keptn you are using compared to the ve
 |   0.8.0-alpha    | keptncontrib/prometheus-service:0.4.0-alpha  |
 |   0.8.0    | keptncontrib/prometheus-service:0.4.0  |
 |   0.8.1, 0.8.2    | keptncontrib/prometheus-service:0.5.0  |
-
+|   0.8.1 - 0.8.3    | keptncontrib/prometheus-service:0.6.0  |
 
 ## Setup Prometheus Monitoring
 
@@ -78,7 +78,7 @@ Some environment variables have to set up in the prometheus-service deployment
 
 * Download the Keptn's Prometheus service manifest
 ```bash
-wget https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.5.0/deploy/service.yaml
+wget https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.6.0/deploy/service.yaml
 ```
 
 * Replace the environment variable value according to the use case and apply the manifest
@@ -88,7 +88,7 @@ kubectl apply -f service.yaml
 
 * Install Role and Rolebinding to permit Keptn's prometheus-service for performing operations in the Prometheus installed namespace.
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.4.0/deploy/role.yaml -n <PROMETHEUS_NS>
+kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.6.0/deploy/role.yaml -n <PROMETHEUS_NS>
 ```
 
 * Execute the following command to install Prometheus and set up the rules for the *Prometheus Alerting Manager*:

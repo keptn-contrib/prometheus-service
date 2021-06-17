@@ -35,9 +35,11 @@ Please always double-check the version of Keptn you are using compared to the ve
 |   0.7.0, 0.7.1   | keptncontrib/prometheus-service:0.3.5  |
 |       0.7.2      | keptncontrib/prometheus-service:0.3.6  |
 |   0.8.0-alpha    | keptncontrib/prometheus-service:0.4.0-alpha  |
-|   0.8.0    | keptncontrib/prometheus-service:0.4.0  |
-|   0.8.1, 0.8.2    | keptncontrib/prometheus-service:0.5.0  |
-|   0.8.1 - 0.8.3    | keptncontrib/prometheus-service:0.6.0  |
+|   0.8.0          | keptncontrib/prometheus-service:0.4.0  |
+|   0.8.1, 0.8.2   | keptncontrib/prometheus-service:0.5.0  |
+|   0.8.1 - 0.8.3  | keptncontrib/prometheus-service:0.6.0  |
+|       0.8.4      | keptncontrib/prometheus-service:0.6.1  |
+
 
 ## Setup Prometheus Monitoring
 
@@ -78,7 +80,7 @@ Some environment variables have to set up in the prometheus-service deployment
 
 * Download the Keptn's Prometheus service manifest
 ```bash
-wget https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.6.0/deploy/service.yaml
+wget https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.6.1/deploy/service.yaml
 ```
 
 * Replace the environment variable value according to the use case and apply the manifest
@@ -88,7 +90,7 @@ kubectl apply -f service.yaml
 
 * Install Role and Rolebinding to permit Keptn's prometheus-service for performing operations in the Prometheus installed namespace.
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.6.0/deploy/role.yaml -n <PROMETHEUS_NS>
+kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.6.1/deploy/role.yaml -n <PROMETHEUS_NS>
 ```
 
 * Execute the following command to install Prometheus and set up the rules for the *Prometheus Alerting Manager*:
@@ -163,7 +165,7 @@ Users can override the predefined queries, as well as add custom queries by crea
       response_time_p95: histogram_quantile(0.95, sum by(le) (rate(http_response_time_milliseconds_bucket{handler="ItemsController.addToCart",job="$SERVICE-$PROJECT-$STAGE-canary"}[$DURATION_SECONDS])))
     ```
 
-* To store this configuration, you need to add this file to a Keptn's configuration store. This is done by using the Keptn CLI with the [add-resource](https://keptn.sh/docs/0.6.0/reference/cli/#keptn-add-resource) command.
+* To store this configuration, you need to add this file to a Keptn's configuration store. This is done by using the Keptn CLI with the [keptn add-resource](https://keptn.sh/docs/0.8.x/reference/cli/commands/keptn_add-resource/) command (see [SLI Provider](https://keptn.sh/docs/0.8.x/quality_gates/sli-provider/) for more information).
 
 ---
 

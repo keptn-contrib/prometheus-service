@@ -129,10 +129,12 @@ spec:
     metadata:
       labels:
         run: prometheus-service
+        app.kubernetes.io/name: prometheus-service
+        app.kubernetes.io/version: 0.6.1
     spec:
       containers:
         - name: prometheus-service
-          image: keptncontrib/prometheus-service:0.6.0
+          image: keptncontrib/prometheus-service:0.6.1
           ports:
             - containerPort: 8080
           resources:
@@ -176,7 +178,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
         - name: distributor
-          image: keptn/distributor:0.8.3
+          image: keptn/distributor:0.8.4
           ports:
             - containerPort: 8080
           resources:
@@ -193,6 +195,31 @@ spec:
               value: 'sh.keptn.event.monitoring.configure,sh.keptn.event.get-sli.triggered'
             - name: PUBSUB_RECIPIENT
               value: 'prometheus-service'
+            - name: VERSION
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: 'metadata.labels[''app.kubernetes.io/version'']'
+            - name: K8S_DEPLOYMENT_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: 'metadata.labels[''app.kubernetes.io/name'']'
+            - name: K8S_POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
       serviceAccountName: keptn-prometheus-service
 ---
 apiVersion: v1

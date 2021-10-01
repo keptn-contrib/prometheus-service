@@ -49,15 +49,15 @@ type annotations struct {
 	Description string `json:"descriptions,omitempty"`
 }
 
-type EventData struct {
+type eventData struct {
 	Project     string            `json:"project,omitempty"`
 	Stage       string            `json:"stage,omitempty"`
 	Service     string            `json:"service,omitempty"`
 	Labels      map[string]string `json:"labels"`
-	Problem     ProblemData       `json:"problem"`
+	Problem     problemData       `json:"problem"`
 }
 
-type ProblemData struct {
+type problemData struct {
 	State          string          `json:"State,omitempty"`
 	ProblemID      string          `json:"ProblemID"`
 	ProblemTitle   string          `json:"ProblemTitle"`
@@ -85,7 +85,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		return
 	}
 
-	problemData := ProblemData{
+	newProblemData := problemData{
 		State:          problemState,
 		ProblemID:      "",
 		ProblemTitle:   event.Alerts[0].Annotations.Summary,
@@ -94,11 +94,11 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		ImpactedEntity: event.Alerts[0].Labels.PodName,
 	}
 
-	newProblemData := EventData{
+	newEventData := eventData{
 		Project:        event.Alerts[0].Labels.Project,
 		Stage:          event.Alerts[0].Labels.Stage,
 		Service:        event.Alerts[0].Labels.Service,
-		Problem:        problemData,
+		Problem:        newProblemData,
 	}
 
 	if event.Alerts[0].Fingerprint != "" {
@@ -106,7 +106,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 	}
 
 	logger.Debug("Sending event to eventbroker")
-	err = createAndSendCE(newProblemData, shkeptncontext)
+	err = createAndSendCE(newEventData, shkeptncontext)
 	if err != nil {
 		logger.Error("Could not send cloud event: " + err.Error())
 		rw.WriteHeader(500)
@@ -116,7 +116,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 	}
 }
 
-func createAndSendCE(problemData EventData, shkeptncontext string) error {
+func createAndSendCE(problemData eventData, shkeptncontext string) error {
 	source, _ := url.Parse("prometheus")
 
 	eventBrokerURL, err := utils.GetEventBrokerURL()

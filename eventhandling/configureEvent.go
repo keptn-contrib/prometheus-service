@@ -3,14 +3,15 @@ package eventhandling
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"strings"
 
 	"github.com/keptn-contrib/prometheus-service/utils"
 
@@ -44,6 +45,7 @@ type envConfig struct {
 	AlertManagerTemplateConfigMap string `envconfig:"ALERT_MANAGER_TEMPLATE_CM" default:"alertmanager-templates"`
 	PrometheusConfigFileName      string `envconfig:"PROMETHEUS_CONFIG_FILENAME" default:"prometheus.yml"`
 	AlertManagerConfigFileName    string `envconfig:"ALERT_MANAGER_CONFIG_FILENAME" default:"alertmanager.yml"`
+	ConfigurationServiceUrl       string `envconfig:"CONFIGURATION_SERVICE" default:""`
 }
 
 // ConfigureMonitoringEventHandler is responsible for processing configure monitoring events
@@ -596,10 +598,7 @@ func getScrapeConfig(config *prometheusconfig.Config, name string) *prometheusco
 }
 
 func getConfigurationServiceURL() string {
-	if utils.EnvVarEqualsTo(environmentEnvName, "production") {
-		return "configuration-service:8080"
-	}
-	return "localhost:6060"
+	return env.ConfigurationServiceUrl
 }
 
 func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage string, logger keptn.LoggerInterface) (*keptnevents.ServiceLevelObjectives, error) {

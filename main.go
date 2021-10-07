@@ -1,33 +1,34 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-	"io/ioutil"
 
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/cloudevents/sdk-go/v2/types"
 	"github.com/google/uuid"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	"github.com/keptn-contrib/prometheus-service/utils"
-	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
-	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
+	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 const eventbroker = "EVENTBROKER"
@@ -36,8 +37,9 @@ const serviceName = "prometheus-sli-service"
 
 type envConfig struct {
 	// Port on which to listen for cloudevents
-	Port int    `envconfig:"RCV_PORT" default:"8080"`
-	Path string `envconfig:"RCV_PATH" default:"/"`
+	Port                    int    `envconfig:"RCV_PORT" default:"8080"`
+	Path                    string `envconfig:"RCV_PATH" default:"/"`
+	ConfigurationServiceUrl string `envconfig:"CONFIGURATION_SERVICE" default:""`
 }
 
 type prometheusCredentials struct {
@@ -51,7 +53,7 @@ type ceTest struct {
 }
 
 var (
-	namespace = os.Getenv("POD_NAMESPACE")
+	namespace          = os.Getenv("POD_NAMESPACE")
 	prometheusEndpoint = os.Getenv("PROMETHEUS_ENDPOINT")
 )
 
@@ -67,6 +69,7 @@ func main() {
 	if err := envconfig.Process("", &env); err != nil {
 		logger.Error(fmt.Sprintf("Failed to process env var: %s", err))
 	}
+	logger.Debug(fmt.Sprintf("Configuration service: %s", env.ConfigurationServiceUrl))
 	os.Exit(_main(env))
 }
 

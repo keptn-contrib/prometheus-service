@@ -39,7 +39,7 @@ type envConfig struct {
 	// Port on which to listen for cloudevents
 	Port                    int    `envconfig:"RCV_PORT" default:"8080"`
 	Path                    string `envconfig:"RCV_PATH" default:"/"`
-	ConfigurationServiceUrl string `envconfig:"CONFIGURATION_SERVICE" default:""`
+	ConfigurationServiceURL string `envconfig:"CONFIGURATION_SERVICE" default:""`
 }
 
 type prometheusCredentials struct {
@@ -69,7 +69,7 @@ func main() {
 	if err := envconfig.Process("", &env); err != nil {
 		logger.Error(fmt.Sprintf("Failed to process env var: %s", err))
 	}
-	logger.Debug(fmt.Sprintf("Configuration service: %s", env.ConfigurationServiceUrl))
+	logger.Debug(fmt.Sprintf("Configuration service: %s", env.ConfigurationServiceURL))
 	os.Exit(_main(env))
 }
 

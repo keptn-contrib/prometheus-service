@@ -45,7 +45,7 @@ type envConfig struct {
 	AlertManagerTemplateConfigMap string `envconfig:"ALERT_MANAGER_TEMPLATE_CM" default:"alertmanager-templates"`
 	PrometheusConfigFileName      string `envconfig:"PROMETHEUS_CONFIG_FILENAME" default:"prometheus.yml"`
 	AlertManagerConfigFileName    string `envconfig:"ALERT_MANAGER_CONFIG_FILENAME" default:"alertmanager.yml"`
-	ConfigurationServiceUrl       string `envconfig:"CONFIGURATION_SERVICE" default:""`
+	ConfigurationServiceURL       string `envconfig:"CONFIGURATION_SERVICE" default:""`
 }
 
 // ConfigureMonitoringEventHandler is responsible for processing configure monitoring events
@@ -598,7 +598,7 @@ func getScrapeConfig(config *prometheusconfig.Config, name string) *prometheusco
 }
 
 func getConfigurationServiceURL() string {
-	return env.ConfigurationServiceUrl
+	return env.ConfigurationServiceURL
 }
 
 func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage string, logger keptn.LoggerInterface) (*keptnevents.ServiceLevelObjectives, error) {

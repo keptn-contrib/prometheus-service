@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/keptn-contrib/prometheus-service.svg?branch=master)](https://travis-ci.org/keptn-contrib/prometheus-service)
 [![Go Report Card](https://goreportcard.com/badge/github.com/keptn-contrib/prometheus-service)](https://goreportcard.com/report/github.com/keptn-contrib/prometheus-service)
 
-The *prometheus-service* is a [Keptn](https://keptn.sh) service that is responsible for
+The *prometheus-service* is a [Keptn](https://keptn.sh) service that is responsible for:
 
 1. configuring Prometheus for monitoring services managed by Keptn, and
 2. receiving alerts from Prometheus Alertmanager and translating the alert payload to a cloud event that is sent to the Keptn API.
@@ -40,10 +40,11 @@ Please always double-check the version of Keptn you are using compared to the ve
 |   0.8.1 - 0.8.3  | keptncontrib/prometheus-service:0.6.0  |
 |   0.8.4 - 0.8.7  | keptncontrib/prometheus-service:0.6.1  |
 |       0.9.0      | keptncontrib/prometheus-service:0.6.2  |
+|   0.9.0 - 0.9.2  | keptncontrib/prometheus-service:0.7.0  |
 
 ## Setup Prometheus Monitoring
 
-Keptn doesn't install or manage Prometheus and its components. Users need to install Prometheus and Prometheus Alert manager as a prerequisite.
+Keptn does not install or manage Prometheus and its components. Users need to install Prometheus and Prometheus Alert manager as a prerequisite.
 
 Some environment variables have to set up in the prometheus-service deployment
 ```yaml
@@ -78,22 +79,26 @@ Some environment variables have to set up in the prometheus-service deployment
 
 ### Execute the following steps to install prometheus-service
 
-* Download the Keptn's Prometheus service manifest
+* Download the Keptn Prometheus service manifest:
+
 ```bash
-wget https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.6.2/deploy/service.yaml
+wget https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.7.0/deploy/service.yaml
 ```
 
-* Replace the environment variable value according to the use case and apply the manifest
+* Replace the environment variable value according to the use case and apply the manifest:
+
 ```bash
 kubectl apply -f service.yaml
 ```
 
-* Install Role and Rolebinding to permit Keptn's prometheus-service for performing operations in the Prometheus installed namespace.
+* Install Role and RoleBinding to permit prometheus-service for performing operations in the Prometheus installed namespace:
+
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.6.2/deploy/role.yaml -n <PROMETHEUS_NS>
+kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-0.7.0/deploy/role.yaml -n <PROMETHEUS_NS>
 ```
 
 * Execute the following command to install Prometheus and set up the rules for the *Prometheus Alerting Manager*:
+
 ```bash
 keptn configure monitoring prometheus --project=sockshop --service=carts
 ```
@@ -101,6 +106,7 @@ keptn configure monitoring prometheus --project=sockshop --service=carts
 ### Optional: Verify Prometheus setup in your cluster
 
 * To verify that the Prometheus scrape jobs are correctly set up, you can access Prometheus by enabling port-forwarding for the prometheus-server:
+
 ```bash
 kubectl port-forward svc/prometheus-server 8080 -n <PROMETHEUS_NS>
 ```
@@ -135,6 +141,7 @@ Per default, the service works with the following assumptions regarding the setu
 ## Advanced Usage
 
 ### Using an external Prometheus instance
+
 To use a Prometheus instance other than the one that is being managed by Keptn for a certain project, a secret containing the URL and the access credentials has to be deployed into the `keptn` namespace. The secret must have the following format:
 
 ```yaml
@@ -185,8 +192,3 @@ rate(my_custom_metric{job='$SERVICE-$PROJECT-$STAGE',handler=~'$handler'}[$DURAT
 # Contributions
 
 You are welcome to contribute using Pull Requests against the **master** branch. Before contributing, please read our [Contributing Guidelines](CONTRIBUTING.md).
-
-# Travis-CI setup
-
-Travis is configured with CI to automatically build docker images for pull requests and commits. The pipeline can be viewed at https://travis-ci.org/keptn-contrib/prometheus-service.
-The Travis pipeline needs to be configured with the `REGISTRY_USER` and `REGISTRY_PASSWORD` variables. 

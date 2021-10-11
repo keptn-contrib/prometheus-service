@@ -130,11 +130,11 @@ spec:
       labels:
         run: prometheus-service
         app.kubernetes.io/name: prometheus-service
-        app.kubernetes.io/version: 0.6.3-dev-PR-177.202110010812
+        app.kubernetes.io/version: 0.7.0
     spec:
       containers:
         - name: prometheus-service
-          image: keptncontrib/prometheus-service:0.6.3-dev-PR-177.202110010812
+          image: keptncontrib/prometheus-service:0.7.0
           ports:
             - containerPort: 8080
           resources:

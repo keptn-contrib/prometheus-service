@@ -11,3 +11,8 @@ deploy:
   kubectl:
     manifests:
     - deploy/service.yaml
+  # helm:
+  #   releases:
+  #   - name: prometheus-service
+  #     chartPath: charts/prometheus-service
+  #       image: solidnerd/prometheus-service # no tag present!

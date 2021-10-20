@@ -1,4 +1,4 @@
-apiVersion: skaffold/v1beta13
+apiVersion: skaffold/v2beta23
 kind: Config
 build:
   artifacts:
@@ -10,4 +10,4 @@ build:
 deploy:
   kubectl:
     manifests:
-      - deploy/service.yaml
+    - deploy/service.yaml

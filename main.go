@@ -1,6 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
@@ -8,12 +13,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-
-	"bytes"
-	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 
 	"github.com/cloudevents/sdk-go/v2/types"
 	"github.com/google/uuid"
@@ -60,9 +59,8 @@ var (
 func main() {
 	// listen on port 8080 for any event
 	logger := keptncommon.NewLogger("", "", "prometheus-service")
+
 	logger.Debug("Starting server for receiving events on exposed port 8080")
-	http.HandleFunc("/", Handler)
-	go http.ListenAndServe(":8080", nil)
 
 	// listen on port 8081 for CloudEvent
 	var env envConfig

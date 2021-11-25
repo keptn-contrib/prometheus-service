@@ -62,6 +62,9 @@ func main() {
 
 	logger.Debug("Starting server for receiving events on exposed port 8080")
 
+	http.HandleFunc("/", Handler)
+	go http.ListenAndServe(":8080", nil)
+
 	// listen on port 8081 for CloudEvent
 	var env envConfig
 	if err := envconfig.Process("", &env); err != nil {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/kelseyhightower/envconfig"
@@ -557,7 +558,12 @@ func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *
 		scrapeConfig = &prometheusconfig.ScrapeConfig{}
 		config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
 	}
+
+	// define scrape job name
 	scrapeConfig.JobName = scrapeConfigName
+	// set scrape interval to 5 seconds
+	scrapeConfig.ScrapeInterval = prometheus_model.Duration(5 * time.Second)
+	// configure metrics path (default: /metrics)
 	scrapeConfig.MetricsPath = utils.EnvVarOrDefault(metricsScrapePathEnvName, "/metrics")
 	scrapeConfig.ServiceDiscoveryConfig = prometheus_sd_config.ServiceDiscoveryConfig{
 		StaticConfigs: []*targetgroup.Group{

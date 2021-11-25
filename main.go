@@ -33,7 +33,7 @@ import (
 
 const eventbroker = "EVENTBROKER"
 const sliResourceURI = "prometheus/sli.yaml"
-const serviceName = "prometheus-sli-service"
+const serviceName = "prometheus-service"
 
 type envConfig struct {
 	// Port on which to listen for cloudevents

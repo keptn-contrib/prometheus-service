@@ -21,3 +21,6 @@ skaffold.yaml
 service-objectives.yaml
 service-indicators.yaml
 remediation.yaml
+
+/.idea
+/*.iml

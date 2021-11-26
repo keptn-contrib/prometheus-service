@@ -1,11 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
@@ -13,6 +8,12 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/cloudevents/sdk-go/v2/types"
 	"github.com/google/uuid"
@@ -36,7 +37,7 @@ const serviceName = "prometheus-service"
 
 type envConfig struct {
 	// Port on which to listen for cloudevents
-	Port                    int    `envconfig:"RCV_PORT" default:"8080"`
+	Port                    int    `envconfig:"RCV_PORT" default:"8082"` // Note: must not be 8080 and not 8081
 	Path                    string `envconfig:"RCV_PATH" default:"/"`
 	ConfigurationServiceURL string `envconfig:"CONFIGURATION_SERVICE" default:""`
 }
@@ -54,23 +55,33 @@ type ceTest struct {
 var (
 	namespace          = os.Getenv("POD_NAMESPACE")
 	prometheusEndpoint = os.Getenv("PROMETHEUS_ENDPOINT")
+	env                envConfig
 )
 
 func main() {
-	// listen on port 8080 for any event
+	/**
+	Note that prometheus-service requires to open multiple ports:
+	* 8080 (default port; exposed) - acts as the ingest for prometheus alerts, and also proxies CloudEvents to port 8082
+	* 8081 (Keptn distributor) - Port that keptn/distributor is listening too (default port for Keptn distributor)
+	* 8082 (CloudEvents; env.Port) - Port that the CloudEvents sdk is listening to; this port is not exposed, but will be used for internal communication
+	*/
 	logger := keptncommon.NewLogger("", "", "prometheus-service")
 
-	logger.Debug("Starting server for receiving events on exposed port 8080")
+	env = envConfig{}
 
-	http.HandleFunc("/", Handler)
-	go http.ListenAndServe(":8080", nil)
-
-	// listen on port 8081 for CloudEvent
-	var env envConfig
 	if err := envconfig.Process("", &env); err != nil {
 		logger.Error(fmt.Sprintf("Failed to process env var: %s", err))
 	}
+
 	logger.Debug(fmt.Sprintf("Configuration service: %s", env.ConfigurationServiceURL))
+	logger.Debug(fmt.Sprintf("Port: %d, Path: %s", env.Port, env.Path))
+
+	// listen on port 8080 for any HTTP request (cloudevents are also handled, but forwarded to env.Port internally)
+	logger.Debug("Starting server on port 8080...")
+	http.HandleFunc("/", Handler)
+	go http.ListenAndServe(":8080", nil)
+
+	// start internal CloudEvents handler (on port env.Port)
 	os.Exit(_main(env))
 }
 
@@ -122,7 +133,7 @@ func gotEvent(event cloudevents.Event) error {
 
 }
 
-// Handler takes request and forwards it to the corresponding event handler
+// Handler takes request and forwards it to the corresponding event handler; Note: cloudevents are also forwarded
 func Handler(rw http.ResponseWriter, req *http.Request) {
 	shkeptncontext := uuid.New().String()
 	logger := keptncommon.NewLogger(shkeptncontext, "", "prometheus-service")
@@ -139,7 +150,10 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 	if json.Unmarshal(body, &event) != nil || event.Specversion == "" {
 		eventhandling.ProcessAndForwardAlertEvent(rw, body, logger, shkeptncontext)
 	} else {
-		proxyReq, err := http.NewRequest(req.Method, "http://localhost:8080", bytes.NewReader(body))
+		forwardPath := fmt.Sprintf("http://localhost:%d%s", env.Port, env.Path)
+		logger.Debug("Forwarding cloudevent to " + forwardPath)
+		// forward cloudevent to cloudevents lister on env.Port (see main())
+		proxyReq, err := http.NewRequest(req.Method, forwardPath, bytes.NewReader(body))
 		proxyReq.Header.Set("Content-Type", "application/cloudevents+json")
 		resp, err := http.DefaultClient.Do(proxyReq)
 		if err != nil {

@@ -563,6 +563,7 @@ func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *
 	scrapeConfig.JobName = scrapeConfigName
 	// set scrape interval to 5 seconds
 	scrapeConfig.ScrapeInterval = prometheus_model.Duration(5 * time.Second)
+	scrapeConfig.ScrapeTimeout = prometheus_model.Duration(3 * time.Second)
 	// configure metrics path (default: /metrics)
 	scrapeConfig.MetricsPath = utils.EnvVarOrDefault(metricsScrapePathEnvName, "/metrics")
 	scrapeConfig.ServiceDiscoveryConfig = prometheus_sd_config.ServiceDiscoveryConfig{

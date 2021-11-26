@@ -1,19 +1,19 @@
 package eventhandling
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/keptn/go-utils/pkg/lib/keptn"
-	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/keptn/go-utils/pkg/lib/keptn"
+	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
+
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/uuid"
-
-	"github.com/keptn-contrib/prometheus-service/utils"
 )
 
 const remediationTaskName = "remediation"
@@ -25,13 +25,13 @@ type alertManagerEvent struct {
 }
 
 type alert struct {
-	Status      string      `json:"status"`
-	Labels      labels      `json:"labels"`
-	Annotations annotations `json:"annotations"`
-	//StartsAt time   `json:"startsAt"`
-	//EndsAt   time   `json:"endsAt"`
-	Fingerprint  string `json:"fingerprint"`
-	GeneratorURL string `json:"generatorURL"`
+	Status       string      `json:"status"`
+	Labels       labels      `json:"labels"`
+	Annotations  annotations `json:"annotations"`
+	StartsAt     string      `json:"startsAt"`
+	EndsAt       string      `json:"endsAt"`
+	Fingerprint  string      `json:"fingerprint"`
+	GeneratorURL string      `json:"generatorURL"`
 }
 
 type labels struct {
@@ -50,11 +50,11 @@ type annotations struct {
 }
 
 type eventData struct {
-	Project     string            `json:"project,omitempty"`
-	Stage       string            `json:"stage,omitempty"`
-	Service     string            `json:"service,omitempty"`
-	Labels      map[string]string `json:"labels"`
-	Problem     problemData       `json:"problem"`
+	Project string            `json:"project,omitempty"`
+	Stage   string            `json:"stage,omitempty"`
+	Service string            `json:"service,omitempty"`
+	Labels  map[string]string `json:"labels"`
+	Problem problemData       `json:"problem"`
 }
 
 type problemData struct {
@@ -95,14 +95,18 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 	}
 
 	newEventData := eventData{
-		Project:        event.Alerts[0].Labels.Project,
-		Stage:          event.Alerts[0].Labels.Stage,
-		Service:        event.Alerts[0].Labels.Service,
-		Problem:        newProblemData,
+		Project: event.Alerts[0].Labels.Project,
+		Stage:   event.Alerts[0].Labels.Stage,
+		Service: event.Alerts[0].Labels.Service,
+		Problem: newProblemData,
 	}
 
 	if event.Alerts[0].Fingerprint != "" {
-		shkeptncontext = createOrApplyKeptnContext(event.Alerts[0].Fingerprint)
+		// Note: fingerprint is always the same, we will append the startdate to create a unique keptn context
+		shkeptncontext = createOrApplyKeptnContext(event.Alerts[0].Fingerprint + event.Alerts[0].StartsAt)
+		logger.Debug("shkeptncontext=" + shkeptncontext)
+	} else {
+		logger.Debug("NO SHKEPTNCONTEXT SET")
 	}
 
 	logger.Debug("Sending event to eventbroker")
@@ -119,8 +123,6 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 func createAndSendCE(problemData eventData, shkeptncontext string) error {
 	source, _ := url.Parse("prometheus")
 
-	eventBrokerURL, err := utils.GetEventBrokerURL()
-
 	eventType := keptnv2.GetTriggeredEventType(problemData.Stage + "." + remediationTaskName)
 
 	event := cloudevents.NewEvent()
@@ -130,10 +132,9 @@ func createAndSendCE(problemData eventData, shkeptncontext string) error {
 	event.SetSource(source.String())
 	event.SetDataContentType(cloudevents.ApplicationJSON)
 	event.SetData(cloudevents.ApplicationJSON, problemData)
+	event.SetExtension("shkeptncontext", shkeptncontext)
 
-	keptnHandler, err := keptnv2.NewKeptn(&event, keptn.KeptnOpts{
-		EventBrokerURL: eventBrokerURL,
-	})
+	keptnHandler, err := keptnv2.NewKeptn(&event, keptn.KeptnOpts{})
 	if err != nil {
 		return fmt.Errorf("could not initialize Keptn Handler: %s", err.Error())
 	}
@@ -152,10 +153,16 @@ func createOrApplyKeptnContext(contextID string) string {
 		_, err := uuid.Parse(contextID)
 		if err != nil {
 			if len(contextID) < 16 {
+				// use provided contxtId as a seed
 				paddedContext := fmt.Sprintf("%-16v", contextID)
 				uuid.SetRand(strings.NewReader(paddedContext))
 			} else {
-				uuid.SetRand(strings.NewReader(contextID))
+				// convert hash of contextID
+				h := sha256.New()
+				h.Write([]byte(contextID))
+				bs := h.Sum(nil)
+
+				uuid.SetRand(strings.NewReader(string(bs)))
 			}
 
 			keptnContext = uuid.New().String()

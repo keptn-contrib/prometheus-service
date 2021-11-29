@@ -25,7 +25,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
-	k8s.io/client-go v0.17.3
+	k8s.io/client-go v1.5.2
 )
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible

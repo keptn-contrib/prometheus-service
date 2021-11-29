@@ -194,10 +194,6 @@ spec:
               value: '/metrics'
             - name: CONFIGURATION_SERVICE
               value: 'http://configuration-service:8080'
-            - name: EVENTBROKER
-              value: 'http://localhost:8081/event'
-            - name: API
-              value: 'ws://api-service:8080/websocket'
             - name: PROMETHEUS_NS
               value: 'monitoring'
             - name: PROMETHEUS_CM

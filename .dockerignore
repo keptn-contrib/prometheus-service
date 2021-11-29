@@ -3,3 +3,5 @@ README.md
 .idea
 skaffold.yaml
 reviewdog.yml
+charts/
+deploy/

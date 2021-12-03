@@ -4,7 +4,7 @@
 
 The *prometheus-service* is a [Keptn](https://keptn.sh) integration responsible for:
 
-1. Configuring Prometheus for monitoring services managed by Keptn, 
+1. configuring Prometheus for monitoring services managed by Keptn, 
 2. receiving alerts (on port 8080) from Prometheus Alertmanager and translating the alert payload to a cloud event (remediation.triggered) that is sent to the Keptn API,
 3. retrieving Service Level Indicators (SLIs) from a Prometheus API endpoint. 
 

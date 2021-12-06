@@ -1,0 +1,19 @@
+name: unit tests
+on:
+  workflow_dispatch: # run CI when triggered manually
+  workflow_call: # run when called from another workflow
+defaults:
+  run:
+    shell: bash
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [1.16.x]
+        platform: [ubuntu-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+      - name: Unit tests
+        uses: ./.github/actions/unit-tests

@@ -1,6 +1,6 @@
 module github.com/keptn-contrib/prometheus-service
 
-go 1.13
+go 1.16
 
 require (
 	cloud.google.com/go v0.44.1 // indirect
@@ -17,7 +17,6 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/keptn/go-utils v0.10.0
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
-	github.com/onsi/ginkgo v1.10.2 // indirect
 	github.com/prometheus/alertmanager v0.21.0
 	github.com/prometheus/common v0.10.0
 	github.com/prometheus/prometheus v0.0.0-20200326161412-ae041f97cfc6

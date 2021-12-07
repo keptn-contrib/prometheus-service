@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/prometheus v0.0.0-20200326161412-ae041f97cfc6
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.17.3
+	k8s.io/api v0.23.0
 	k8s.io/apimachinery v0.17.3
 	k8s.io/client-go v0.17.3
 )

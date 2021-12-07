@@ -50,7 +50,7 @@ Please replace the placeholders in the commands below. Examples are provided.
 * `<VERSION>`: prometheus-service version, e.g., `0.7.1`
 * `<PROMETHEUS_NS>`: If prometheus is installed in the same Kubernetes cluster, the namespace needs to be provided, e.g., `monitoring`
 * `<PROMETHEUS_ENDPOINT>`: Endpoint for prometheus (primarily used for fetching metrics), e.g., `http://prometheus-server.monitoring.svc.cluster.local:80`
-* `<ALERT_MANAGER_NS>`: if prometheus alert manage ris installed in the same Kubernetes cluster, the namespace needs to be provided, e.g., `monitoring`
+* `<ALERT_MANAGER_NS>`: if prometheus alert manager is installed in the same Kubernetes cluster, the namespace needs to be provided, e.g., `monitoring`
 
 
 Once this is done, you can go ahead and install prometheus-service:

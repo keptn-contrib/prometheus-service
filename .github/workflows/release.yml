@@ -13,7 +13,7 @@ jobs:
   release:
     needs: test
     name: Release
-    uses: keptn/gh-automation/.github/workflows/pre-release-integration.yml@v1.2.0
+    uses: keptn/gh-automation/.github/workflows/release-integration.yml@v1.2.0
 
   docker_build:
     needs: [release]

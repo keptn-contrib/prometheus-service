@@ -12,7 +12,6 @@ jobs:
       # Configure which scopes are allowed.
       scopes: |
         api
-        cli
         core
         install
         cloudevents

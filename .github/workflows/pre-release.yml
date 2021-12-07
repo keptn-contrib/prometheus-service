@@ -42,16 +42,29 @@ jobs:
           REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
 
-  release-assets:
-    name: Release Assets
-    needs: pre-release
+  helm_chart_build:
+    needs: [pre-release, docker_build]
+    name: Build Helm Charts
     runs-on: ubuntu-20.04
+    env:
+      VERSION: ${{ needs.pre-release.outputs.RELEASE_TAG }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2.3.4
-      - name: Add release assets
+      - name: Checkout Code
+        uses: actions/checkout@v2.4.0
+
+      - name: Load CI Environment from .ci_env
+        id: load_ci_env
+        uses: c-py/action-dotenv-to-setenv@v3
+        with:
+          env-file: .ci_env
+
+      - name: Build Helm Charts
+        id: build_helm_charts
+        run: ./gh-actions-scripts/build_helm_chart.sh "${VERSION}" "${VERSION}" "${IMAGE}"
+
+      - name: Upload Helm Chart as release asset
         env:
           RELEASE_TAG: ${{ needs.pre-release.outputs.RELEASE_TAG }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "$RELEASE_TAG" ./LICENSE
+          gh release upload "$RELEASE_TAG" installer/*.tgz

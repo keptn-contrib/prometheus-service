@@ -24,7 +24,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.17.3
-	k8s.io/apimachinery v0.17.3
+	k8s.io/apimachinery v0.23.0
 	k8s.io/client-go v0.17.3
 )
 

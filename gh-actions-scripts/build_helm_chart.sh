@@ -1,9 +1,9 @@
 #!/bin/bash
 # shellcheck disable=SC2181
 
-VERSION=$1
-APP_VERSION=$2
-IMAGE=$3
+VERSION=$1 # e.g., 0.7.2-next.0
+APP_VERSION=$2, # e.g., 0.7.2-next.0+1234
+IMAGE=$3 # e.g., prometheus-service
 
 if [ $# -ne 3 ]; then
   echo "Usage: $0 VERSION APP_VERSION IMAGE"
@@ -31,7 +31,7 @@ mkdir installer/
 # HELM CHART
 # ####################
 BASE_PATH=.
-CHARTS_PATH=charts/prometheus-service
+CHARTS_PATH=chart
 
 helm package ${BASE_PATH}/${CHARTS_PATH} --app-version "$APP_VERSION" --version "$VERSION"
 if [ $? -ne 0 ]; then
@@ -42,7 +42,7 @@ fi
 mv "${IMAGE}-${VERSION}.tgz" "installer/${IMAGE}-${VERSION}.tgz"
 
 #verify the chart
-helm template --debug "installer/${IMAGE}-${VERSION}.tgz"
+helm template "installer/${IMAGE}-${VERSION}.tgz" --dry-run > /dev/null
 
 if [ $? -ne 0 ]; then
   echo "::error Helm Chart for ${IMAGE} has templating errors -exiting"

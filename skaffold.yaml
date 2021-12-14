@@ -14,5 +14,5 @@ deploy:
   # helm:
   #   releases:
   #   - name: prometheus-service
-  #     chartPath: charts/prometheus-service
+  #     chartPath: chart/prometheus-service
   #       image: solidnerd/prometheus-service # no tag present!

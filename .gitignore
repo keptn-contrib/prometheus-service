@@ -24,3 +24,6 @@ remediation.yaml
 
 /.idea
 /*.iml
+
+# ignore installer folder (packaged helm chart)
+installer/

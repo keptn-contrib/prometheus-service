@@ -6,3 +6,4 @@ reviewdog.yml
 charts/
 deploy/
 .github/
+installer/

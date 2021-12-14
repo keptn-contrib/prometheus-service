@@ -176,7 +176,7 @@ spec:
         - name: distributor
           image: keptn/distributor:0.10.0
           ports:
-            - containerPort: 8081
+            - containerPort: 8080
           resources:
             requests:
               memory: "16Mi"

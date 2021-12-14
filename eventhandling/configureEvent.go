@@ -657,6 +657,7 @@ func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(c
 func (eh ConfigureMonitoringEventHandler) handleError(e *keptnevents.ConfigureMonitoringEventData, msg string) error {
 	//logger.Error(msg)
 	if err := eh.sendConfigureMonitoringFinishedEvent(e, keptnv2.StatusErrored, keptnv2.ResultFailed, msg); err != nil {
+		// an additional error occurred when trying to send configure monitoring finished back to Keptn
 		eh.logger.Error(err.Error())
 	}
 	return errors.New(msg)

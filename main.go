@@ -31,7 +31,6 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-const eventbroker = "EVENTBROKER"
 const sliResourceURI = "prometheus/sli.yaml"
 const serviceName = "prometheus-service"
 
@@ -112,15 +111,7 @@ func gotEvent(event cloudevents.Event) error {
 
 	logger := keptncommon.NewLogger(shkeptncontext, event.Context.GetID(), "prometheus-service")
 
-	eventBrokerURL, err := utils.GetEventBrokerURL()
-	if err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-
-	keptnHandler, err := keptnv2.NewKeptn(&event, keptncommon.KeptnOpts{
-		EventBrokerURL: eventBrokerURL,
-	})
+	keptnHandler, err := keptnv2.NewKeptn(&event, keptncommon.KeptnOpts{})
 
 	if err != nil {
 		return fmt.Errorf("could not create Keptn handler: %v", err)
@@ -227,12 +218,7 @@ func retrieveMetrics(event cloudevents.Event, eventData *keptnv2.GetSLITriggered
 		return nil, err
 	}
 
-	eventBrokerURL := os.Getenv(eventbroker)
-	if eventBrokerURL == "" {
-		eventBrokerURL = "http://event-broker/keptn"
-	}
-
-	keptnHandler, err := keptnv2.NewKeptn(&event, keptncommon.KeptnOpts{EventBrokerURL: eventBrokerURL})
+	keptnHandler, err := keptnv2.NewKeptn(&event, keptncommon.KeptnOpts{})
 	if err != nil {
 		return nil, err
 	}

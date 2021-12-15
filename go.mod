@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/hashicorp/serf v0.8.3 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/keptn/go-utils v0.10.0
+	github.com/keptn/go-utils v0.11.0
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
 	github.com/prometheus/alertmanager v0.21.0
 	github.com/prometheus/common v0.10.0

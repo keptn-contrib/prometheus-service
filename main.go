@@ -78,6 +78,7 @@ func main() {
 	// listen on port 8080 for any HTTP request (cloudevents are also handled, but forwarded to env.Port internally)
 	logger.Debug("Starting server on port 8080...")
 	http.HandleFunc("/", Handler)
+	http.HandleFunc("/health", HealthHandler)
 	go http.ListenAndServe(":8080", nil)
 
 	// start internal CloudEvents handler (on port env.Port)
@@ -124,10 +125,29 @@ func gotEvent(event cloudevents.Event) error {
 
 }
 
+// HealthHandler rerts a basic health check back
+func HealthHandler(w http.ResponseWriter, r *http.Request) {
+	type StatusBody struct {
+		Status string `json:"status"`
+	}
+
+	status := StatusBody{Status: "OK"}
+
+	body, _ := json.Marshal(status)
+
+	w.Header().Set("content-type", "application/json")
+
+	_, err := w.Write(body)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 // Handler takes request and forwards it to the corresponding event handler; Note: cloudevents are also forwarded
 func Handler(rw http.ResponseWriter, req *http.Request) {
 	shkeptncontext := uuid.New().String()
 	logger := keptncommon.NewLogger(shkeptncontext, "", "prometheus-service")
+	logger.Debug(fmt.Sprintf("%s %s", req.Method, req.URL))
 	logger.Debug("Receiving event which will be dispatched")
 
 	event := ceTest{}
@@ -137,10 +157,17 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if err = json.Unmarshal(body, &event); err != nil {
+		logger.Debug("Failed to read body: " + err.Error() + "; content=" + string(body))
+		return
+	}
+
 	// check event whether event contains specversion to forward it to 8081; otherwise process it as prometheus alert
-	if json.Unmarshal(body, &event) != nil || event.Specversion == "" {
+	if event.Specversion == "" {
+		// this is a prometheus alert
 		eventhandling.ProcessAndForwardAlertEvent(rw, body, logger, shkeptncontext)
 	} else {
+		// this is a CloudEvent retrieved on port 8080 that needs to be forwarded to 8082 (env.Port)
 		forwardPath := fmt.Sprintf("http://localhost:%d%s", env.Port, env.Path)
 		logger.Debug("Forwarding cloudevent to " + forwardPath)
 		// forward cloudevent to cloudevents lister on env.Port (see main())

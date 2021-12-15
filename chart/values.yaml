@@ -10,6 +10,28 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+prometheus:
+  namespace: "monitoring"                    # K8s namespace where prometheus is installed
+  namespace_am: "monitoring"                 # K8s namespace where prometheus-alertmanager is installed
+  endpoint: "http://prometheus-server.monitoring.svc.cluster.local:80"   # HTTP Endpoint for Prometheus
+
+distributor:
+  stageFilter: ""                            # Sets the stage this helm service belongs to
+  serviceFilter: ""                          # Sets the service this helm service belongs to
+  projectFilter: ""                          # Sets the project this helm service belongs to
+  image:
+    repository: docker.io/keptn/distributor  # Container Image Name
+    pullPolicy: IfNotPresent                 # Kubernetes Image Pull Policy
+    tag: "0.10.0"                            # Container Tag
+
+remoteControlPlane:
+  enabled: false                             # Enables remote execution plane mode
+  api:
+    protocol: "https"                        # Used Protocol (http, https)
+    hostname: ""                             # Hostname of the control plane cluster (and Port)
+    apiValidateTls: true                     # Defines if the control plane certificate should be validated
+    token: ""                                # Keptn API Token
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -21,7 +43,7 @@ serviceAccount:
   annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
-  name: ""
+  name: "keptn-prometheus-service"
 
 podAnnotations: {}
 
@@ -38,7 +60,7 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 80
+  port: 8080
 
 ingress:
   enabled: false
@@ -56,17 +78,13 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+resources: # Resource limits and requests
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 32Mi
 
 autoscaling:
   enabled: false

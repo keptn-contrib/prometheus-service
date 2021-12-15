@@ -18,7 +18,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "prometheus-service.selectorLabels" . | nindent 8 }}
+        {{- include "prometheus-service.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -39,18 +39,45 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /health
               port: http
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /health
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: METRICS_SCRAPE_PATH
+              value: '/metrics'
+            - name: CONFIGURATION_SERVICE
+              value: 'http://configuration-service:8080'
+            - name: PROMETHEUS_NS
+              value: '{{ .Values.prometheus.namespace }}'
+            - name: PROMETHEUS_CM
+              value: 'prometheus-server'
+            - name: PROMETHEUS_LABELS
+              value: 'component=server'
+            - name: PROMETHEUS_ENDPOINT
+              value: "{{ .Values.prometheus.endpoint }}"
+            - name: PROMETHEUS_CONFIG_FILENAME
+              value: 'prometheus.yml'
+            - name: ALERT_MANAGER_CONFIG_FILENAME
+              value: 'alertmanager.yml'
+            - name: ALERT_MANAGER_CM
+              value: 'prometheus-alertmanager'
+            - name: ALERT_MANAGER_LABELS
+              value: 'component=alertmanager'
+            - name: ALERT_MANAGER_NS
+              value: '{{ .Values.prometheus.namespace_am }}'
+            - name: ALERT_MANAGER_TEMPLATE_CM
+              value: 'alertmanager-templates'
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
         - name: distributor
-          image: keptn/distributor:0.9.1
-          ports:
-            - containerPort: 8081
+          image: "{{ .Values.distributor.image.repository }}:{{ .Values.distributor.image.tag | default .Chart.AppVersion }}"
           livenessProbe:
             httpGet:
               path: /health
@@ -63,45 +90,63 @@ spec:
               port: 10999
             initialDelaySeconds: 5
             periodSeconds: 5
+          imagePullPolicy: {{ .Values.distributor.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
           resources:
             requests:
               memory: "16Mi"
               cpu: "25m"
             limits:
-              memory: "128Mi"
-              cpu: "250m"
+              memory: "32Mi"
+              cpu: "100m"
           env:
             - name: PUBSUB_URL
               value: 'nats://keptn-nats-cluster'
             - name: PUBSUB_TOPIC
               value: 'sh.keptn.event.monitoring.configure,sh.keptn.event.get-sli.triggered'
             - name: PUBSUB_RECIPIENT
-              value: 'prometheus-service'
+              value: '127.0.0.1'
+            - name: STAGE_FILTER
+              value: "{{ .Values.distributor.stageFilter }}"
+            - name: PROJECT_FILTER
+              value: "{{ .Values.distributor.projectFilter }}"
+            - name: SERVICE_FILTER
+              value: "{{ .Values.distributor.serviceFilter }}"
             - name: VERSION
               valueFrom:
                 fieldRef:
-                  apiVersion: v1
-                  fieldPath: 'metadata.labels[''app.kubernetes.io/version'']'
+                  fieldPath: metadata.labels['app.kubernetes.io/version']
+            - name: LOCATION
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['app.kubernetes.io/component']
             - name: K8S_DEPLOYMENT_NAME
               valueFrom:
                 fieldRef:
-                  apiVersion: v1
-                  fieldPath: 'metadata.labels[''app.kubernetes.io/name'']'
+                  fieldPath: metadata.labels['app.kubernetes.io/name']
             - name: K8S_POD_NAME
               valueFrom:
                 fieldRef:
-                  apiVersion: v1
                   fieldPath: metadata.name
             - name: K8S_NAMESPACE
               valueFrom:
                 fieldRef:
-                  apiVersion: v1
                   fieldPath: metadata.namespace
             - name: K8S_NODE_NAME
               valueFrom:
                 fieldRef:
-                  apiVersion: v1
                   fieldPath: spec.nodeName
+            {{- if .Values.remoteControlPlane.enabled }}
+            - name: KEPTN_API_ENDPOINT
+              value: "{{ .Values.remoteControlPlane.api.protocol }}://{{ .Values.remoteControlPlane.api.hostname }}/api"
+            - name: KEPTN_API_TOKEN
+              value: "{{ .Values.remoteControlPlane.api.token }}"
+            - name: HTTP_SSL_VERIFY
+              {{- $apiValidateTls := .Values.remoteControlPlane.api.apiValidateTls | ternary "true" "false" }}
+              value: "{{ $apiValidateTls }}"
+            {{- end }}
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

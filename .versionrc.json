@@ -1,5 +1,6 @@
 {
   "tagPrefix": "",
+  "preMajor": true,
   "types": [
     {
       "type": "feat",

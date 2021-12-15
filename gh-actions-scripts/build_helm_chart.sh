@@ -2,7 +2,7 @@
 # shellcheck disable=SC2181
 
 VERSION=$1 # e.g., 0.7.2-next.0
-APP_VERSION=$2, # e.g., 0.7.2-next.0+1234
+APP_VERSION=$2 # e.g., 0.7.2-next.0+1234
 IMAGE=$3 # e.g., prometheus-service
 
 if [ $# -ne 3 ]; then

@@ -1,0 +1,15 @@
+name: Unit Tests
+on:
+  workflow_dispatch: # run CI when triggered manually
+  workflow_call: # run when called from another workflow
+defaults:
+  run:
+    shell: bash
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+      - name: Unit tests
+        uses: ./.github/actions/unit-tests

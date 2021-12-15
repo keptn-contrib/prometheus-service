@@ -5,3 +5,5 @@ skaffold.yaml
 reviewdog.yml
 charts/
 deploy/
+.github/
+installer/

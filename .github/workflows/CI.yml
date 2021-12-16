@@ -123,7 +123,7 @@ jobs:
 
       - name: Docker Build
         id: docker_build
-        uses: keptn/gh-automation/.github/actions/docker-build@feature/docker-build
+        uses: keptn/gh-automation/.github/actions/docker-build@main
         with:
           TAGS: |
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE }}:${{ env.VERSION }}

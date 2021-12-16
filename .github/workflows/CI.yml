@@ -133,8 +133,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Say something
+        env:
+          BUILD_METADATA: ${{ steps.docker_build.outputs.BUILD_METADATA }}
         run: |
-          echo ${{ steps.docker_build.outputs.BUILD_METADATA }}
+          echo ${{ env.BUILD_METADATA }} | jq
+         
           
           
       - id: report_docker_build_to_pr

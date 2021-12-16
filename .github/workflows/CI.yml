@@ -127,7 +127,8 @@ jobs:
           TAGS: |
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE }}:${{ env.VERSION }}
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE }}:${{ env.VERSION }}.${{ env.DATETIME }}
-          VERSION: ${{ env.VERSION }}
+          BUILD_ARGS: |
+            version=${{ env.VERSION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 

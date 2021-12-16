@@ -32,7 +32,7 @@ jobs:
           env-file: .ci_env
 
       - name: Docker Build
-        uses: keptn/gh-automation/.github/actions/docker-build
+        uses: keptn/gh-automation/.github/actions/docker-build@feature/docker-build
         with:
           TAGS: |
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE }}:${{ env.VERSION }}
@@ -57,7 +57,7 @@ jobs:
 
       - name: Build Helm Charts
         id: build_helm_charts
-        run: ./gh-actions-scripts/build_helm_chart.sh "${VERSION}" "${VERSION}" "${IMAGE}"
+        run: ./gh-actions-scripts/build_helm_chart.sh "${VERSION}" "${VERSION}" "ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE }}"
 
       - name: Upload Helm Chart as release asset
         env:

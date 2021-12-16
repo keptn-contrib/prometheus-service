@@ -122,14 +122,30 @@ jobs:
           env-file: .ci_env
 
       - name: Docker Build
-        uses: ./.github/actions/docker-build
+        id: docker_build
+        uses: keptn/gh-automation/.github/actions/docker-build@v1.3.0
         with:
           TAGS: |
             ${{ env.DOCKER_ORGANIZATION }}/${{ env.IMAGE }}:${{ env.VERSION }}
             ${{ env.DOCKER_ORGANIZATION }}/${{ env.IMAGE }}:${{ env.VERSION }}.${{ env.DATETIME }}
-          VERSION: ${{ env.VERSION }}
+          BUILD_ARGS: |
+            version=${{ env.VERSION }}
           REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          PUSH: ${{(github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)}}
+
+      - id: report_docker_build_to_pr
+        name: Report Docker Build to PR
+        if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        uses: marocchino/sticky-pull-request-comment@v2.2.0
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          recreate: true
+          header: test
+          message: |
+            The following Docker Images have been built:
+            ${{ fromJSON(steps.docker_build.outputs.BUILD_METADATA)['image.name'] }}
+            
 
 
   helm_chart_build:

@@ -123,7 +123,7 @@ jobs:
 
       - name: Docker Build
         id: docker_build
-        uses: keptn/gh-automation/.github/actions/docker-build@main
+        uses: keptn/gh-automation/.github/actions/docker-build@patch/docker-build-push
         with:
           TAGS: |
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE }}:${{ env.VERSION }}
@@ -131,6 +131,7 @@ jobs:
           BUILD_ARGS: |
             version=${{ env.VERSION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUSH: (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)
           
       - name: Say something
         run: |
@@ -147,9 +148,8 @@ jobs:
           recreate: true
           header: test
           message: |
-            ```
-            ${{ steps.docker_build.outputs.BUILD_METADATA }}
-            ```
+            The following Docker Images have been built:
+            ${{ fromJSON(steps.docker_build.outputs.BUILD_METADATA)['image.name'] }}
 
 
   helm_chart_build:

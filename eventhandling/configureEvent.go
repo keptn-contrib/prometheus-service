@@ -133,16 +133,16 @@ func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(e
 		if err != nil {
 			return err
 		}
-	}
 
-	// (2.1) delete prometheus pod
-	if err := eh.deletePod(env.PrometheusLabels, env.PrometheusNamespace); err != nil {
-		return err
-	}
+		// (2.1) restart prometheus by deleting prometheus pod
+		if err := eh.deletePod(env.PrometheusLabels, env.PrometheusNamespace); err != nil {
+			return err
+		}
 
-	// (2.1) delete prometheus alert manager pod
-	if err := eh.deletePod(env.AlertManagerLabels, env.AlertManagerNamespace); err != nil {
-		return err
+		// (2.1) restart prometheus alert manager by deleting prometheus alert manager pod
+		if err := eh.deletePod(env.AlertManagerLabels, env.AlertManagerNamespace); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -205,12 +205,6 @@ func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager() erro
 	eh.logger.Info("Configuring Prometheus AlertManager...")
 	prometheusHelper, err := utils.NewPrometheusHelper()
 
-	eh.logger.Info("Creating Prometheus AlertManager Template configmap...")
-	err = prometheusHelper.CreateAMTempConfigMap(env.AlertManagerTemplateConfigMap, env.AlertManagerNamespace)
-	if err != nil {
-		return err
-	}
-
 	eh.logger.Info("Updating Prometheus AlertManager configmap...")
 	err = prometheusHelper.UpdateAMConfigMap(env.AlertManagerConfigMap, env.AlertManagerConfigFileName, env.AlertManagerNamespace)
 	if err != nil {
@@ -222,6 +216,7 @@ func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager() erro
 	return nil
 }
 
+// updatePrometheusConfigMap updates the prometheus configmap with scrape configs and alerting rules
 func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData keptnevents.ConfigureMonitoringEventData) error {
 	shipyard, err := eh.keptnHandler.GetShipyard()
 	if err != nil {
@@ -245,11 +240,13 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	// check if alerting rules are already available
 	var alertingRulesConfig alertingRules
 	if cmPrometheus.Data["prometheus.rules"] != "" {
+		// take existing alerting rule
 		yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &alertingRulesConfig)
 	} else {
+		// create new empty alerting rule
 		alertingRulesConfig = alertingRules{}
 	}
-	// update
+	// update: Create scrape job and alerting rules for each stage of the shipyard file
 	for _, stage := range shipyard.Spec.Stages {
 		var scrapeConfig *prometheusconfig.ScrapeConfig
 		// (a) if a scrape config with the same name is available, update that one
@@ -261,6 +258,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		// <service>.<project>-<stage>
 		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false)
 
+		// fetch SLOs for the given service and stage
 		slos, err := retrieveSLOs(eventData, stage.Name, eh.logger)
 		if err != nil || slos == nil {
 			eh.logger.Info("No SLO file found for stage " + stage.Name + ". No alerting rules created for this stage")

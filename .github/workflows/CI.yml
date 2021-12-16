@@ -134,7 +134,7 @@ jobs:
           
       - name: Say something
         run: |
-          echo "${{ steps.docker_build.outputs.BUILD_METADATA }}"
+          echo "${{ fromJSON(steps.docker_build.outputs.BUILD_METADATA).image.name }}"
          
           
           

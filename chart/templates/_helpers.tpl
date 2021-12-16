@@ -54,9 +54,5 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Create the name of the service account to use
 */}}
 {{- define "prometheus-service.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "prometheus-service.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
+keptn-prometheus-service
 {{- end }}

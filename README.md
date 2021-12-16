@@ -29,7 +29,7 @@ Please always double-check the version of Keptn you are using compared to the ve
 |       0.9.0      |                           keptncontrib/prometheus-service:0.6.2                           |
 |   0.9.0 - 0.9.2  |                           keptncontrib/prometheus-service:0.7.0                           |
 |   0.10.0         |                           keptncontrib/prometheus-service:0.7.1                           |
-|   0.10.0         |                           keptncontrib/prometheus-service:0.7.2                           |
+|   0.10.0         |                      keptncontrib/prometheus-service:0.7.2 <PENDING>                      |
 
 
 ## Installation instructions
@@ -40,10 +40,13 @@ Keptn does not install or manage Prometheus and its components. Users need to in
 
 The easiest way would be to setup Prometheus using helm, e.g.:
 ```console
-kubectl create ns monitoring
+kubectl create namespace monitoring
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm install prometheus prometheus-community/prometheus --namespace monitoring
 ```
+
+**Note**: After setting up prometheus, make sure to apply [deploy/role.yaml](deploy/role.yaml) such that prometheus-service can access the `monitoring` namespace (see instructions below).
+
 
 ### Install prometheus-service
 
@@ -61,6 +64,11 @@ Once this is done, you can go ahead and install prometheus-service:
 * Install Keptn prometheus-service in Kubernetes using
 
 ```bash
+helm install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz
+```
+
+Prior to version 0.7.2 installation should be done via `kubectl`:
+```bash
 kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-<VERSION>/deploy/service.yaml
 ```
 
@@ -71,8 +79,14 @@ kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-serv
 ```
 
 
-* Replace the environment variable value according to the use case and apply the manifest:
+* (Optional) Replace the environment variable value according to the use case and apply the manifest:
 
+```bash
+helm upgrade -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz --reuse-values --set=prometheus.namespace="<PROMETHEUS_NS>",prometheus.endpoint="<PROMETHEUS_ENDPOINT>",prometheus.namespace_am="<ALERT_MANAGER_NS>"
+```
+
+
+Prior to version 0.7.2 setting variables should be done via `kubectl`:
 ```
 # Prometheus installed namespace
 kubectl set env deployment/prometheus-service -n keptn --containers="prometheus-service" PROMETHEUS_NS="<PROMETHEUS_NS>"

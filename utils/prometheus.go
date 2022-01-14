@@ -5,23 +5,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
-	alertConfig "github.com/prometheus/alertmanager/config"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"math"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
+	alertConfig "github.com/prometheus/alertmanager/config"
+	"gopkg.in/yaml.v2"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
-	"net/http"
 )
 
 const Throughput = "throughput"
@@ -115,23 +115,6 @@ func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) e
 		return err
 	}
 
-	return nil
-}
-
-func (p *PrometheusHelper) DeletePod(label string, namespace string) error {
-	pod_list, err := p.KubeApi.CoreV1().Pods(namespace).List(metav1.ListOptions{
-		LabelSelector: label,
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, pod := range pod_list.Items {
-		err := p.KubeApi.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

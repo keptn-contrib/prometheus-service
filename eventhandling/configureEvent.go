@@ -11,8 +11,6 @@ import (
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
 	"github.com/keptn-contrib/prometheus-service/utils"
 
@@ -133,72 +131,41 @@ func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(e
 		if err != nil {
 			return err
 		}
-
-		// (2.1) restart prometheus by deleting prometheus pod
-		if err := eh.deletePod(env.PrometheusLabels, env.PrometheusNamespace); err != nil {
-			return err
-		}
-
-		// (2.1) restart prometheus alert manager by deleting prometheus alert manager pod
-		if err := eh.deletePod(env.AlertManagerLabels, env.AlertManagerNamespace); err != nil {
-			return err
-		}
 	}
-
-	return nil
-}
-
-func (eh ConfigureMonitoringEventHandler) deletePod(labels string, namespace string) error {
-	eh.logger.Info("Deleting Pod with labels " + labels + "...")
-
-	prometheusHelper, err := utils.NewPrometheusHelper()
-	if err != nil {
-		return err
-	}
-
-	labelArr := strings.Split(labels, ",")
-
-	for _, label := range labelArr {
-		err = prometheusHelper.DeletePod(label, namespace)
-		if err != nil {
-			return err
-		}
-	}
-
-	eh.logger.Info("Deleting Pod successfully")
 
 	return nil
 }
 
 func (eh ConfigureMonitoringEventHandler) isPrometheusInstalled() bool {
 	eh.logger.Debug("Check if prometheus service in " + env.PrometheusNamespace + " namespace is available")
-	config, err := rest.InClusterConfig()
+	svcList, err := getPrometheusServiceFromK8s()
 	if err != nil {
-		eh.logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
-		return false
-	}
-	api, err := kubernetes.NewForConfig(config)
-
-	if err != nil {
-		eh.logger.Debug(fmt.Sprintf("Could not initialize kubernetes client %s", err.Error()))
+		eh.logger.Errorf("Error locating prometheus service in k8s: %v", err)
 		return false
 	}
 
-	svc, err := api.CoreV1().Services(env.PrometheusNamespace).List(metav1.ListOptions{
-		LabelSelector: env.PrometheusLabels,
-	})
-
-	if err != nil {
-		eh.logger.Debug(fmt.Sprintf("Prometheus service in %s namespace is not available. %s", env.PrometheusNamespace, err.Error()))
-		return false
-	}
-
-	if len(svc.Items) > 0 {
+	if len(svcList.Items) > 0 {
 		eh.logger.Debug("Prometheus service in " + env.PrometheusNamespace + " namespace is available")
 		return true
 	}
 
 	return false
+}
+
+func getPrometheusServiceFromK8s() (*v1.ServiceList, error) {
+	svcList, err := utils.ListK8sServicesByLabel(env.PrometheusLabels, env.PrometheusNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("prometheus service not found: %w", err)
+	}
+	return svcList, err
+}
+
+func getPrometheusAlertManagerServiceFromK8s() (*v1.ServiceList, error) {
+	svcList, err := utils.ListK8sServicesByLabel(env.AlertManagerLabels, env.AlertManagerNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("prometheus alert manager service not found: %w", err)
+	}
+	return svcList, err
 }
 
 func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager() error {
@@ -223,7 +190,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		return err
 	}
 
-	api, err := getKubeClient()
+	api, err := utils.GetKubeClient()
 	if err != nil {
 		return err
 	}
@@ -337,18 +304,6 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		return err
 	}
 	return nil
-}
-
-func getKubeClient() (*kubernetes.Clientset, error) {
-	k8sConfig, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-	api, err := kubernetes.NewForConfig(k8sConfig)
-	if err != nil {
-		return nil, err
-	}
-	return api, nil
 }
 
 func getDefaultFilterExpression(project string, stage string, service string, filters map[string]string) string {

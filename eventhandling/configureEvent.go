@@ -225,71 +225,11 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		// <service>.<project>-<stage>
 		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false)
 
-		// fetch SLOs for the given service and stage
-		slos, err := retrieveSLOs(eventData, stage.Name, eh.logger)
-		if err != nil || slos == nil {
-			eh.logger.Info("No SLO file found for stage " + stage.Name + ". No alerting rules created for this stage")
-			continue
-		}
+		alertingRulesConfig, err = eh.createPrometheusAlertsIfSLOsAndRemediationDefined(eventData, stage,
+			alertingRulesConfig)
 
-		// Create or update alerting group
-		var alertingGroupConfig *alertingGroup
-		alertingGroupName := eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts"
-		alertingGroupConfig = getAlertingGroup(&alertingRulesConfig, alertingGroupName)
-		if alertingGroupConfig == nil {
-			alertingGroupConfig = &alertingGroup{
-				Name: alertingGroupName,
-			}
-			alertingRulesConfig.Groups = append(alertingRulesConfig.Groups, alertingGroupConfig)
-		}
-
-		for _, objective := range slos.Objectives {
-
-			expr, err := eh.getSLIQuery(eventData.Project, stage.Name, eventData.Service, objective.SLI, slos.Filter)
-			if err != nil || expr == "" {
-				eh.logger.Error("No query defined for SLI " + objective.SLI + " in project " + eventData.Project)
-				continue
-			}
-
-			if objective.Pass != nil {
-				for _, criteriaGroup := range objective.Pass {
-					for _, criteria := range criteriaGroup.Criteria {
-						if strings.Contains(criteria, "+") || strings.Contains(criteria, "-") || strings.Contains(criteria, "%") || (!strings.Contains(criteria, "<") && !strings.Contains(criteria, ">")) {
-							continue
-						}
-						criteriaString := strings.Replace(criteria, "=", "", -1)
-						if strings.Contains(criteriaString, "<") {
-							criteriaString = strings.Replace(criteriaString, "<", ">", -1)
-						} else {
-							criteriaString = strings.Replace(criteriaString, ">", "<", -1)
-						}
-
-						var newAlertingRule *alertingRule
-						ruleName := objective.SLI
-						newAlertingRule = getAlertingRuleOfGroup(alertingGroupConfig, ruleName)
-						if newAlertingRule == nil {
-							newAlertingRule = &alertingRule{
-								Alert: ruleName,
-							}
-							alertingGroupConfig.Rules = append(alertingGroupConfig.Rules, newAlertingRule)
-						}
-						newAlertingRule.Alert = ruleName
-						newAlertingRule.Expr = expr + criteriaString
-						newAlertingRule.For = "10m" // TODO: introduce alert duration concept in SLO?
-						newAlertingRule.Labels = &alertingLabel{
-							Severity: "webhook",
-							PodName:  eventData.Service + "-primary",
-							Service:  eventData.Service,
-							Project:  eventData.Project,
-							Stage:    stage.Name,
-						}
-						newAlertingRule.Annotations = &alertingAnnotations{
-							Summary:     ruleName,
-							Description: "Pod name {{ $labels.pod_name }}",
-						}
-					}
-				}
-			}
+		if err != nil {
+			return fmt.Errorf("error configuring prometheus alerts: %w", err)
 		}
 	}
 	alertingRulesYAMLString, err := yaml.Marshal(alertingRulesConfig)
@@ -304,6 +244,97 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		return err
 	}
 	return nil
+}
+
+func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemediationDefined(
+	eventData keptnevents.ConfigureMonitoringEventData, stage keptnv2.Stage, alertingRulesConfig alertingRules,
+) (alertingRules, error) {
+	// fetch SLOs for the given service and stage
+	slos, err := retrieveSLOs(eventData, stage.Name, eh.logger)
+	if err != nil || slos == nil {
+		eh.logger.Info("No SLO file found for stage " + stage.Name + ". No alerting rules created for this stage")
+		return alertingRulesConfig, nil
+	}
+
+	const remediationFileDefaultName = "remediation.yaml"
+	_, err = eh.keptnHandler.ResourceHandler.GetServiceResource(eventData.Project, stage.Name, eventData.Service,
+		remediationFileDefaultName)
+
+	if errors.Is(err, configutils.ResourceNotFoundError) {
+		eh.logger.Infof("No remediation defined for project %s stage %s, skipping setup of prometheus alerts",
+			eventData.Project, stage.Name)
+		return alertingRulesConfig, nil
+	}
+
+	if err != nil {
+		return alertingRulesConfig,
+			fmt.Errorf("error retrieving remediation definition %s for project %s and stage %s: %w",
+				remediationFileDefaultName, eventData.Project, stage.Name, err)
+	}
+
+	// Create or update alerting group
+	var alertingGroupConfig *alertingGroup
+	alertingGroupName := eventData.Service + " " + eventData.Project + "-" + stage.Name + " alerts"
+	alertingGroupConfig = getAlertingGroup(&alertingRulesConfig, alertingGroupName)
+	if alertingGroupConfig == nil {
+		alertingGroupConfig = &alertingGroup{
+			Name: alertingGroupName,
+		}
+		alertingRulesConfig.Groups = append(alertingRulesConfig.Groups, alertingGroupConfig)
+	}
+
+	for _, objective := range slos.Objectives {
+
+		expr, err := eh.getSLIQuery(eventData.Project, stage.Name, eventData.Service, objective.SLI, slos.Filter)
+		if err != nil || expr == "" {
+			eh.logger.Error("No query defined for SLI " + objective.SLI + " in project " + eventData.Project)
+			continue
+		}
+
+		if objective.Pass != nil {
+			for _, criteriaGroup := range objective.Pass {
+				for _, criteria := range criteriaGroup.Criteria {
+					if strings.Contains(criteria, "+") || strings.Contains(criteria, "-") || strings.Contains(
+						criteria, "%",
+					) || (!strings.Contains(criteria, "<") && !strings.Contains(criteria, ">")) {
+						continue
+					}
+					criteriaString := strings.Replace(criteria, "=", "", -1)
+					if strings.Contains(criteriaString, "<") {
+						criteriaString = strings.Replace(criteriaString, "<", ">", -1)
+					} else {
+						criteriaString = strings.Replace(criteriaString, ">", "<", -1)
+					}
+
+					var newAlertingRule *alertingRule
+					ruleName := objective.SLI
+					newAlertingRule = getAlertingRuleOfGroup(alertingGroupConfig, ruleName)
+					if newAlertingRule == nil {
+						newAlertingRule = &alertingRule{
+							Alert: ruleName,
+						}
+						alertingGroupConfig.Rules = append(alertingGroupConfig.Rules, newAlertingRule)
+					}
+					newAlertingRule.Alert = ruleName
+					newAlertingRule.Expr = expr + criteriaString
+					newAlertingRule.For = "10m" // TODO: introduce alert duration concept in SLO?
+					newAlertingRule.Labels = &alertingLabel{
+						Severity: "webhook",
+						PodName:  eventData.Service + "-primary",
+						Service:  eventData.Service,
+						Project:  eventData.Project,
+						Stage:    stage.Name,
+					}
+					newAlertingRule.Annotations = &alertingAnnotations{
+						Summary:     ruleName,
+						Description: "Pod name {{ $labels.pod_name }}",
+					}
+				}
+			}
+		}
+	}
+
+	return alertingRulesConfig, nil
 }
 
 func getDefaultFilterExpression(project string, stage string, service string, filters map[string]string) string {

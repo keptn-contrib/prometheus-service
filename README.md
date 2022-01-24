@@ -29,7 +29,7 @@ Please always double-check the version of Keptn you are using compared to the ve
 |       0.9.0      |                           keptncontrib/prometheus-service:0.6.2                           |
 |   0.9.0 - 0.9.2  |                           keptncontrib/prometheus-service:0.7.0                           |
 |   0.10.0         |                           keptncontrib/prometheus-service:0.7.1                           |
-|   0.10.0         |                      keptncontrib/prometheus-service:0.7.2 <PENDING>                      |
+|   0.10.0         |                           keptncontrib/prometheus-service:0.7.2                           |
 
 
 ## Installation instructions
@@ -65,6 +65,8 @@ Once this is done, you can go ahead and install prometheus-service:
 
 ```bash
 helm install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz
+# or
+helm upgrade --install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz
 ```
 
 Prior to version 0.7.2 installation should be done via `kubectl`:
@@ -75,7 +77,7 @@ kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-serv
 * Install Role and RoleBinding to permit prometheus-service for performing operations in the Prometheus installed namespace:
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-<VERSION>/deploy/role.yaml -n <PROMETHEUS_NS>
+kubectl -n <PROMETHEUS_NS> apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/<VERSION>/deploy/role.yaml
 ```
 
 

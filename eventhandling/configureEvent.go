@@ -3,11 +3,11 @@ package eventhandling
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,22 +30,6 @@ const ResponseTimeP50 = "response_time_p50"
 const ResponseTimeP90 = "response_time_p90"
 const ResponseTimeP95 = "response_time_p95"
 const metricsScrapePathEnvName = "METRICS_SCRAPE_PATH"
-const environmentEnvName = "env"
-
-const sliResourceURI = "prometheus/sli.yaml"
-
-type envConfig struct {
-	PrometheusNamespace           string `envconfig:"PROMETHEUS_NS" default:""`
-	PrometheusConfigMap           string `envconfig:"PROMETHEUS_CM" default:""`
-	PrometheusLabels              string `envconfig:"PROMETHEUS_LABELS" default:""`
-	AlertManagerLabels            string `envconfig:"ALERT_MANAGER_LABELS" default:""`
-	AlertManagerNamespace         string `envconfig:"ALERT_MANAGER_NS" default:""`
-	AlertManagerConfigMap         string `envconfig:"ALERT_MANAGER_CM" default:""`
-	AlertManagerTemplateConfigMap string `envconfig:"ALERT_MANAGER_TEMPLATE_CM" default:"alertmanager-templates"`
-	PrometheusConfigFileName      string `envconfig:"PROMETHEUS_CONFIG_FILENAME" default:"prometheus.yml"`
-	AlertManagerConfigFileName    string `envconfig:"ALERT_MANAGER_CONFIG_FILENAME" default:"alertmanager.yml"`
-	ConfigurationServiceURL       string `envconfig:"CONFIGURATION_SERVICE" default:""`
-}
 
 // ConfigureMonitoringEventHandler is responsible for processing configure monitoring events
 type ConfigureMonitoringEventHandler struct {
@@ -84,8 +68,6 @@ type alertingAnnotations struct {
 	Description string `json:"description" yaml:"descriptions"`
 }
 
-var env envConfig
-
 // HandleEvent processes an event
 func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
 
@@ -114,11 +96,6 @@ func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
 
 // configurePrometheusAndStoreResources
 func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(eventData *keptnevents.ConfigureMonitoringEventData) error {
-
-	if err := envconfig.Process("", &env); err != nil {
-		eh.logger.Error("Failed to process env var: " + err.Error())
-	}
-
 	// (1) check if prometheus is installed
 	if eh.isPrometheusInstalled() {
 		eh.logger.Debug("Configure prometheus monitoring with keptn")
@@ -283,13 +260,43 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 		alertingRulesConfig.Groups = append(alertingRulesConfig.Groups, alertingGroupConfig)
 	}
 
-	for _, objective := range slos.Objectives {
+	// create a new prometheus handler in order to query SLI expressions
+	prometheusHandler := utils.NewPrometheusHandler(
+		"",
+		&keptnv2.EventData{
+			Project: eventData.Project,
+			Service: eventData.Service,
+			Stage:   stage.Name,
+		},
+		nil,
+	)
 
-		expr, err := eh.getSLIQuery(eventData.Project, stage.Name, eventData.Service, objective.SLI, slos.Filter)
+	// get SLI queries
+	projectCustomQueries, err := getCustomQueries(eh.keptnHandler, eventData.Project, stage.Name, eventData.Service)
+	if err != nil {
+		log.Println("Failed to get custom queries for project " + eventData.Project)
+		log.Println(err.Error())
+		return alertingRulesConfig, err
+	}
+
+	if projectCustomQueries != nil {
+		prometheusHandler.CustomQueries = projectCustomQueries
+	}
+
+	eh.logger.Info("Going over SLO.objectives")
+
+	for _, objective := range slos.Objectives {
+		eh.logger.Info("SLO:" + objective.DisplayName + ", " + objective.SLI)
+		// Get Prometheus Metric Expression
+		end := time.Now()
+		start := end.Add(-180 * time.Second)
+
+		expr, err := prometheusHandler.GetMetricQuery(objective.SLI, start, end)
 		if err != nil || expr == "" {
 			eh.logger.Error("No query defined for SLI " + objective.SLI + " in project " + eventData.Project)
 			continue
 		}
+		eh.logger.Info("expr=" + expr)
 
 		if objective.Pass != nil {
 			for _, criteriaGroup := range objective.Pass {
@@ -335,192 +342,6 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	}
 
 	return alertingRulesConfig, nil
-}
-
-func getDefaultFilterExpression(project string, stage string, service string, filters map[string]string) string {
-	filterExpression := "job='" + service + "-" + project + "-" + stage + "-primary'"
-	if filters != nil && len(filters) > 0 {
-		for key, value := range filters {
-			/* if no operator has been included in the label filter, use exact matching (=), e.g.
-			e.g.:
-			key: handler
-			value: ItemsController
-			*/
-			sanitizedValue := value
-			if !strings.HasPrefix(sanitizedValue, "=") && !strings.HasPrefix(sanitizedValue, "!=") && !strings.HasPrefix(sanitizedValue, "=~") && !strings.HasPrefix(sanitizedValue, "!~") {
-				sanitizedValue = strings.Replace(sanitizedValue, "'", "", -1)
-				sanitizedValue = strings.Replace(sanitizedValue, "\"", "", -1)
-				filterExpression = filterExpression + "," + key + "='" + sanitizedValue + "'"
-			} else {
-				/* if a valid operator (=, !=, =~, !~) is prepended to the value, use that one
-				e.g.:
-				key: handler
-				value: !=HealthCheckController
-
-				OR
-
-				key: handler
-				value: =~.+ItemsController|.+VersionController
-				*/
-				sanitizedValue = strings.Replace(sanitizedValue, "\"", "'", -1)
-				filterExpression = filterExpression + "," + key + sanitizedValue
-			}
-		}
-	}
-	return filterExpression
-}
-
-func (eh ConfigureMonitoringEventHandler) getSLIQuery(project string, stage string, service string, sli string, filters map[string]string) (string, error) {
-	query, err := eh.getCustomQuery(project, stage, service, sli)
-	if err == nil && query != "" {
-		query = replaceQueryParameters(query, project, stage, service, filters)
-
-		return query, nil
-	}
-	switch sli {
-	case Throughput:
-		eh.logger.Info("Using default query for throughput")
-		query = getDefaultThroughputQuery(project, stage, service, filters)
-	case ErrorRate:
-		eh.logger.Info("Using default query for error_rate")
-		query = getDefaultErrorRateQuery(project, stage, service, filters)
-	case ResponseTimeP50:
-		eh.logger.Info("Using default query for response_time_p50")
-		query = getDefaultResponseTimeQuery(project, stage, service, filters, "50")
-	case ResponseTimeP90:
-		eh.logger.Info("Using default query for response_time_p90")
-		query = getDefaultResponseTimeQuery(project, stage, service, filters, "90")
-	case ResponseTimeP95:
-		eh.logger.Info("Using default query for response_time_p95")
-		query = getDefaultResponseTimeQuery(project, stage, service, filters, "95")
-	default:
-		return "", errors.New("unsupported SLI")
-	}
-	query = replaceQueryParameters(query, project, stage, service, filters)
-	return query, nil
-}
-
-func getDefaultThroughputQuery(project string, stage string, service string, filters map[string]string) string {
-	filterExpr := getDefaultFilterExpression(project, stage, service, filters)
-	// e.g. sum(rate(http_requests_total{job="carts-sockshop-dev"}[30m]))&time=1571649085
-	/*
-		{
-		    "status": "success",
-		    "data": {
-		        "resultType": "vector",
-		        "result": [
-		            {
-		                "metric": {},
-		                "value": [
-		                    1571649085,
-		                    "0.20111420612813372"
-		                ]
-		            }
-		        ]
-		    }
-		}
-	*/
-	return "sum(rate(http_requests_total{" + filterExpr + "}[180s]))"
-}
-
-func getDefaultErrorRateQuery(project string, stage string, service string, filters map[string]string) string {
-	filterExpr := getDefaultFilterExpression(project, stage, service, filters)
-	// e.g. sum(rate(http_requests_total{job="carts-sockshop-dev",status!~'2..'}[30m]))/sum(rate(http_requests_total{job="carts-sockshop-dev"}[30m]))&time=1571649085
-	/*
-		with value:
-		{
-		    "status": "success",
-		    "data": {
-		        "resultType": "vector",
-		        "result": [
-		            {
-		                "metric": {},
-		                "value": [
-		                    1571649085,
-		                    "1.00505917125441"
-		                ]
-		            }
-		        ]
-		    }
-		}
-
-		no value (error rate 0):
-		{
-		    "status": "success",
-		    "data": {
-		        "resultType": "vector",
-		        "result": []
-		    }
-		}
-	*/
-	return "sum(rate(http_requests_total{" + filterExpr + ",status!~'2..'}[180s]))/sum(rate(http_requests_total{" + filterExpr + "}[180s]))"
-}
-
-func getDefaultResponseTimeQuery(project string, stage string, service string, filters map[string]string, percentile string) string {
-	filterExpr := getDefaultFilterExpression(project, stage, service, filters)
-	// e.g. histogram_quantile(0.95, sum(rate(http_response_time_milliseconds_bucket{job='carts-sockshop-dev'}[30m])) by (le))&time=1571649085
-	/*
-		{
-		    "status": "success",
-		    "data": {
-		        "resultType": "vector",
-		        "result": [
-		            {
-		                "metric": {},
-		                "value": [
-		                    1571649085,
-		                    "4.607481671642585"
-		                ]
-		            }
-		        ]
-		    }
-		}
-	*/
-	return "histogram_quantile(0." + percentile + ",sum(rate(http_response_time_milliseconds_bucket{" + filterExpr + "}[180s]))by(le))"
-}
-
-func replaceQueryParameters(query string, project string, stage string, service string, filters map[string]string) string {
-	for key, value := range filters {
-		sanitizedValue := value
-		sanitizedValue = strings.Replace(sanitizedValue, "'", "", -1)
-		sanitizedValue = strings.Replace(sanitizedValue, "\"", "", -1)
-		query = strings.Replace(query, "$"+key, sanitizedValue, -1)
-		query = strings.Replace(query, "$"+strings.ToUpper(key), sanitizedValue, -1)
-	}
-	query = strings.Replace(query, "$PROJECT", project, -1)
-	query = strings.Replace(query, "$STAGE", stage, -1)
-	query = strings.Replace(query, "$SERVICE", service, -1)
-	query = strings.Replace(query, "$project", project, -1)
-	query = strings.Replace(query, "$stage", stage, -1)
-	query = strings.Replace(query, "$service", service, -1)
-	query = strings.Replace(query, "$DURATION_SECONDS", "180s", -1)
-	return query
-}
-
-func (eh ConfigureMonitoringEventHandler) getCustomQuery(project, stage, service string, sli string) (string, error) {
-
-	customQueries, err := eh.keptnHandler.GetSLIConfiguration(project, stage, service, sliResourceURI)
-
-	if err != nil {
-		return "", err
-	}
-
-	return customQueries[sli], nil
-}
-
-func (eh ConfigureMonitoringEventHandler) extractCustomQueryFromCM(configMap *v1.ConfigMap, sli string, project string) (string, error) {
-	if configMap == nil || configMap.Data == nil || configMap.Data["custom-queries"] == "" {
-		eh.logger.Info("No custom query defined for SLI " + sli + " in project " + project)
-		return "", nil
-	}
-	customQueries := make(map[string]string)
-	err := yaml.Unmarshal([]byte(configMap.Data["custom-queries"]), &customQueries)
-	if err != nil || customQueries == nil || customQueries[sli] == "" {
-		eh.logger.Info("No custom query defined for SLI " + sli + " in project " + project)
-		return "", nil
-	}
-	query := customQueries[sli]
-	return query, nil
 }
 
 func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *prometheusconfig.Config, project string, stage string, service string, isCanary bool, isPrimary bool) {
@@ -624,7 +445,7 @@ func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(c
 	triggeredID := eh.event.Context.GetID()
 
 	event := cloudevents.NewEvent()
-	event.SetSource("prometheus-service")
+	event.SetSource(utils.ServiceName)
 	event.SetDataContentType(cloudevents.ApplicationJSON)
 	event.SetType(keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName))
 	event.SetData(cloudevents.ApplicationJSON, cmFinishedEvent)

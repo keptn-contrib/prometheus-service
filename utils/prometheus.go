@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -13,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
 	alertConfig "github.com/prometheus/alertmanager/config"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -44,15 +44,17 @@ type prometheusResponse struct {
 
 // Handler interacts with a prometheus API endpoint
 type Handler struct {
-	ApiURL        string
-	Username      string
-	Password      string
-	Project       string
-	Stage         string
-	Service       string
-	HTTPClient    *http.Client
-	CustomFilters []*keptnv2.SLIFilter
-	CustomQueries map[string]string
+	ApiURL         string
+	Username       string
+	Password       string
+	Project        string
+	Stage          string
+	Service        string
+	DeploymentType string
+	Labels         map[string]string
+	HTTPClient     *http.Client
+	CustomFilters  []*keptnv2.SLIFilter
+	CustomQueries  map[string]string
 }
 
 const alertManagerYml = `global:
@@ -162,21 +164,23 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, names
 }
 
 // NewPrometheusHandler returns a new prometheus handler that interacts with the Prometheus REST API
-func NewPrometheusHandler(apiURL string, project string, stage string, service string, customFilters []*keptnv2.SLIFilter) *Handler {
+func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, deploymentType string, labels map[string]string, customFilters []*keptnv2.SLIFilter) *Handler {
 	ph := &Handler{
-		ApiURL:        apiURL,
-		Project:       project,
-		Stage:         stage,
-		Service:       service,
-		HTTPClient:    &http.Client{},
-		CustomFilters: customFilters,
+		ApiURL:         apiURL,
+		Project:        eventData.Project,
+		Stage:          eventData.Stage,
+		Service:        eventData.Service,
+		DeploymentType: deploymentType,
+		Labels:         labels,
+		HTTPClient:     &http.Client{},
+		CustomFilters:  customFilters,
 	}
 
 	return ph
 }
 
 // GetSLIValue retrieves the specified value via the Prometheus API
-func (ph *Handler) GetSLIValue(metric string, start string, end string, logger keptncommon.LoggerInterface) (float64, error) {
+func (ph *Handler) GetSLIValue(metric string, start string, end string) (float64, error) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	startUnix, err := parseUnixTimestamp(start)
@@ -187,12 +191,12 @@ func (ph *Handler) GetSLIValue(metric string, start string, end string, logger k
 	if err != nil {
 		return 0, err
 	}
-	query, err := ph.getMetricQuery(metric, startUnix, endUnix)
+	query, err := ph.GetMetricQuery(metric, startUnix, endUnix)
 	if err != nil {
 		return 0, err
 	}
 	queryString := ph.ApiURL + "/api/v1/query?query=" + url.QueryEscape(query) + "&time=" + strconv.FormatInt(endUnix.Unix(), 10)
-	logger.Info("Generated query: /api/v1/query?query=" + query + "&time=" + strconv.FormatInt(endUnix.Unix(), 10))
+	log.Println("GetSLIValue: Generated query: /api/v1/query?query=" + query + "&time=" + strconv.FormatInt(endUnix.Unix(), 10))
 
 	req, err := http.NewRequest("GET", queryString, nil)
 	req.Header.Set("Content-Type", "application/json")
@@ -216,21 +220,21 @@ func (ph *Handler) GetSLIValue(metric string, start string, end string, logger k
 	}
 
 	if len(prometheusResult.Data.Result) == 0 || len(prometheusResult.Data.Result[0].Value) == 0 {
-		logger.Info("Prometheus Result is 0, returning value 0")
+		log.Println("GetSLIValue: Prometheus Result is 0, returning value 0")
 		// for the error rate query, the result is received with no value if the error rate is 0, so we have to assume that's OK at this point
 		return 0, nil
 	}
 
 	parsedValue := fmt.Sprintf("%v", prometheusResult.Data.Result[0].Value[1])
 	floatValue, err := strconv.ParseFloat(parsedValue, 64)
-	logger.Info(fmt.Sprintf("Prometheus Result is %v", floatValue))
+	log.Printf(fmt.Sprintf("Prometheus Result is %v\n", floatValue))
 	if err != nil {
 		return 0, nil
 	}
 	return floatValue, nil
 }
 
-func (ph *Handler) getMetricQuery(metric string, start time.Time, end time.Time) (string, error) {
+func (ph *Handler) GetMetricQuery(metric string, start time.Time, end time.Time) (string, error) {
 	query := ph.CustomQueries[metric]
 	if query != "" {
 		query = ph.replaceQueryParameters(query, start, end)
@@ -264,9 +268,14 @@ func (ph *Handler) replaceQueryParameters(query string, start time.Time, end tim
 	query = strings.Replace(query, "$PROJECT", ph.Project, -1)
 	query = strings.Replace(query, "$STAGE", ph.Stage, -1)
 	query = strings.Replace(query, "$SERVICE", ph.Service, -1)
-	query = strings.Replace(query, "$project", ph.Project, -1)
-	query = strings.Replace(query, "$stage", ph.Stage, -1)
-	query = strings.Replace(query, "$service", ph.Service, -1)
+	query = strings.Replace(query, "$DEPLOYMENT", ph.DeploymentType, -1)
+
+	// replace labels
+	for key, value := range ph.Labels {
+		query = strings.Replace(query, "$LABEL."+key, value, -1)
+	}
+
+	// replace duration
 	durationString := strconv.FormatInt(getDurationInSeconds(start, end), 10) + "s"
 
 	query = strings.Replace(query, "$DURATION_SECONDS", durationString, -1)

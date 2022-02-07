@@ -10,9 +10,7 @@ import (
 	"strings"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/cloudevents/sdk-go/v2/types"
 	"github.com/keptn-contrib/prometheus-service/utils"
-	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -45,31 +43,56 @@ func (eh GetSliEventHandler) HandleEvent() error {
 		return nil
 	}
 
-	// get shkeptncontext
-	keptnCtx, err := types.ToString(eh.event.Context.GetExtensions()["shkeptncontext"])
+	// send started event
+	_, err = eh.keptnHandler.SendTaskStartedEvent(eventData, utils.ServiceName)
+
 	if err != nil {
-		return fmt.Errorf("could not determine keptnContext of input event: %s", err.Error())
+		errMsg := fmt.Sprintf("Failed to send task started CloudEvent (%s), aborting...", err.Error())
+		log.Println(errMsg)
+		return err
 	}
 
-	// create empty SLI Results Array
-	var sliResults = []*keptnv2.SLIResult{}
-
-	// 1: send .started event, indicating that we accepted it
-	if err = sendGetSLIStartedEvent(eh.event, eventData, keptnCtx); err != nil {
-		return sendGetSLIFinishedEvent(eh.event, eventData, sliResults, err, keptnCtx)
-	}
+	// create SLI Results
+	var sliResults []*keptnv2.SLIResult
 
 	// 2: try to fetch metrics into sliResults
-	if sliResults, err = retrieveMetrics(eh.event, eventData); err != nil {
+	if sliResults, err = retrieveMetrics(eventData, eh.keptnHandler); err != nil {
 		// failed to fetch metrics, send a finished event with the error
-		return sendGetSLIFinishedEvent(eh.event, eventData, sliResults, err, keptnCtx)
+		_, err = eh.keptnHandler.SendTaskFinishedEvent(&keptnv2.EventData{
+			Status:  keptnv2.StatusErrored,
+			Result:  keptnv2.ResultFailed,
+			Message: err.Error(),
+		}, utils.ServiceName)
+
+		return err
 	}
 
-	// 3: success; send .finished event with metrics (sliResults)
-	return sendGetSLIFinishedEvent(eh.event, eventData, sliResults, nil, keptnCtx)
+	// construct finished event data
+	getSliFinishedEventData := &keptnv2.GetSLIFinishedEventData{
+		EventData: keptnv2.EventData{
+			Status: keptnv2.StatusSucceeded,
+			Result: keptnv2.ResultPass,
+		},
+		GetSLI: keptnv2.GetSLIFinished{
+			IndicatorValues: sliResults,
+			Start:           eventData.GetSLI.Start,
+			End:             eventData.GetSLI.End,
+		},
+	}
+
+	// send get-sli.finished event with SLI DAta
+	_, err = eh.keptnHandler.SendTaskFinishedEvent(getSliFinishedEventData, utils.ServiceName)
+
+	if err != nil {
+		errMsg := fmt.Sprintf("Failed to send task finished CloudEvent (%s), aborting...", err.Error())
+		log.Println(errMsg)
+		return err
+	}
+
+	return nil
 }
 
-func retrieveMetrics(event cloudevents.Event, eventData *keptnv2.GetSLITriggeredEventData) ([]*keptnv2.SLIResult, error) {
+func retrieveMetrics(eventData *keptnv2.GetSLITriggeredEventData, keptnHandler *keptnv2.Keptn) ([]*keptnv2.SLIResult, error) {
 	log.Printf("Retrieving Prometheus metrics")
 
 	clusterConfig, err := rest.InClusterConfig()
@@ -84,12 +107,8 @@ func retrieveMetrics(event cloudevents.Event, eventData *keptnv2.GetSLITriggered
 		return nil, errors.New("could not create Kubernetes client")
 	}
 
+	// get prometheus API URL for the provided Project from Kubernetes Config Map
 	prometheusApiURL, err := getPrometheusApiURL(eventData.Project, kubeClient.CoreV1())
-	if err != nil {
-		return nil, err
-	}
-
-	keptnHandler, err := keptnv2.NewKeptn(&event, keptncommon.KeptnOpts{})
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +122,7 @@ func retrieveMetrics(event cloudevents.Event, eventData *keptnv2.GetSLITriggered
 		eventData.GetSLI.CustomFilters,
 	)
 
+	// get SLI queries (from SLI.yaml)
 	projectCustomQueries, err := getCustomQueries(keptnHandler, eventData.Project, eventData.Stage, eventData.Service)
 	if err != nil {
 		log.Println("retrieveMetrics: Failed to get custom queries for project " + eventData.Project)
@@ -198,79 +218,4 @@ func generatePrometheusURL(pc *prometheusCredentials) string {
 		prometheusURL = "https://" + credentialsString + prometheusURL
 	}
 	return strings.Replace(prometheusURL, " ", "", -1)
-}
-
-func sendGetSLIStartedEvent(inputEvent cloudevents.Event, eventData *keptnv2.GetSLITriggeredEventData, keptnContext interface{}) error {
-
-	source, _ := url.Parse(utils.ServiceName)
-
-	getSLIStartedEvent := keptnv2.GetSLIStartedEventData{
-		EventData: keptnv2.EventData{
-			Project: eventData.Project,
-			Stage:   eventData.Stage,
-			Service: eventData.Service,
-			Labels:  eventData.Labels,
-			Status:  keptnv2.StatusSucceeded,
-			Result:  keptnv2.ResultPass,
-		},
-	}
-
-	event := cloudevents.NewEvent()
-	event.SetType(keptnv2.GetStartedEventType(keptnv2.GetSLITaskName))
-	event.SetSource(source.String())
-	event.SetDataContentType(cloudevents.ApplicationJSON)
-	event.SetExtension("shkeptncontext", keptnContext)
-	event.SetExtension("triggeredid", inputEvent.ID())
-	event.SetData(cloudevents.ApplicationJSON, getSLIStartedEvent)
-
-	return sendEvent(event)
-}
-
-func sendGetSLIFinishedEvent(inputEvent cloudevents.Event, eventData *keptnv2.GetSLITriggeredEventData, indicatorValues []*keptnv2.SLIResult, err error, keptnContext interface{}) error {
-	source, _ := url.Parse(utils.ServiceName)
-	var status = keptnv2.StatusSucceeded
-	var result = keptnv2.ResultPass
-	var message = ""
-
-	if err != nil {
-		status = keptnv2.StatusErrored
-		result = keptnv2.ResultFailed
-		message = err.Error()
-	}
-
-	getSLIEvent := keptnv2.GetSLIFinishedEventData{
-		EventData: keptnv2.EventData{
-			Project: eventData.Project,
-			Stage:   eventData.Stage,
-			Service: eventData.Service,
-			Labels:  eventData.Labels,
-			Status:  status,
-			Result:  result,
-			Message: message,
-		},
-		GetSLI: keptnv2.GetSLIFinished{
-			IndicatorValues: indicatorValues,
-			Start:           eventData.GetSLI.Start,
-			End:             eventData.GetSLI.End,
-		},
-	}
-
-	event := cloudevents.NewEvent()
-	event.SetType(keptnv2.GetFinishedEventType(keptnv2.GetSLITaskName))
-	event.SetSource(source.String())
-	event.SetDataContentType(cloudevents.ApplicationJSON)
-	event.SetExtension("shkeptncontext", keptnContext)
-	event.SetExtension("triggeredid", inputEvent.ID())
-	event.SetData(cloudevents.ApplicationJSON, getSLIEvent)
-
-	return sendEvent(event)
-}
-
-func sendEvent(event cloudevents.Event) error {
-	keptnHandler, err := keptnv2.NewKeptn(&event, keptncommon.KeptnOpts{})
-	if err != nil {
-		return err
-	}
-
-	return keptnHandler.SendCloudEvent(event)
 }

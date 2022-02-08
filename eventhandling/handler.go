@@ -4,7 +4,6 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/keptn-contrib/prometheus-service/utils"
-	keptnevents "github.com/keptn/go-utils/pkg/lib"
 	"github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 )
@@ -33,7 +32,7 @@ func NewEventHandler(event cloudevents.Event, logger *keptn.Logger, keptnHandler
 		logger.Error("Failed to process env var: " + err.Error())
 	}
 
-	if event.Type() == keptnevents.ConfigureMonitoringEventType {
+	if event.Type() == keptnv2.GetTriggeredEventType(keptnv2.ConfigureMonitoringTaskName) {
 		return &ConfigureMonitoringEventHandler{
 			logger:       logger,
 			event:        event,
@@ -45,6 +44,8 @@ func NewEventHandler(event cloudevents.Event, logger *keptn.Logger, keptnHandler
 			keptnHandler: keptnHandler,
 		}
 	}
+
+	logger.Error("Unknown event type " + event.Type())
 
 	return &NoOpEventHandler{}
 

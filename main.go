@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	"github.com/keptn-contrib/prometheus-service/utils"
+	keptn "github.com/keptn/go-utils/pkg/lib"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -79,6 +80,11 @@ func gotEvent(event cloudevents.Event) error {
 	var shkeptncontext string
 	_ = event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
 
+	// convert v0.1.4 spec monitoring.configure CloudEvent into a v0.2.0 spec configure-monitoring.triggered CloudEvent
+	if event.Type() == keptn.ConfigureMonitoringEventType {
+		event.SetType(keptnv2.GetTriggeredEventType(keptnv2.ConfigureMonitoringTaskName))
+	}
+
 	keptnHandler, err := keptnv2.NewKeptn(&event, keptncommon.KeptnOpts{})
 
 	if err != nil {
@@ -88,6 +94,7 @@ func gotEvent(event cloudevents.Event) error {
 	logger := keptncommon.NewLogger(shkeptncontext, event.Context.GetID(), utils.ServiceName)
 
 	if err = eventhandling.NewEventHandler(event, logger, keptnHandler).HandleEvent(); err != nil {
+		logger.Error(err.Error())
 		return err
 	}
 	return nil

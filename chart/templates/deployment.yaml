@@ -104,7 +104,7 @@ spec:
             - name: PUBSUB_URL
               value: 'nats://keptn-nats-cluster'
             - name: PUBSUB_TOPIC
-              value: 'sh.keptn.event.monitoring.configure,sh.keptn.event.get-sli.triggered'
+              value: 'sh.keptn.event.monitoring.configure,sh.keptn.event.configure-monitoring.triggered,sh.keptn.event.get-sli.triggered'
             - name: PUBSUB_RECIPIENT
               value: '127.0.0.1'
             - name: STAGE_FILTER

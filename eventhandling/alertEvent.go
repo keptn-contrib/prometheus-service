@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	keptncommons "github.com/keptn/go-utils/pkg/lib"
 	"github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 
@@ -24,6 +25,7 @@ type alertManagerEvent struct {
 	Alerts   []alert `json:"alerts""`
 }
 
+// alert coming from prometheus
 type alert struct {
 	Status       string      `json:"status"`
 	Labels       labels      `json:"labels"`
@@ -49,27 +51,10 @@ type annotations struct {
 	Description string `json:"descriptions,omitempty"`
 }
 
-type eventData struct {
-	Project string            `json:"project,omitempty"`
-	Stage   string            `json:"stage,omitempty"`
-	Service string            `json:"service,omitempty"`
-	Labels  map[string]string `json:"labels"`
-	Problem problemData       `json:"problem"`
-}
-
-type problemData struct {
-	State          string          `json:"State,omitempty"`
-	ProblemID      string          `json:"ProblemID"`
-	ProblemTitle   string          `json:"ProblemTitle"`
-	ProblemDetails json.RawMessage `json:"ProblemDetails"`
-	PID            string          `json:"PID"`
-	ProblemURL     string          `json:"ProblemURL,omitempty"`
-	ImpactedEntity string          `json:"ImpactedEntity,omitempty"`
-}
-
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud event to the keptn event broker
 func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, logger *keptn.Logger, shkeptncontext string) {
 	var event alertManagerEvent
+
 	logger.Info("Received alert from Prometheus Alertmanager:" + string(requestBody))
 	err := json.Unmarshal(requestBody, &event)
 	if err != nil {
@@ -85,20 +70,16 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		return
 	}
 
-	newProblemData := problemData{
+	newEventData := keptncommons.ProblemEventData{
 		State:          problemState,
 		ProblemID:      "",
 		ProblemTitle:   event.Alerts[0].Annotations.Summary,
 		ProblemDetails: json.RawMessage(`{"problemDetails":"` + event.Alerts[0].Annotations.Description + `"}`),
 		ProblemURL:     event.Alerts[0].GeneratorURL,
 		ImpactedEntity: event.Alerts[0].Labels.PodName,
-	}
-
-	newEventData := eventData{
-		Project: event.Alerts[0].Labels.Project,
-		Stage:   event.Alerts[0].Labels.Stage,
-		Service: event.Alerts[0].Labels.Service,
-		Problem: newProblemData,
+		Project:        event.Alerts[0].Labels.Project,
+		Stage:          event.Alerts[0].Labels.Stage,
+		Service:        event.Alerts[0].Labels.Service,
 	}
 
 	if event.Alerts[0].Fingerprint != "" {
@@ -120,7 +101,8 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 	}
 }
 
-func createAndSendCE(problemData eventData, shkeptncontext string) error {
+// createAndSendCE create a new problem.triggered event and send it to Keptn
+func createAndSendCE(problemData keptncommons.ProblemEventData, shkeptncontext string) error {
 	source, _ := url.Parse("prometheus")
 
 	eventType := keptnv2.GetTriggeredEventType(problemData.Stage + "." + remediationTaskName)
@@ -146,6 +128,7 @@ func createAndSendCE(problemData eventData, shkeptncontext string) error {
 	return nil
 }
 
+// createOrApplyKeptnContext re-uses the existing Keptn Context or creates a new one based on prometheus fingerprint
 func createOrApplyKeptnContext(contextID string) string {
 	uuid.SetRand(nil)
 	keptnContext := uuid.New().String()

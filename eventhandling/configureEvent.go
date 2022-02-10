@@ -268,6 +268,8 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 			Service: eventData.Service,
 			Stage:   stage.Name,
 		},
+		"primary", // only create alerts for primary deployments
+		nil,
 		nil,
 	)
 

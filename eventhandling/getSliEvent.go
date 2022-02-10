@@ -160,8 +160,7 @@ func getPrometheusAPIURL(project string, kubeClient v1.CoreV1Interface) (string,
 
 	// return cluster-internal prometheus URL if no secret has been found
 	if err != nil {
-		log.Println("could not retrieve or read secret: " + err.Error())
-		log.Println("No external prometheus instance defined for project " + project + ". Using default: " + env.PrometheusEndpoint)
+		log.Println("Could not retrieve or read secret (" + err.Error() + ") for project " + project + ". Using default: " + env.PrometheusEndpoint)
 		return env.PrometheusEndpoint, nil
 	}
 

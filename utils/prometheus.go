@@ -44,15 +44,17 @@ type prometheusResponse struct {
 
 // Handler interacts with a prometheus API endpoint
 type Handler struct {
-	ApiURL        string
-	Username      string
-	Password      string
-	Project       string
-	Stage         string
-	Service       string
-	HTTPClient    *http.Client
-	CustomFilters []*keptnv2.SLIFilter
-	CustomQueries map[string]string
+	ApiURL         string
+	Username       string
+	Password       string
+	Project        string
+	Stage          string
+	Service        string
+	DeploymentType string
+	Labels         map[string]string
+	HTTPClient     *http.Client
+	CustomFilters  []*keptnv2.SLIFilter
+	CustomQueries  map[string]string
 }
 
 const alertManagerYml = `global:
@@ -162,14 +164,16 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, names
 }
 
 // NewPrometheusHandler returns a new prometheus handler that interacts with the Prometheus REST API
-func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, customFilters []*keptnv2.SLIFilter) *Handler {
+func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, deploymentType string, labels map[string]string, customFilters []*keptnv2.SLIFilter) *Handler {
 	ph := &Handler{
-		ApiURL:        apiURL,
-		Project:       eventData.Project,
-		Stage:         eventData.Stage,
-		Service:       eventData.Service,
-		HTTPClient:    &http.Client{},
-		CustomFilters: customFilters,
+		ApiURL:         apiURL,
+		Project:        eventData.Project,
+		Stage:          eventData.Stage,
+		Service:        eventData.Service,
+		DeploymentType: deploymentType,
+		Labels:         labels,
+		HTTPClient:     &http.Client{},
+		CustomFilters:  customFilters,
 	}
 
 	return ph
@@ -265,9 +269,14 @@ func (ph *Handler) replaceQueryParameters(query string, start time.Time, end tim
 	query = strings.Replace(query, "$PROJECT", ph.Project, -1)
 	query = strings.Replace(query, "$STAGE", ph.Stage, -1)
 	query = strings.Replace(query, "$SERVICE", ph.Service, -1)
-	query = strings.Replace(query, "$project", ph.Project, -1)
-	query = strings.Replace(query, "$stage", ph.Stage, -1)
-	query = strings.Replace(query, "$service", ph.Service, -1)
+	query = strings.Replace(query, "$DEPLOYMENT", ph.DeploymentType, -1)
+
+	// replace labels
+	for key, value := range ph.Labels {
+		query = strings.Replace(query, "$LABEL."+key, value, -1)
+	}
+
+	// replace duration
 	durationString := strconv.FormatInt(getDurationInSeconds(start, end), 10) + "s"
 
 	query = strings.Replace(query, "$DURATION_SECONDS", durationString, -1)

@@ -98,6 +98,8 @@ func retrieveMetrics(event cloudevents.Event, eventData *keptnv2.GetSLITriggered
 	prometheusHandler := utils.NewPrometheusHandler(
 		prometheusAPIURL,
 		&eventData.EventData,
+		eventData.Deployment, // "canary", "primary" or "" (or "direct" or "user_managed")
+		eventData.Labels,
 		eventData.GetSLI.CustomFilters,
 	)
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -13,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
 	alertConfig "github.com/prometheus/alertmanager/config"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -162,12 +162,12 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, names
 }
 
 // NewPrometheusHandler returns a new prometheus handler that interacts with the Prometheus REST API
-func NewPrometheusHandler(apiURL string, project string, stage string, service string, customFilters []*keptnv2.SLIFilter) *Handler {
+func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, customFilters []*keptnv2.SLIFilter) *Handler {
 	ph := &Handler{
 		ApiURL:        apiURL,
-		Project:       project,
-		Stage:         stage,
-		Service:       service,
+		Project:       eventData.Project,
+		Stage:         eventData.Stage,
+		Service:       eventData.Service,
 		HTTPClient:    &http.Client{},
 		CustomFilters: customFilters,
 	}
@@ -176,7 +176,7 @@ func NewPrometheusHandler(apiURL string, project string, stage string, service s
 }
 
 // GetSLIValue retrieves the specified value via the Prometheus API
-func (ph *Handler) GetSLIValue(metric string, start string, end string, logger keptncommon.LoggerInterface) (float64, error) {
+func (ph *Handler) GetSLIValue(metric string, start string, end string) (float64, error) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	startUnix, err := parseUnixTimestamp(start)
@@ -187,12 +187,12 @@ func (ph *Handler) GetSLIValue(metric string, start string, end string, logger k
 	if err != nil {
 		return 0, err
 	}
-	query, err := ph.getMetricQuery(metric, startUnix, endUnix)
+	query, err := ph.GetMetricQuery(metric, startUnix, endUnix)
 	if err != nil {
 		return 0, err
 	}
 	queryString := ph.ApiURL + "/api/v1/query?query=" + url.QueryEscape(query) + "&time=" + strconv.FormatInt(endUnix.Unix(), 10)
-	logger.Info("Generated query: /api/v1/query?query=" + query + "&time=" + strconv.FormatInt(endUnix.Unix(), 10))
+	log.Println("GetSLIValue: Generated query: /api/v1/query?query=" + query + "&time=" + strconv.FormatInt(endUnix.Unix(), 10))
 
 	req, err := http.NewRequest("GET", queryString, nil)
 	req.Header.Set("Content-Type", "application/json")
@@ -216,21 +216,22 @@ func (ph *Handler) GetSLIValue(metric string, start string, end string, logger k
 	}
 
 	if len(prometheusResult.Data.Result) == 0 || len(prometheusResult.Data.Result[0].Value) == 0 {
-		logger.Info("Prometheus Result is 0, returning value 0")
+		log.Println("GetSLIValue: Prometheus Result is 0, returning value 0")
 		// for the error rate query, the result is received with no value if the error rate is 0, so we have to assume that's OK at this point
 		return 0, nil
 	}
 
 	parsedValue := fmt.Sprintf("%v", prometheusResult.Data.Result[0].Value[1])
 	floatValue, err := strconv.ParseFloat(parsedValue, 64)
-	logger.Info(fmt.Sprintf("Prometheus Result is %v", floatValue))
+	log.Printf(fmt.Sprintf("Prometheus Result is %v\n", floatValue))
 	if err != nil {
 		return 0, nil
 	}
 	return floatValue, nil
 }
 
-func (ph *Handler) getMetricQuery(metric string, start time.Time, end time.Time) (string, error) {
+// GetMetricQuery returns the prometheus metric expression for the given SLI, start and end time
+func (ph *Handler) GetMetricQuery(metric string, start time.Time, end time.Time) (string, error) {
 	query := ph.CustomQueries[metric]
 	if query != "" {
 		query = ph.replaceQueryParameters(query, start, end)

@@ -87,11 +87,7 @@ func gotEvent(event cloudevents.Event) error {
 
 	logger := keptncommon.NewLogger(shkeptncontext, event.Context.GetID(), utils.ServiceName)
 
-	if err = eventhandling.NewEventHandler(event, logger, keptnHandler).HandleEvent(); err != nil {
-		return err
-	}
-	return nil
-
+	return eventhandling.NewEventHandler(event, logger, keptnHandler).HandleEvent()
 }
 
 // HealthHandler provides a basic health check

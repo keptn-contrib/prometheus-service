@@ -70,10 +70,6 @@ type alertingAnnotations struct {
 
 // HandleEvent processes an event
 func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
-
-	var shkeptncontext string
-	_ = eh.event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
-
 	eventData := &keptnevents.ConfigureMonitoringEventData{}
 	if err := eh.event.DataAs(eventData); err != nil {
 		return err
@@ -85,10 +81,10 @@ func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
 	err := eh.configurePrometheusAndStoreResources(eventData)
 	if err != nil {
 		eh.logger.Error(err.Error())
-		return eh.handleError(eventData, err.Error())
+		return eh.handleError(err.Error())
 	}
 
-	if err = eh.sendConfigureMonitoringFinishedEvent(eventData, keptnv2.StatusSucceeded, keptnv2.ResultPass, "Prometheus successfully configured and rule created"); err != nil {
+	if err = eh.sendConfigureMonitoringFinishedEvent(keptnv2.StatusSucceeded, keptnv2.ResultPass, "Prometheus successfully configured and rule created"); err != nil {
 		eh.logger.Error(err.Error())
 	}
 	return nil
@@ -433,37 +429,23 @@ func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage stri
 	return &slos, nil
 }
 
-func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(configureMonitoringData *keptnevents.ConfigureMonitoringEventData, status keptnv2.StatusType, result keptnv2.ResultType, msg string) error {
-	cmFinishedEvent := &keptnv2.ConfigureMonitoringFinishedEventData{
-		EventData: keptnv2.EventData{
-			Project: configureMonitoringData.Project,
-			Service: configureMonitoringData.Service,
-			Status:  status,
-			Result:  result,
-			Message: msg,
-		},
-	}
-	keptnContext, _ := eh.event.Context.GetExtension("shkeptncontext")
-	triggeredID := eh.event.Context.GetID()
+func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(status keptnv2.StatusType, result keptnv2.ResultType, msg string) error {
+	_, err := eh.keptnHandler.SendTaskFinishedEvent(&keptnv2.EventData{
+		Status:  status,
+		Result:  result,
+		Message: msg,
+	}, utils.ServiceName)
 
-	event := cloudevents.NewEvent()
-	event.SetSource(utils.ServiceName)
-	event.SetDataContentType(cloudevents.ApplicationJSON)
-	event.SetType(keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName))
-	event.SetData(cloudevents.ApplicationJSON, cmFinishedEvent)
-	event.SetExtension("shkeptncontext", keptnContext)
-	event.SetExtension("triggeredid", triggeredID)
-
-	if err := eh.keptnHandler.SendCloudEvent(event); err != nil {
+	if err != nil {
 		return fmt.Errorf("could not send %s event: %s", keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName), err.Error())
 	}
 
 	return nil
 }
 
-func (eh ConfigureMonitoringEventHandler) handleError(e *keptnevents.ConfigureMonitoringEventData, msg string) error {
+func (eh ConfigureMonitoringEventHandler) handleError(msg string) error {
 	//logger.Error(msg)
-	if err := eh.sendConfigureMonitoringFinishedEvent(e, keptnv2.StatusErrored, keptnv2.ResultFailed, msg); err != nil {
+	if err := eh.sendConfigureMonitoringFinishedEvent(keptnv2.StatusErrored, keptnv2.ResultFailed, msg); err != nil {
 		// an additional error occurred when trying to send configure monitoring finished back to Keptn
 		eh.logger.Error(err.Error())
 	}

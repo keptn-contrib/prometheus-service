@@ -81,13 +81,13 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 10999
+              port: 8080
             initialDelaySeconds: 0
             periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /health
-              port: 10999
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
           imagePullPolicy: {{ .Values.distributor.image.pullPolicy }}
@@ -113,6 +113,8 @@ spec:
               value: "{{ .Values.distributor.projectFilter }}"
             - name: SERVICE_FILTER
               value: "{{ .Values.distributor.serviceFilter }}"
+            - name: DISTRIBUTOR_VERSION
+              value: {{ .Values.distributor.image.tag | default .Chart.AppVersion }}
             - name: VERSION
               valueFrom:
                 fieldRef:
@@ -145,6 +147,12 @@ spec:
             - name: HTTP_SSL_VERIFY
               {{- $apiValidateTls := .Values.remoteControlPlane.api.apiValidateTls | ternary "true" "false" }}
               value: "{{ $apiValidateTls }}"
+            {{- end }}
+            {{- if .Values.distributor.config.queueGroup.enabled }}
+            - name: PUBSUB_GROUP
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['app.kubernetes.io/name']
             {{- end }}
 
       {{- with .Values.nodeSelector }}

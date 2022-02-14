@@ -9,7 +9,7 @@ const SliResourceURI = "prometheus/sli.yaml"
 // EnvConfig holds the configuration of environment variables that this service uses
 type EnvConfig struct {
 	// Port on which to listen for cloudevents
-	Port                          int    `envconfig:"RCV_PORT" default:"8082"` // Note: must not be 8080 and not 8081
+	Port                          int    `envconfig:"RCV_PORT" default:"8080"`
 	Path                          string `envconfig:"RCV_PATH" default:"/"`
 	ConfigurationServiceURL       string `envconfig:"CONFIGURATION_SERVICE" default:""`
 	PrometheusNamespace           string `envconfig:"PROMETHEUS_NS" default:""`

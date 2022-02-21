@@ -107,6 +107,8 @@ spec:
               value: 'sh.keptn.event.monitoring.configure,sh.keptn.event.configure-monitoring.triggered,sh.keptn.event.get-sli.triggered'
             - name: PUBSUB_RECIPIENT
               value: '127.0.0.1'
+            - name: PUBSUB_RECIPIENT_PATH
+              value: '/events'
             - name: STAGE_FILTER
               value: "{{ .Values.distributor.stageFilter }}"
             - name: PROJECT_FILTER

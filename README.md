@@ -13,24 +13,26 @@ The *prometheus-service* is a [Keptn](https://keptn.sh) integration responsible 
 Please always double-check the version of Keptn you are using compared to the version of this service, and follow the compatibility matrix below.
 
 
-| Keptn Version    | [Prometheus Service Image](https://hub.docker.com/r/keptncontrib/prometheus-service/tags) |
-|:----------------:|:-----------------------------------------------------------------------------------------:|
-|       0.5.x      |                           keptncontrib/prometheus-service:0.2.0                           |
-|       0.6.x      |                           keptncontrib/prometheus-service:0.3.0                           |
-|       0.6.1      |                           keptncontrib/prometheus-service:0.3.2                           |
-|       0.6.2      |                           keptncontrib/prometheus-service:0.3.4                           |
-|   0.7.0, 0.7.1   |                           keptncontrib/prometheus-service:0.3.5                           |
-|       0.7.2      |                           keptncontrib/prometheus-service:0.3.6                           |
-|   0.8.0-alpha    |                        keptncontrib/prometheus-service:0.4.0-alpha                        |
-|   0.8.0          |                           keptncontrib/prometheus-service:0.4.0                           |
-|   0.8.1, 0.8.2   |                           keptncontrib/prometheus-service:0.5.0                           |
-|   0.8.1 - 0.8.3  |                           keptncontrib/prometheus-service:0.6.0                           |
-|   0.8.4 - 0.8.7  |                           keptncontrib/prometheus-service:0.6.1                           |
-|       0.9.0      |                           keptncontrib/prometheus-service:0.6.2                           |
-|   0.9.0 - 0.9.2  |                           keptncontrib/prometheus-service:0.7.0                           |
-|   0.10.0         |                           keptncontrib/prometheus-service:0.7.1                           |
-|   0.10.0         |                           keptncontrib/prometheus-service:0.7.2                           |
+| Keptn Version\* | [Prometheus Service Image](https://hub.docker.com/r/keptncontrib/prometheus-service/tags) |
+|:---------------:|:-----------------------------------------------------------------------------------------:|
+|      0.5.x      |                           keptncontrib/prometheus-service:0.2.0                           |
+|      0.6.x      |                           keptncontrib/prometheus-service:0.3.0                           |
+|      0.6.1      |                           keptncontrib/prometheus-service:0.3.2                           |
+|      0.6.2      |                           keptncontrib/prometheus-service:0.3.4                           |
+|  0.7.0, 0.7.1   |                           keptncontrib/prometheus-service:0.3.5                           |
+|      0.7.2      |                           keptncontrib/prometheus-service:0.3.6                           |
+|   0.8.0-alpha   |                        keptncontrib/prometheus-service:0.4.0-alpha                        |
+|      0.8.0      |                           keptncontrib/prometheus-service:0.4.0                           |
+|  0.8.1, 0.8.2   |                           keptncontrib/prometheus-service:0.5.0                           |
+|  0.8.1 - 0.8.3  |                           keptncontrib/prometheus-service:0.6.0                           |
+|  0.8.4 - 0.8.7  |                           keptncontrib/prometheus-service:0.6.1                           |
+|      0.9.0      |                           keptncontrib/prometheus-service:0.6.2                           |
+|  0.9.0 - 0.9.2  |                           keptncontrib/prometheus-service:0.7.0                           |
+|     0.10.0      |                           keptncontrib/prometheus-service:0.7.1                           |
+|     0.10.0      |                           keptncontrib/prometheus-service:0.7.2                           |
+|     0.12.0      |                          keptncontrib/prometheus-service:0.7.3                            |
 
+\* This is the Keptn version we aim to be compatible with. Other versions should work too, but there is no guarantee.
 
 ## Installation instructions
 
@@ -47,6 +49,16 @@ helm install prometheus prometheus-community/prometheus --namespace monitoring
 
 **Note**: After setting up prometheus, make sure to apply [deploy/role.yaml](deploy/role.yaml) such that prometheus-service can access the `monitoring` namespace (see instructions below).
 
+### Optional: Verify Prometheus in your Kubernetes cluster
+
+* To verify that the Prometheus scrape jobs are correctly set up, you can access Prometheus by enabling port-forwarding for the prometheus-server:
+
+```bash
+kubectl port-forward svc/prometheus-server 8080:80 -n monitoring
+```
+
+Prometheus is then available on [localhost:8080/targets](http://localhost:8080/targets) where you can see the targets for the service.
+
 
 ### Install prometheus-service
 
@@ -60,26 +72,19 @@ Please replace the placeholders in the commands below. Examples are provided.
 
 Once this is done, you can go ahead and install prometheus-service:
 
+*Note*: Make sure to replace `<VERSION>` with the version you want to install.
 
 * Install Keptn prometheus-service in Kubernetes using
 
 ```bash
-helm install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz
-# or
-helm upgrade --install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz
+helm upgrade --install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz --reuse-values
 ```
 
-Prior to version 0.7.2 installation should be done via `kubectl`:
-```bash
-kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-<VERSION>/deploy/service.yaml
-```
-
-* Install Role and RoleBinding to permit prometheus-service for performing operations in the Prometheus installed namespace:
+* Install Role and RoleBinding to permit prometheus-service for performing operations in the Prometheus `monitoring` namespace:
 
 ```bash
-kubectl -n <PROMETHEUS_NS> apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/<VERSION>/deploy/role.yaml
+kubectl -n monitoring apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/<VERSION>/deploy/role.yaml
 ```
-
 
 * (Optional) Replace the environment variable value according to the use case and apply the manifest:
 
@@ -87,35 +92,11 @@ kubectl -n <PROMETHEUS_NS> apply -f https://raw.githubusercontent.com/keptn-cont
 helm upgrade -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz --reuse-values --set=prometheus.namespace="<PROMETHEUS_NS>",prometheus.endpoint="<PROMETHEUS_ENDPOINT>",prometheus.namespace_am="<ALERT_MANAGER_NS>"
 ```
 
-
-Prior to version 0.7.2 setting variables should be done via `kubectl`:
-```
-# Prometheus installed namespace
-kubectl set env deployment/prometheus-service -n keptn --containers="prometheus-service" PROMETHEUS_NS="<PROMETHEUS_NS>"
-
-# Setup Prometheus Endpoint
-kubectl set env deployment/prometheus-service -n keptn --containers="prometheus-service" PROMETHEUS_ENDPOINT="<PROMETHEUS_ENDPOINT>"
-
-# Alert Manager installed namespace
-kubectl set env deployment/prometheus-service -n keptn --containers="prometheus-service" ALERT_MANAGER_NS="<ALERT_MANAGER_NS>"
-```
-
-
 * Execute the following command to configure Prometheus and set up the rules for the *Prometheus Alerting Manager*:
 
 ```bash
 keptn configure monitoring prometheus --project=sockshop --service=carts
 ```
-
-### Optional: Verify Prometheus setup in your cluster
-
-* To verify that the Prometheus scrape jobs are correctly set up, you can access Prometheus by enabling port-forwarding for the prometheus-server:
-
-```bash
-kubectl port-forward svc/prometheus-server 8080:80 -n <PROMETHEUS_NS>
-```
-
-Prometheus is then available on [localhost:8080/targets](http://localhost:8080/targets) where you can see the targets for the service.
 
 
 ### Advanced Options

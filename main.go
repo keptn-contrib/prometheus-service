@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	"github.com/keptn-contrib/prometheus-service/utils"
 	keptn "github.com/keptn/go-utils/pkg/lib"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -41,17 +43,19 @@ func _main(env utils.EnvConfig) int {
 	ctx := context.Background()
 	ctx = cloudevents.WithEncodingStructured(ctx)
 
-	p, err := cloudevents.NewHTTP(cloudevents.WithPath(env.Path), cloudevents.WithPort(env.Port), cloudevents.WithGetHandlerFunc(HTTPGetHandler))
+	p, err := cloudevents.NewHTTP()
 	if err != nil {
-		log.Fatalf("failed to create client, %v", err)
+		log.Fatalf("failed to create protocol: %s", err.Error())
 	}
-	// Create CloudEvents client
-	c, err := cloudevents.NewClient(p)
+
+	ceHandler, err := cloudevents.NewHTTPReceiveHandler(ctx, p, gotEvent)
 	if err != nil {
-		log.Fatalf("failed to create client, %v", err)
+		log.Fatalf("failed to create handler: %s", err.Error())
 	}
-	// Start CloudEvents receiver
-	log.Fatal(c.StartReceiver(ctx, gotEvent))
+
+	http.HandleFunc("/", HTTPGetHandler)
+	http.Handle(env.Path, ceHandler)
+	http.ListenAndServe(":8080", nil)
 
 	return 0
 }
@@ -62,12 +66,6 @@ func gotEvent(event cloudevents.Event) error {
 	_ = event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
 
 	logger := keptncommon.NewLogger(shkeptncontext, "", utils.ServiceName)
-
-	// Send prometheus alert
-	if event.SpecVersion() == "" {
-		eventhandling.ProcessAndForwardAlertEvent(event.Data(), logger, shkeptncontext)
-		return nil
-	}
 
 	// convert v0.1.4 spec monitoring.configure CloudEvent into a v0.2.0 spec configure-monitoring.triggered CloudEvent
 	if event.Type() == keptn.ConfigureMonitoringEventType {
@@ -86,6 +84,17 @@ func gotEvent(event cloudevents.Event) error {
 // HTTPGetHandler will handle all requests for '/health' and '/ready'
 func HTTPGetHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
+	case "/":
+		shkeptncontext := uuid.New().String()
+		logger := keptncommon.NewLogger(shkeptncontext, "", utils.ServiceName)
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to read body from requst: %s", err))
+			return
+		}
+
+		eventhandling.ProcessAndForwardAlertEvent(w, body, logger, shkeptncontext)
 	case "/health":
 		healthEndpointHandler(w, r)
 	case "/ready":

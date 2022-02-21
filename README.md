@@ -49,6 +49,16 @@ helm install prometheus prometheus-community/prometheus --namespace monitoring
 
 **Note**: After setting up prometheus, make sure to apply [deploy/role.yaml](deploy/role.yaml) such that prometheus-service can access the `monitoring` namespace (see instructions below).
 
+### Optional: Verify Prometheus in your Kubernetes cluster
+
+* To verify that the Prometheus scrape jobs are correctly set up, you can access Prometheus by enabling port-forwarding for the prometheus-server:
+
+```bash
+kubectl port-forward svc/prometheus-server 8080:80 -n monitoring
+```
+
+Prometheus is then available on [localhost:8080/targets](http://localhost:8080/targets) where you can see the targets for the service.
+
 
 ### Install prometheus-service
 
@@ -62,26 +72,19 @@ Please replace the placeholders in the commands below. Examples are provided.
 
 Once this is done, you can go ahead and install prometheus-service:
 
+*Note*: Make sure to replace `<VERSION>` with the version you want to install.
 
 * Install Keptn prometheus-service in Kubernetes using
 
 ```bash
-helm install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz
-# or
-helm upgrade --install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz
+helm upgrade --install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz --reuse-values
 ```
 
-Prior to version 0.7.2 installation should be done via `kubectl`:
-```bash
-kubectl apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/release-<VERSION>/deploy/service.yaml
-```
-
-* Install Role and RoleBinding to permit prometheus-service for performing operations in the Prometheus installed namespace:
+* Install Role and RoleBinding to permit prometheus-service for performing operations in the Prometheus `monitoring` namespace:
 
 ```bash
-kubectl -n <PROMETHEUS_NS> apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/<VERSION>/deploy/role.yaml
+kubectl -n monitoring apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/<VERSION>/deploy/role.yaml
 ```
-
 
 * (Optional) Replace the environment variable value according to the use case and apply the manifest:
 
@@ -89,35 +92,11 @@ kubectl -n <PROMETHEUS_NS> apply -f https://raw.githubusercontent.com/keptn-cont
 helm upgrade -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz --reuse-values --set=prometheus.namespace="<PROMETHEUS_NS>",prometheus.endpoint="<PROMETHEUS_ENDPOINT>",prometheus.namespace_am="<ALERT_MANAGER_NS>"
 ```
 
-
-Prior to version 0.7.2 setting variables should be done via `kubectl`:
-```
-# Prometheus installed namespace
-kubectl set env deployment/prometheus-service -n keptn --containers="prometheus-service" PROMETHEUS_NS="<PROMETHEUS_NS>"
-
-# Setup Prometheus Endpoint
-kubectl set env deployment/prometheus-service -n keptn --containers="prometheus-service" PROMETHEUS_ENDPOINT="<PROMETHEUS_ENDPOINT>"
-
-# Alert Manager installed namespace
-kubectl set env deployment/prometheus-service -n keptn --containers="prometheus-service" ALERT_MANAGER_NS="<ALERT_MANAGER_NS>"
-```
-
-
 * Execute the following command to configure Prometheus and set up the rules for the *Prometheus Alerting Manager*:
 
 ```bash
 keptn configure monitoring prometheus --project=sockshop --service=carts
 ```
-
-### Optional: Verify Prometheus setup in your cluster
-
-* To verify that the Prometheus scrape jobs are correctly set up, you can access Prometheus by enabling port-forwarding for the prometheus-server:
-
-```bash
-kubectl port-forward svc/prometheus-server 8080:80 -n <PROMETHEUS_NS>
-```
-
-Prometheus is then available on [localhost:8080/targets](http://localhost:8080/targets) where you can see the targets for the service.
 
 
 ### Advanced Options

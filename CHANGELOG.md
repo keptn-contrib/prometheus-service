@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.3](https://github.com/keptn-contrib/prometheus-service/compare/0.7.2...0.7.3) (2022-02-21)
+
+
+### Features
+
+* Allow labels and deployment types as placeholders for SLIs ([#265](https://github.com/keptn-contrib/prometheus-service/issues/265)) ([ac86eed](https://github.com/keptn-contrib/prometheus-service/commit/ac86eed9e6be7423afb23b34b3401826bfc8acc3))
+* Keptn 0.12 compatibility ([#269](https://github.com/keptn-contrib/prometheus-service/issues/269)) ([8bc2180](https://github.com/keptn-contrib/prometheus-service/commit/8bc2180b328351eafd40e4e599c15359febf6db3))
+* only add prometheus alerts if remediation.yaml is defined for the stage ([#253](https://github.com/keptn-contrib/prometheus-service/issues/253)) ([#255](https://github.com/keptn-contrib/prometheus-service/issues/255)) ([05dae73](https://github.com/keptn-contrib/prometheus-service/commit/05dae73f24a5a19b36605303267049316e68e3cb))
+
+
+### Bug Fixes
+
+* installing role and rolebinding from correct tag ([#257](https://github.com/keptn-contrib/prometheus-service/issues/257)) ([2f41b77](https://github.com/keptn-contrib/prometheus-service/commit/2f41b77ba7b9db103e5f1be3050b431bef30508d))
+
+
+### Refactoring
+
+* Do not delete prometheus pods after configuring ConfigMaps ([#252](https://github.com/keptn-contrib/prometheus-service/issues/252)) ([1202556](https://github.com/keptn-contrib/prometheus-service/commit/12025565524992998454eae6ea3631eb955023af))
+* move SLI retrieval into eventhandling, re-use prometheus metric fetching ([#264](https://github.com/keptn-contrib/prometheus-service/issues/264)) ([97adeec](https://github.com/keptn-contrib/prometheus-service/commit/97adeec26cd390e83bf053bf93bc5ceb9280c03c))
+* use built-in send event functionality of keptn/go-utils ([#267](https://github.com/keptn-contrib/prometheus-service/issues/267)) ([908b4d5](https://github.com/keptn-contrib/prometheus-service/commit/908b4d5234438a5618cfae4bfe6a4a137a0089de))
+
+
+### Other
+
+* added a way to test prometheus alerts ([#271](https://github.com/keptn-contrib/prometheus-service/issues/271)) ([ac6e9c4](https://github.com/keptn-contrib/prometheus-service/commit/ac6e9c479a644e8bdc8fad14ba19b7a909484829))
+
 ### [0.7.2](https://github.com/keptn-contrib/prometheus-service/compare/0.7.1...0.7.2) (2021-12-17)
 
 

@@ -9,7 +9,7 @@ require (
 	github.com/keptn/go-utils v0.12.0
 	github.com/prometheus/alertmanager v0.21.0
 	github.com/prometheus/common v0.10.0
-	github.com/prometheus/prometheus v0.0.0-20200326161412-ae041f97cfc6
+	github.com/prometheus/prometheus v1.8.2
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3

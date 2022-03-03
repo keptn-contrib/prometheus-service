@@ -8,7 +8,7 @@ build:
       docker:
         dockerfile: Dockerfile
 # Before executing this, install prometheus-service manually:
-# helm install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/0.7.2-next.0/prometheus-service-0.7.2-next.0.tgz
+# helm install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/0.7.2/prometheus-service-0.7.2.tgz
 deploy:
   helm:
     flags:

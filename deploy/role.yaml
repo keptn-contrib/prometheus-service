@@ -6,28 +6,16 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - services
       - configmaps
     verbs:
       - get
-      - create
       - update
+      - create
   - apiGroups:
       - ""
     resources:
-      - pods
+      - services
     verbs:
-      - get
-      - create
-      - update
-      - delete
-  - apiGroups:
-      - "apps"
-    resources:
-      - deployments
-    verbs:
-      - create
-      - update
       - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1

@@ -1,6 +1,7 @@
 package eventhandling
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -12,16 +13,14 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/keptn-contrib/prometheus-service/utils"
-
 	configutils "github.com/keptn/go-utils/pkg/api/utils"
 	keptnevents "github.com/keptn/go-utils/pkg/lib"
 	"github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
+
+	"github.com/keptn-contrib/prometheus-service/utils"
+	"github.com/keptn-contrib/prometheus-service/utils/prometheus"
 	prometheus_model "github.com/prometheus/common/model"
-	prometheusconfig "github.com/prometheus/prometheus/config"
-	prometheus_sd_config "github.com/prometheus/prometheus/discovery/config"
-	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
 
 const Throughput = "throughput"
@@ -143,7 +142,7 @@ func getPrometheusAlertManagerServiceFromK8s() (*v1.ServiceList, error) {
 
 func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager() error {
 	eh.logger.Info("Configuring Prometheus AlertManager...")
-	prometheusHelper, err := utils.NewPrometheusHelper()
+	prometheusHelper, err := prometheus.NewPrometheusHelper()
 
 	eh.logger.Info("Updating Prometheus AlertManager configmap...")
 	err = prometheusHelper.UpdateAMConfigMap(env.AlertManagerConfigMap, env.AlertManagerConfigFileName, env.AlertManagerNamespace)
@@ -168,11 +167,11 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		return err
 	}
 
-	cmPrometheus, err := api.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(env.PrometheusConfigMap, metav1.GetOptions{})
+	cmPrometheus, err := api.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(context.TODO(), env.PrometheusConfigMap, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	config, err := prometheusconfig.Load(cmPrometheus.Data[env.PrometheusConfigFileName])
+	config, err := prometheus.LoadYamlConfiguration(cmPrometheus.Data[env.PrometheusConfigFileName])
 	if err != nil {
 		return err
 	}
@@ -188,7 +187,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	}
 	// update: Create scrape job and alerting rules for each stage of the shipyard file
 	for _, stage := range shipyard.Spec.Stages {
-		var scrapeConfig *prometheusconfig.ScrapeConfig
+		var scrapeConfig *prometheus.ScrapeConfig
 		// (a) if a scrape config with the same name is available, update that one
 
 		// <service>-primary.<project>-<stage>
@@ -212,7 +211,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	// apply
 	cmPrometheus.Data["alerting_rules.yml"] = string(alertingRulesYAMLString)
 	cmPrometheus.Data[env.PrometheusConfigFileName] = config.String()
-	_, err = api.CoreV1().ConfigMaps(env.PrometheusNamespace).Update(cmPrometheus)
+	_, err = api.CoreV1().ConfigMaps(env.PrometheusNamespace).Update(context.TODO(), cmPrometheus, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -257,7 +256,7 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	}
 
 	// create a new prometheus handler in order to query SLI expressions
-	prometheusHandler := utils.NewPrometheusHandler(
+	prometheusHandler := prometheus.NewPrometheusHandler(
 		"",
 		&keptnv2.EventData{
 			Project: eventData.Project,
@@ -342,7 +341,7 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	return alertingRulesConfig, nil
 }
 
-func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *prometheusconfig.Config, project string, stage string, service string, isCanary bool, isPrimary bool) {
+func createScrapeJobConfig(scrapeConfig *prometheus.ScrapeConfig, config *prometheus.Config, project string, stage string, service string, isCanary bool, isPrimary bool) {
 	scrapeConfigName := service + "-" + project + "-" + stage
 	var scrapeEndpoint string
 	if isCanary {
@@ -358,7 +357,7 @@ func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *
 	scrapeConfig = getScrapeConfig(config, scrapeConfigName)
 	// (b) if not, create a new scrape config
 	if scrapeConfig == nil {
-		scrapeConfig = &prometheusconfig.ScrapeConfig{}
+		scrapeConfig = &prometheus.ScrapeConfig{}
 		config.ScrapeConfigs = append(config.ScrapeConfigs, scrapeConfig)
 	}
 
@@ -369,12 +368,10 @@ func createScrapeJobConfig(scrapeConfig *prometheusconfig.ScrapeConfig, config *
 	scrapeConfig.ScrapeTimeout = prometheus_model.Duration(3 * time.Second)
 	// configure metrics path (default: /metrics)
 	scrapeConfig.MetricsPath = utils.EnvVarOrDefault(metricsScrapePathEnvName, "/metrics")
-	scrapeConfig.ServiceDiscoveryConfig = prometheus_sd_config.ServiceDiscoveryConfig{
-		StaticConfigs: []*targetgroup.Group{
-			{
-				Targets: []prometheus_model.LabelSet{
-					{prometheus_model.AddressLabel: prometheus_model.LabelValue(scrapeEndpoint)},
-				},
+	scrapeConfig.StaticConfigs = prometheus.Configs{
+		prometheus.StaticConfigLike{
+			Targets: []string{
+				scrapeEndpoint,
 			},
 		},
 	}
@@ -398,7 +395,7 @@ func getAlertingGroup(alertingRulesConfig *alertingRules, groupName string) *ale
 	return nil
 }
 
-func getScrapeConfig(config *prometheusconfig.Config, name string) *prometheusconfig.ScrapeConfig {
+func getScrapeConfig(config *prometheus.Config, name string) *prometheus.ScrapeConfig {
 	for _, scrapeConfig := range config.ScrapeConfigs {
 		if scrapeConfig.JobName == name {
 			return scrapeConfig

@@ -1,8 +1,10 @@
 package eventhandling
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/keptn-contrib/prometheus-service/utils/prometheus"
 	"gopkg.in/yaml.v2"
 	"log"
 	"math"
@@ -114,7 +116,7 @@ func retrieveMetrics(eventData *keptnv2.GetSLITriggeredEventData, keptnHandler *
 	}
 
 	// Create a new Prometheus Handler
-	prometheusHandler := utils.NewPrometheusHandler(
+	prometheusHandler := prometheus.NewPrometheusHandler(
 		prometheusAPIURL,
 		&eventData.EventData,
 		eventData.Deployment, // "canary", "primary" or "" (or "direct" or "user_managed")
@@ -178,7 +180,7 @@ func getCustomQueries(keptnHandler *keptnv2.Keptn, project string, stage string,
 // getPrometheusAPIURL fetches the prometheus API URL for the provided project (e.g., from Kubernetes configmap)
 func getPrometheusAPIURL(project string, kubeClient v1.CoreV1Interface) (string, error) {
 	log.Println("Checking if external prometheus instance has been defined for project " + project)
-	secret, err := kubeClient.Secrets(env.PodNamespace).Get("prometheus-credentials-"+project, metav1.GetOptions{})
+	secret, err := kubeClient.Secrets(env.PodNamespace).Get(context.TODO(), "prometheus-credentials-"+project, metav1.GetOptions{})
 
 	// return cluster-internal prometheus URL if no secret has been found
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 // UntypedElement identifies arbitrary data
 type UntypedElement map[string]interface{}
 
+// GlobalConfig describes the contents of the prometheus.yml file
 type GlobalConfig struct {
 	ScrapeInterval     model.Duration    `mapstructure:"scrape_interval,omitempty" yaml:"scrape_interval,omitempty"`
 	ScrapeTimeout      model.Duration    `mapstructure:"scrape_timeout,omitempty" yaml:"scrape_timeout,omitempty"`
@@ -80,6 +81,7 @@ func (c ScrapeConfig) String() string {
 	return string(b)
 }
 
+// Configs is a type alias for an array of StaticConfigLike structs
 type Configs []StaticConfigLike
 
 // StaticConfigLike represents a static_config element or any other _config element in the Prometheus configuration

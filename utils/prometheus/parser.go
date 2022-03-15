@@ -7,6 +7,7 @@ import (
 	"reflect"
 )
 
+// LoadYamlConfiguration parses the given yaml configuration of the prometheus.yaml file
 func LoadYamlConfiguration(yamlContent string) (*Config, error) {
 	var result map[string]interface{}
 	if err := yaml.Unmarshal([]byte(yamlContent), &result); err != nil {

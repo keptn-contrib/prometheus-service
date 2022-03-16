@@ -282,6 +282,7 @@ func TestMinimalConfiguration(t *testing.T) {
 	minConfigResult := `global: {}
 scrape_configs:
     - job_name: carts-sockshop-production
+      honor_timestamps: false
       scrape_interval: 5s
       scrape_timeout: 3s
       metrics_path: /metrics

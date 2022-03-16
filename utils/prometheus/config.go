@@ -1,5 +1,4 @@
-// Package prometheus
-// This file contains copied code parts of the prometheus project (https://github.com/prometheus/prometheus)
+// Package prometheus contains copied code parts of the prometheus project (https://github.com/prometheus/prometheus)
 // See the description of the different structures to get more information on where they have been extracted
 // These definitions should match the structs in the supported prometheus version
 package prometheus

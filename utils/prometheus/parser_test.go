@@ -258,11 +258,6 @@ func TestLoadComplexConfig(t *testing.T) {
 
 	assert.Equal(t, config.ScrapeConfigs[10], &expectedScrapeConfig)
 	assert.Contains(t, config.ScrapeConfigs, &expectedScrapeConfig)
-
-	require.NotNil(t, scrapeConfig.StaticConfigs)
-	require.Len(t, scrapeConfig.StaticConfigs, 1)
-	require.NotNil(t, scrapeConfig.StaticConfigs[0].Targets)
-	assert.Equal(t, scrapeConfig.StaticConfigs[0].Targets[0], "carts.sockshop-production:80")
 }
 
 func TestToStringMinimalConfiguration(t *testing.T) {

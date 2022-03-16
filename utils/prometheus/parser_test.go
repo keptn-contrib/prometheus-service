@@ -233,7 +233,7 @@ scrape_configs:
     - carts.sockshop-production:80
 `
 
-func TestLoad(t *testing.T) {
+func TestLoadComplexConfig(t *testing.T) {
 	config, err := LoadYamlConfiguration(sampleConfigurationYAML)
 	require.NoError(t, err)
 
@@ -257,24 +257,11 @@ func TestLoad(t *testing.T) {
 	assert.Equal(t, scrapeConfig.StaticConfigs[0].Targets[0], "carts.sockshop-production:80")
 }
 
-func TestMinimalConfiguration(t *testing.T) {
-	duration5s, _ := model.ParseDuration("5s")
-	duration3s, _ := model.ParseDuration("3s")
+func TestToStringMinimalConfiguration(t *testing.T) {
 	minConfig := Config{
 		GlobalConfig: GlobalConfig{},
 		ScrapeConfigs: []*ScrapeConfig{
-			{
-				JobName:         "carts-sockshop-production",
-				HonorTimestamps: false,
-				ScrapeInterval:  duration5s,
-				ScrapeTimeout:   duration3s,
-				MetricsPath:     "/metrics",
-				StaticConfigs: []StaticConfigLike{
-					{
-						Targets: []string{"carts.sockshop-production:80"},
-					},
-				},
-			},
+			generateScrapeConfig("carts-sockshop-production", "carts.sockshop-production:80"),
 		},
 	}
 
@@ -294,24 +281,136 @@ scrape_configs:
 	assert.Equal(t, minConfigString, minConfigResult)
 }
 
-func TestSimpleLoadAndToString(t *testing.T) {
+func TestLoadAndToString(t *testing.T) {
 	config, err := LoadYamlConfiguration(sampleConfigurationYAML)
-
 	require.NoError(t, err)
 	require.NotNil(t, config)
 
 	str := config.String()
-
 	require.NotContainsf(t, str, "<error creating", "yaml marshaling should not contain error string")
 
-	// Check if yaml configurations are equivalent
-	var untypedYamlConfig map[string]interface{}
-	err = yaml.Unmarshal([]byte(str), &untypedYamlConfig)
+	err = compareYamlEq(t, str, sampleConfigurationYAML)
+	require.NoError(t, err)
+}
+
+func TestModificationWithoutChangingExistingContent(t *testing.T) {
+	yamlConfig := `global: {}
+scrape_configs:
+    - job_name: kubernetes-pods-slow
+      honor_timestamps: true
+      scrape_interval: 5m
+      scrape_timeout: 30s
+      metrics_path: /metrics
+      scheme: http
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape_slow]
+        separator: ;
+        regex: "true"
+        replacement: $1
+        action: keep
+    - job_name: carts-sockshop-production
+      honor_timestamps: false
+      scrape_interval: 5s
+      scrape_timeout: 3s
+      metrics_path: /metrics
+      static_configs:
+        - targets:
+            - carts.sockshop-production:80
+`
+
+	config, err := LoadYamlConfiguration(yamlConfig)
 	require.NoError(t, err)
 
-	var sampleUntypedYaml map[string]interface{}
-	err = yaml.Unmarshal([]byte(sampleConfigurationYAML), &sampleUntypedYaml)
-	require.NoError(t, err)
+	config.ScrapeConfigs = append(config.ScrapeConfigs, generateScrapeConfig("carts-sockshop-dev", "carts.sockshop-dev:80"))
+	config.ScrapeConfigs = append(config.ScrapeConfigs, generateScrapeConfig("carts-sockshop-staging", "carts.sockshop-staging:80"))
+	config.ScrapeConfigs = append(config.ScrapeConfigs, generateScrapeConfig("carts-sockshop-production-canary", "carts.sockshop-production-canary:80"))
 
-	assert.Equal(t, untypedYamlConfig, sampleUntypedYaml)
+	modifiedConfigYaml := config.String()
+	resultingConfigYaml := `global: {}
+scrape_configs:
+    - job_name: kubernetes-pods-slow
+      honor_timestamps: true
+      scrape_interval: 5m
+      scrape_timeout: 30s
+      metrics_path: /metrics
+      scheme: http
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape_slow]
+        separator: ;
+        regex: "true"
+        replacement: $1
+        action: keep
+    - job_name: carts-sockshop-production
+      honor_timestamps: false
+      scrape_interval: 5s
+      scrape_timeout: 3s
+      metrics_path: /metrics
+      static_configs:
+        - targets:
+            - carts.sockshop-production:80
+    - job_name: carts-sockshop-dev
+      honor_timestamps: false
+      scrape_interval: 5s
+      scrape_timeout: 3s
+      metrics_path: /metrics
+      static_configs:
+        - targets:
+            - carts.sockshop-dev:80
+    - job_name: carts-sockshop-staging
+      honor_timestamps: false
+      scrape_interval: 5s
+      scrape_timeout: 3s
+      metrics_path: /metrics
+      static_configs:
+        - targets:
+            - carts.sockshop-staging:80
+    - job_name: carts-sockshop-production-canary
+      honor_timestamps: false
+      scrape_interval: 5s
+      scrape_timeout: 3s
+      metrics_path: /metrics
+      static_configs:
+        - targets:
+            - carts.sockshop-production-canary:80
+`
+
+	err = compareYamlEq(t, modifiedConfigYaml, resultingConfigYaml)
+	assert.NoError(t, err)
+}
+
+func compareYamlEq(t *testing.T, a string, b string) error {
+	var untypedYamlA map[string]interface{}
+	if err := yaml.Unmarshal([]byte(a), &untypedYamlA); err != nil {
+		return err
+	}
+
+	var untypedYamlB map[string]interface{}
+	if err := yaml.Unmarshal([]byte(b), &untypedYamlB); err != nil {
+		return err
+	}
+
+	assert.Equal(t, untypedYamlA, untypedYamlB)
+	return nil
+}
+
+func generateScrapeConfig(jobName string, target string) *ScrapeConfig {
+	duration5s, _ := model.ParseDuration("5s")
+	duration3s, _ := model.ParseDuration("3s")
+
+	return &ScrapeConfig{
+		JobName:         jobName,
+		HonorTimestamps: false,
+		ScrapeInterval:  duration5s,
+		ScrapeTimeout:   duration3s,
+		MetricsPath:     "/metrics",
+		StaticConfigs: []StaticConfigLike{
+			{
+				Targets: []string{target},
+			},
+		},
+	}
 }

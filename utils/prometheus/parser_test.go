@@ -240,16 +240,24 @@ func TestLoadComplexConfig(t *testing.T) {
 	require.NotNil(t, config.ScrapeConfigs)
 	require.Len(t, config.ScrapeConfigs, 11)
 
-	// Check if the "carts-sockshop-production" is correctly parsed
-	scrapeConfig := config.ScrapeConfigs[10]
-	assert.Equal(t, scrapeConfig.JobName, "carts-sockshop-production")
-	assert.Equal(t, scrapeConfig.HonorTimestamps, false)
-
 	duration5s, _ := model.ParseDuration("5s")
 	duration3s, _ := model.ParseDuration("3s")
-	assert.Equal(t, scrapeConfig.ScrapeInterval, duration5s)
-	assert.Equal(t, scrapeConfig.ScrapeTimeout, duration3s)
-	assert.Equal(t, scrapeConfig.MetricsPath, "/metrics")
+	expectedScrapeConfig := ScrapeConfig{
+		JobName:         "carts-sockshop-production",
+		HonorTimestamps: false,
+		ScrapeInterval:  duration5s,
+		ScrapeTimeout:   duration3s,
+		MetricsPath:     "/metrics",
+		Scheme:          "http",
+		StaticConfigs: []StaticConfigLike{
+			{
+				Targets: []string{"carts.sockshop-production:80"},
+			},
+		},
+	}
+
+	assert.Equal(t, config.ScrapeConfigs[10], &expectedScrapeConfig)
+	assert.Contains(t, config.ScrapeConfigs, &expectedScrapeConfig)
 
 	require.NotNil(t, scrapeConfig.StaticConfigs)
 	require.Len(t, scrapeConfig.StaticConfigs, 1)

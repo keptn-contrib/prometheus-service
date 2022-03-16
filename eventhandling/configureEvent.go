@@ -208,9 +208,15 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	if err != nil {
 		return err
 	}
+
+	updatedConfigYAMLString, err := yaml.Marshal(config)
+	if err != nil {
+		return err
+	}
+
 	// apply
 	cmPrometheus.Data["alerting_rules.yml"] = string(alertingRulesYAMLString)
-	cmPrometheus.Data[env.PrometheusConfigFileName] = config.String()
+	cmPrometheus.Data[env.PrometheusConfigFileName] = string(updatedConfigYAMLString)
 	_, err = api.CoreV1().ConfigMaps(env.PrometheusNamespace).Update(context.TODO(), cmPrometheus, metav1.UpdateOptions{})
 	if err != nil {
 		return err

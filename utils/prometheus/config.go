@@ -4,10 +4,8 @@
 package prometheus
 
 import (
-	"fmt"
 	"github.com/alecthomas/units"
 	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v3"
 	"net/url"
 )
 
@@ -24,14 +22,6 @@ type GlobalConfig struct {
 	ExternalLabels     map[string]string `mapstructure:"external_labels,omitempty" yaml:"external_labels,omitempty"`
 }
 
-func (c GlobalConfig) String() string {
-	b, err := yaml.Marshal(c)
-	if err != nil {
-		return fmt.Sprintf("<error creating global_config string: %s>", err)
-	}
-	return string(b)
-}
-
 // Config is the root configure structure of Prometheus
 // Origin: https://github.com/prometheus/prometheus/blob/fb2da1f26aec023b1e3c864222aaccbe01969f11/config/config.go#L221-L232
 type Config struct {
@@ -44,14 +34,6 @@ type Config struct {
 
 	RemoteWriteConfigs []*UntypedElement `mapstructure:"remote_write,omitempty" yaml:"remote_write,omitempty"`
 	RemoteReadConfigs  []*UntypedElement `mapstructure:"remote_read,omitempty" yaml:"remote_read,omitempty"`
-}
-
-func (c Config) String() string {
-	b, err := yaml.Marshal(c)
-	if err != nil {
-		return fmt.Sprintf("<error creating static_config string: %s>", err)
-	}
-	return string(b)
 }
 
 // ScrapeConfig configures a scraping unit for Prometheus.
@@ -79,14 +61,6 @@ type ScrapeConfig struct {
 	RemainingElements UntypedElement `mapstructure:",remain" yaml:",inline"`
 }
 
-func (c ScrapeConfig) String() string {
-	b, err := yaml.Marshal(c)
-	if err != nil {
-		return fmt.Sprintf("<error creating scrape_config string: %s>", err)
-	}
-	return string(b)
-}
-
 // Configs is a type alias for an array of StaticConfigLike structs
 type Configs []StaticConfigLike
 
@@ -98,12 +72,4 @@ type StaticConfigLike struct {
 	Source  string         `mapstructure:"source,omitempty" yaml:"source,omitempty"`
 
 	OtherElements UntypedElement `mapstructure:",remain" yaml:",inline"`
-}
-
-func (c StaticConfigLike) String() string {
-	b, err := yaml.Marshal(c)
-	if err != nil {
-		return fmt.Sprintf("<error creating static_config string: %s>", err)
-	}
-	return string(b)
 }

@@ -268,31 +268,33 @@ func TestToStringMinimalConfiguration(t *testing.T) {
 		},
 	}
 
-	minConfigString := minConfig.String()
+	minConfigString, err := yaml.Marshal(minConfig)
+	require.NoError(t, err)
+
 	minConfigResult := `global: {}
 scrape_configs:
-    - job_name: carts-sockshop-production
-      honor_timestamps: false
-      scrape_interval: 5s
-      scrape_timeout: 3s
-      metrics_path: /metrics
-      static_configs:
-        - targets:
-            - carts.sockshop-production:80
+- job_name: carts-sockshop-production
+  honor_timestamps: false
+  scrape_interval: 5s
+  scrape_timeout: 3s
+  metrics_path: /metrics
+  static_configs:
+  - targets:
+    - carts.sockshop-production:80
 `
 
-	assert.Equal(t, minConfigString, minConfigResult)
+	assert.Equal(t, string(minConfigString), minConfigResult)
 }
 
-func TestLoadAndToString(t *testing.T) {
+func TestLoadAndMarshal(t *testing.T) {
 	config, err := LoadYamlConfiguration(sampleConfigurationYAML)
 	require.NoError(t, err)
 	require.NotNil(t, config)
 
-	str := config.String()
-	require.NotContainsf(t, str, "<error creating", "yaml marshaling should not contain error string")
+	configYamlString, err := yaml.Marshal(config)
+	require.NoError(t, err)
 
-	err = compareYamlEq(t, str, sampleConfigurationYAML)
+	err = compareYamlEq(t, string(configYamlString), sampleConfigurationYAML)
 	require.NoError(t, err)
 }
 
@@ -330,7 +332,9 @@ scrape_configs:
 	config.ScrapeConfigs = append(config.ScrapeConfigs, generateScrapeConfig("carts-sockshop-staging", "carts.sockshop-staging:80"))
 	config.ScrapeConfigs = append(config.ScrapeConfigs, generateScrapeConfig("carts-sockshop-production-canary", "carts.sockshop-production-canary:80"))
 
-	modifiedConfigYaml := config.String()
+	modifiedConfigYaml, err := yaml.Marshal(config)
+	require.NoError(t, err)
+
 	resultingConfigYaml := `global: {}
 scrape_configs:
     - job_name: kubernetes-pods-slow
@@ -381,7 +385,7 @@ scrape_configs:
             - carts.sockshop-production-canary:80
 `
 
-	err = compareYamlEq(t, modifiedConfigYaml, resultingConfigYaml)
+	err = compareYamlEq(t, string(modifiedConfigYaml), resultingConfigYaml)
 	assert.NoError(t, err)
 }
 

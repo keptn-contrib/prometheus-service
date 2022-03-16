@@ -1,3 +1,7 @@
+// Package prometheus
+// This file contains copied code parts of the prometheus project (https://github.com/prometheus/prometheus)
+// See the description of the different structures to get more information on where they have been extracted
+// These definitions should match the structs in the supported prometheus version
 package prometheus
 
 import (
@@ -12,6 +16,7 @@ import (
 type UntypedElement map[string]interface{}
 
 // GlobalConfig describes the contents of the prometheus.yml file
+// Origin: https://github.com/prometheus/prometheus/blob/fb2da1f26aec023b1e3c864222aaccbe01969f11/config/config.go#L335-L348
 type GlobalConfig struct {
 	ScrapeInterval     model.Duration    `mapstructure:"scrape_interval,omitempty" yaml:"scrape_interval,omitempty"`
 	ScrapeTimeout      model.Duration    `mapstructure:"scrape_timeout,omitempty" yaml:"scrape_timeout,omitempty"`
@@ -29,6 +34,7 @@ func (c GlobalConfig) String() string {
 }
 
 // Config is the root configure structure of Prometheus
+// Origin: https://github.com/prometheus/prometheus/blob/fb2da1f26aec023b1e3c864222aaccbe01969f11/config/config.go#L221-L232
 type Config struct {
 	GlobalConfig   GlobalConfig    `mapstructure:"global" yaml:"global"`
 	AlertingConfig UntypedElement  `mapstructure:"alerting,omitempty" yaml:"alerting,omitempty"`
@@ -50,10 +56,11 @@ func (c Config) String() string {
 }
 
 // ScrapeConfig configures a scraping unit for Prometheus.
+// Origin: https://github.com/prometheus/prometheus/blob/fb2da1f26aec023b1e3c864222aaccbe01969f11/config/config.go#L405-L452
 type ScrapeConfig struct {
 	JobName               string           `mapstructure:"job_name" yaml:"job_name"`
 	HonorLabels           bool             `mapstructure:"honor_labels,omitempty" yaml:"honor_labels,omitempty"`
-	HonorTimestamps       bool             `mapstructure:"honor_timestamps" yaml:"honor_timestamps,omitempty"`
+	HonorTimestamps       bool             `mapstructure:"honor_timestamps" yaml:"honor_timestamps"`
 	Params                url.Values       `mapstructure:"params,omitempty" yaml:"params,omitempty"`
 	ScrapeInterval        model.Duration   `mapstructure:"scrape_interval,omitempty" yaml:"scrape_interval,omitempty"`
 	ScrapeTimeout         model.Duration   `mapstructure:"scrape_timeout,omitempty" yaml:"scrape_timeout,omitempty"`
@@ -84,7 +91,8 @@ func (c ScrapeConfig) String() string {
 // Configs is a type alias for an array of StaticConfigLike structs
 type Configs []StaticConfigLike
 
-// StaticConfigLike represents a static_config element or any other _config element in the Prometheus configuration
+// StaticConfigLike represents a static_config element in the Prometheus configuration
+// This structure has been adapted from https://github.com/prometheus/prometheus/blob/53ac9d6d666acaebbdb8a004b51958f3147b1bd5/discovery/targetgroup/targetgroup.go#L23-L33
 type StaticConfigLike struct {
 	Targets []string       `mapstructure:"targets,omitempty" yaml:"targets,omitempty"`
 	Labels  model.LabelSet `mapstructure:"labels,omitempty" yaml:"labels,omitempty"`

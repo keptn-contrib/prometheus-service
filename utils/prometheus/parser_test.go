@@ -1,7 +1,10 @@
 package prometheus
 
 import (
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 	"testing"
 )
 
@@ -231,11 +234,66 @@ scrape_configs:
 `
 
 func TestLoad(t *testing.T) {
-	_, err := LoadYamlConfiguration(sampleConfigurationYAML)
+	config, err := LoadYamlConfiguration(sampleConfigurationYAML)
 	require.NoError(t, err)
+
+	require.NotNil(t, config.ScrapeConfigs)
+	require.Len(t, config.ScrapeConfigs, 11)
+
+	// Check if the "carts-sockshop-production" is correctly parsed
+	scrapeConfig := config.ScrapeConfigs[10]
+	assert.Equal(t, scrapeConfig.JobName, "carts-sockshop-production")
+	assert.Equal(t, scrapeConfig.HonorTimestamps, false)
+
+	duration5s, _ := model.ParseDuration("5s")
+	duration3s, _ := model.ParseDuration("3s")
+	assert.Equal(t, scrapeConfig.ScrapeInterval, duration5s)
+	assert.Equal(t, scrapeConfig.ScrapeTimeout, duration3s)
+	assert.Equal(t, scrapeConfig.MetricsPath, "/metrics")
+
+	require.NotNil(t, scrapeConfig.StaticConfigs)
+	require.Len(t, scrapeConfig.StaticConfigs, 1)
+	require.NotNil(t, scrapeConfig.StaticConfigs[0].Targets)
+	assert.Equal(t, scrapeConfig.StaticConfigs[0].Targets[0], "carts.sockshop-production:80")
 }
 
-func TestToString(t *testing.T) {
+func TestMinimalConfiguration(t *testing.T) {
+	duration5s, _ := model.ParseDuration("5s")
+	duration3s, _ := model.ParseDuration("3s")
+	minConfig := Config{
+		GlobalConfig: GlobalConfig{},
+		ScrapeConfigs: []*ScrapeConfig{
+			{
+				JobName:         "carts-sockshop-production",
+				HonorTimestamps: false,
+				ScrapeInterval:  duration5s,
+				ScrapeTimeout:   duration3s,
+				MetricsPath:     "/metrics",
+				StaticConfigs: []StaticConfigLike{
+					{
+						Targets: []string{"carts.sockshop-production:80"},
+					},
+				},
+			},
+		},
+	}
+
+	minConfigString := minConfig.String()
+	minConfigResult := `global: {}
+scrape_configs:
+    - job_name: carts-sockshop-production
+      scrape_interval: 5s
+      scrape_timeout: 3s
+      metrics_path: /metrics
+      static_configs:
+        - targets:
+            - carts.sockshop-production:80
+`
+
+	assert.Equal(t, minConfigString, minConfigResult)
+}
+
+func TestSimpleLoadAndToString(t *testing.T) {
 	config, err := LoadYamlConfiguration(sampleConfigurationYAML)
 
 	require.NoError(t, err)
@@ -244,4 +302,15 @@ func TestToString(t *testing.T) {
 	str := config.String()
 
 	require.NotContainsf(t, str, "<error creating", "yaml marshaling should not contain error string")
+
+	// Check if yaml configurations are equivalent
+	var untypedYamlConfig map[string]interface{}
+	err = yaml.Unmarshal([]byte(str), &untypedYamlConfig)
+	require.NoError(t, err)
+
+	var sampleUntypedYaml map[string]interface{}
+	err = yaml.Unmarshal([]byte(sampleConfigurationYAML), &sampleUntypedYaml)
+	require.NoError(t, err)
+
+	assert.Equal(t, untypedYamlConfig, sampleUntypedYaml)
 }

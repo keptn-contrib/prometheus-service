@@ -1,6 +1,7 @@
-package utils
+package prometheus
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -99,7 +100,7 @@ func NewPrometheusHelper() (*PrometheusHelper, error) {
 }
 
 func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) error {
-	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Update(cm)
+	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -108,11 +109,11 @@ func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) e
 }
 
 func (p *PrometheusHelper) GetConfigMap(name string, namespace string) (*v1.ConfigMap, error) {
-	return p.KubeApi.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+	return p.KubeApi.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) error {
-	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Create(cm)
+	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}

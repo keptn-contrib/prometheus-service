@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/api/core/v1"
@@ -31,6 +32,7 @@ func ListK8sServicesByLabel(svcLabelSelector, namespace string) (*v1.ServiceList
 	}
 
 	svcList, err := api.CoreV1().Services(namespace).List(
+		context.TODO(),
 		metav1.ListOptions{
 			LabelSelector: svcLabelSelector,
 		},

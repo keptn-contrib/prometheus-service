@@ -3,7 +3,7 @@ module github.com/keptn-contrib/prometheus-service
 go 1.17
 
 require (
-	github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15
+	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137
 	github.com/cloudevents/sdk-go/v2 v2.5.0
 	github.com/google/uuid v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0

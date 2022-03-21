@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -370,7 +371,15 @@ func createScrapeJobConfig(scrapeConfig *prometheus.ScrapeConfig, config *promet
 	// define scrape job name
 	scrapeConfig.JobName = scrapeConfigName
 	// set scrape interval to 5 seconds
-	scrapeConfig.ScrapeInterval = prometheus_model.Duration(5 * time.Second)
+	scrapeInterval := utils.EnvVarOrDefault("SCRAPE_INTERVAL", "5")
+	scrapeIntervalInt, err := strconv.Atoi(scrapeInterval)
+
+	if err != nil {
+		scrapeConfig.ScrapeInterval = prometheus_model.Duration(5 * time.Second)
+	} else {
+		scrapeConfig.ScrapeInterval = prometheus_model.Duration(time.Duration(scrapeIntervalInt) * time.Second)
+	}
+
 	scrapeConfig.ScrapeTimeout = prometheus_model.Duration(3 * time.Second)
 	// configure metrics path (default: /metrics)
 	scrapeConfig.MetricsPath = utils.EnvVarOrDefault(metricsScrapePathEnvName, "/metrics")

@@ -192,11 +192,11 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		// (a) if a scrape config with the same name is available, update that one
 
 		// <service>-primary.<project>-<stage>
-		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, true)
+		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, true, eh.logger)
 		// <service>-canary.<project>-<stage>
-		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, true, false)
+		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, true, false, eh.logger)
 		// <service>.<project>-<stage>
-		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false)
+		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false, eh.logger)
 
 		alertingRulesConfig, err = eh.createPrometheusAlertsIfSLOsAndRemediationDefined(eventData, stage,
 			alertingRulesConfig)
@@ -348,7 +348,7 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	return alertingRulesConfig, nil
 }
 
-func createScrapeJobConfig(scrapeConfig *prometheus.ScrapeConfig, config *prometheus.Config, project string, stage string, service string, isCanary bool, isPrimary bool) {
+func createScrapeJobConfig(scrapeConfig *prometheus.ScrapeConfig, config *prometheus.Config, project string, stage string, service string, isCanary bool, isPrimary bool, logger keptn.LoggerInterface) {
 	scrapeConfigName := service + "-" + project + "-" + stage
 	var scrapeEndpoint string
 	if isCanary {
@@ -375,6 +375,7 @@ func createScrapeJobConfig(scrapeConfig *prometheus.ScrapeConfig, config *promet
 	scrapeIntervalInt, err := strconv.Atoi(scrapeInterval)
 
 	if err != nil {
+		logger.Error("Error while converting SCRAPE_INTERVAL value. Using default value instead!")
 		scrapeConfig.ScrapeInterval = prometheus_model.Duration(5 * time.Second)
 	} else {
 		scrapeConfig.ScrapeInterval = prometheus_model.Duration(time.Duration(scrapeIntervalInt) * time.Second)

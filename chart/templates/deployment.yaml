@@ -77,7 +77,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: SCRAPE_INTERVAL
-              value: '{{ ((.Values.prometheus).scrapeInterval) | default 5 }}'
+              value: '{{ ((.Values.prometheus).scrapeInterval) | default "5s" }}'
         - name: distributor
           image: "{{ .Values.distributor.image.repository }}:{{ .Values.distributor.image.tag | default .Chart.AppVersion }}"
           livenessProbe:

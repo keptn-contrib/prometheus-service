@@ -2,20 +2,19 @@ package prometheus
 
 import (
 	"context"
-	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
-	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	alertConfig "github.com/prometheus/alertmanager/config"
+	"github.com/prometheus/client_golang/api"
+	apiv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
+
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,18 +30,6 @@ const RequestLatencyP50 = "response_time_p50"
 const RequestLatencyP90 = "response_time_p90"
 const RequestLatencyP95 = "response_time_p95"
 
-type prometheusResponse struct {
-	Status string `json:"status"`
-	Data   struct {
-		ResultType string `json:"resultType"`
-		Result     []struct {
-			Metric struct {
-			} `json:"metric"`
-			Value []interface{} `json:"value"`
-		} `json:"result"`
-	} `json:"data"`
-}
-
 // Handler interacts with a prometheus API endpoint
 type Handler struct {
 	ApiURL         string
@@ -53,7 +40,7 @@ type Handler struct {
 	Service        string
 	DeploymentType string
 	Labels         map[string]string
-	HTTPClient     *http.Client
+	prometheusAPI  apiv1.API
 	CustomFilters  []*keptnv2.SLIFilter
 	CustomQueries  map[string]string
 }
@@ -166,6 +153,12 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, names
 
 // NewPrometheusHandler returns a new prometheus handler that interacts with the Prometheus REST API
 func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, deploymentType string, labels map[string]string, customFilters []*keptnv2.SLIFilter) *Handler {
+	apiClient, _ := api.NewClient(api.Config{
+		Address: apiURL,
+	})
+
+	v1api := apiv1.NewAPI(apiClient)
+
 	ph := &Handler{
 		ApiURL:         apiURL,
 		Project:        eventData.Project,
@@ -173,7 +166,7 @@ func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, deploymen
 		Service:        eventData.Service,
 		DeploymentType: deploymentType,
 		Labels:         labels,
-		HTTPClient:     &http.Client{},
+		prometheusAPI:  v1api,
 		CustomFilters:  customFilters,
 	}
 
@@ -182,8 +175,6 @@ func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, deploymen
 
 // GetSLIValue retrieves the specified value via the Prometheus API
 func (ph *Handler) GetSLIValue(metric string, start string, end string) (float64, error) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-
 	startUnix, err := parseUnixTimestamp(start)
 	if err != nil {
 		return 0, err
@@ -196,42 +187,32 @@ func (ph *Handler) GetSLIValue(metric string, start string, end string) (float64
 	if err != nil {
 		return 0, err
 	}
-	queryString := ph.ApiURL + "/api/v1/query?query=" + url.QueryEscape(query) + "&time=" + strconv.FormatInt(endUnix.Unix(), 10)
+
 	log.Println("GetSLIValue: Generated query: /api/v1/query?query=" + query + "&time=" + strconv.FormatInt(endUnix.Unix(), 10))
 
-	req, err := http.NewRequest("GET", queryString, nil)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := ph.HTTPClient.Do(req)
-	if err != nil {
-		return 0, err
+	result, w, err := ph.prometheusAPI.Query(context.TODO(), query, endUnix)
+	if len(w) != 0 {
+		log.Printf("Prometheus API returned warnings: %v", w)
 	}
-	defer resp.Body.Close()
-
-	body, _ := ioutil.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		return 0, errors.New("metric could not be received")
-	}
-
-	prometheusResult := &prometheusResponse{}
-
-	err = json.Unmarshal(body, prometheusResult)
 	if err != nil {
 		return 0, err
 	}
 
-	if len(prometheusResult.Data.Result) == 0 || len(prometheusResult.Data.Result[0].Value) == 0 {
-		log.Println("GetSLIValue: Prometheus Result is 0, returning value 0")
-		// for the error rate query, the result is received with no value if the error rate is 0, so we have to assume that's OK at this point
+	resultVector, ok := result.(model.Vector)
+	if !ok {
+		return 0, fmt.Errorf("prometheus response is not a Vector: %v", result)
+	}
+	if len(resultVector) == 0 {
 		return 0, nil
 	}
 
-	parsedValue := fmt.Sprintf("%v", prometheusResult.Data.Result[0].Value[1])
-	floatValue, err := strconv.ParseFloat(parsedValue, 64)
+	resultValue := resultVector[0].Value.String()
+	floatValue, err := strconv.ParseFloat(resultValue, 64)
+	if err != nil {
+		return 0, err
+	}
+
 	log.Printf(fmt.Sprintf("Prometheus Result is %v\n", floatValue))
-	if err != nil {
-		return 0, nil
-	}
 	return floatValue, nil
 }
 

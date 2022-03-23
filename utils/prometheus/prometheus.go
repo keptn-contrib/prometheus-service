@@ -40,7 +40,7 @@ type Handler struct {
 	Service        string
 	DeploymentType string
 	Labels         map[string]string
-	API            apiv1.API
+	prometheusAPI  apiv1.API
 	CustomFilters  []*keptnv2.SLIFilter
 	CustomQueries  map[string]string
 }
@@ -166,7 +166,7 @@ func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, deploymen
 		Service:        eventData.Service,
 		DeploymentType: deploymentType,
 		Labels:         labels,
-		API:            v1api,
+		prometheusAPI:  v1api,
 		CustomFilters:  customFilters,
 	}
 
@@ -190,7 +190,7 @@ func (ph *Handler) GetSLIValue(metric string, start string, end string) (float64
 
 	log.Println("GetSLIValue: Generated query: /api/v1/query?query=" + query + "&time=" + strconv.FormatInt(endUnix.Unix(), 10))
 
-	result, w, err := ph.API.Query(context.TODO(), query, endUnix)
+	result, w, err := ph.prometheusAPI.Query(context.TODO(), query, endUnix)
 	if len(w) != 0 {
 		log.Printf("Prometheus API returned warnings: %v", w)
 	}
@@ -198,7 +198,10 @@ func (ph *Handler) GetSLIValue(metric string, start string, end string) (float64
 		return 0, err
 	}
 
-	resultVector := result.(model.Vector)
+	resultVector, ok := result.(model.Vector)
+	if !ok {
+		return 0, fmt.Errorf("prometheus response is not a Vector: %v", result)
+	}
 	if len(resultVector) == 0 {
 		return 0, nil
 	}

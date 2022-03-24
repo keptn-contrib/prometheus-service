@@ -176,6 +176,14 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		return err
 	}
 
+	scrapeIntervalString := utils.EnvVarOrDefault("SCRAPE_INTERVAL", "5s")
+	scrapeInterval, err := time.ParseDuration(scrapeIntervalString)
+
+	if err != nil {
+		eh.logger.Error("Error while converting SCRAPE_INTERVAL value. Using default value instead!")
+		scrapeInterval = 5 * time.Second
+	}
+
 	// check if alerting rules are already available
 	var alertingRulesConfig alertingRules
 	if cmPrometheus.Data["prometheus.rules"] != "" {
@@ -191,11 +199,11 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		// (a) if a scrape config with the same name is available, update that one
 
 		// <service>-primary.<project>-<stage>
-		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, true)
+		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, true, scrapeInterval)
 		// <service>-canary.<project>-<stage>
-		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, true, false)
+		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, true, false, scrapeInterval)
 		// <service>.<project>-<stage>
-		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false)
+		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false, scrapeInterval)
 
 		alertingRulesConfig, err = eh.createPrometheusAlertsIfSLOsAndRemediationDefined(eventData, stage,
 			alertingRulesConfig)
@@ -347,7 +355,7 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	return alertingRulesConfig, nil
 }
 
-func createScrapeJobConfig(scrapeConfig *prometheus.ScrapeConfig, config *prometheus.Config, project string, stage string, service string, isCanary bool, isPrimary bool) {
+func createScrapeJobConfig(scrapeConfig *prometheus.ScrapeConfig, config *prometheus.Config, project string, stage string, service string, isCanary bool, isPrimary bool, scrapeInterval time.Duration) {
 	scrapeConfigName := service + "-" + project + "-" + stage
 	var scrapeEndpoint string
 	if isCanary {
@@ -369,8 +377,8 @@ func createScrapeJobConfig(scrapeConfig *prometheus.ScrapeConfig, config *promet
 
 	// define scrape job name
 	scrapeConfig.JobName = scrapeConfigName
-	// set scrape interval to 5 seconds
-	scrapeConfig.ScrapeInterval = prometheus_model.Duration(5 * time.Second)
+	// set scrape interval
+	scrapeConfig.ScrapeInterval = prometheus_model.Duration(scrapeInterval)
 	scrapeConfig.ScrapeTimeout = prometheus_model.Duration(3 * time.Second)
 	// configure metrics path (default: /metrics)
 	scrapeConfig.MetricsPath = utils.EnvVarOrDefault(metricsScrapePathEnvName, "/metrics")

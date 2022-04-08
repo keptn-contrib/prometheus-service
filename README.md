@@ -34,6 +34,8 @@ Please always double-check the version of Keptn you are using compared to the ve
 
 \* This is the Keptn version we aim to be compatible with. Other versions should work too, but there is no guarantee.
 
+**Note**: This integration is currently incompatible with Keptn 0.14.x and newer.
+
 ## Installation instructions
 
 ### Setup Prometheus Monitoring

@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.4](https://github.com/keptn-contrib/prometheus-service/compare/0.7.3...0.7.4) (2022-04-26)
+
+
+### Features
+
+* Allow scrape_interval configuration ([#286](https://github.com/keptn-contrib/prometheus-service/issues/286)) ([32ca698](https://github.com/keptn-contrib/prometheus-service/commit/32ca69859c8b353ffe88b6731441fa4d361c33ea))
+* Reimplement prometheus configuration parsing ([#282](https://github.com/keptn-contrib/prometheus-service/issues/282)) ([bb693ec](https://github.com/keptn-contrib/prometheus-service/commit/bb693ecab8877f51def821c5a132cf10400bf5f7))
+* Remove unneeded Kubernetes role bindings ([#281](https://github.com/keptn-contrib/prometheus-service/issues/281)) ([8c10544](https://github.com/keptn-contrib/prometheus-service/commit/8c105440a3fc281c13b0040a27ef30cca345648c))
+* Use cloudevent for alerting endpoint ([#270](https://github.com/keptn-contrib/prometheus-service/issues/270)) ([4d93045](https://github.com/keptn-contrib/prometheus-service/commit/4d9304589babc8bd29e3e13c5efef3a8a0a3f37d))
+* Utilize official prometheus api for querying SLI values ([#288](https://github.com/keptn-contrib/prometheus-service/issues/288)) ([dfc6c24](https://github.com/keptn-contrib/prometheus-service/commit/dfc6c24cedc4fa3c7b74d4003a80fa0ebb5183b2))
+
+
+### Docs
+
+* Added note about incompatibility with Keptn 0.14.x ([#293](https://github.com/keptn-contrib/prometheus-service/issues/293)) ([7020465](https://github.com/keptn-contrib/prometheus-service/commit/7020465d89c60d6c370b9da93f287fcf6488df28))
+
 ### [0.7.3](https://github.com/keptn-contrib/prometheus-service/compare/0.7.2...0.7.3) (2022-02-21)
 
 

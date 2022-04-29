@@ -30,6 +30,20 @@ const RequestLatencyP50 = "response_time_p50"
 const RequestLatencyP90 = "response_time_p90"
 const RequestLatencyP95 = "response_time_p95"
 
+// ErrInvalidData indicates that the retrieved data from the prometheus api is invalid
+var /* const */ ErrInvalidData = errors.New("query did not return valid values")
+
+// ErrNoValues indicates that no values where present in the prometheus api result
+var /* const */ ErrNoValues = errors.New("query did not return any values")
+
+// ErrMultipleValues indicates that multiple values where present in the prometheus api result
+var /* const */ ErrMultipleValues = errors.New("query did return multiple values")
+
+//go:generate mockgen -destination=fake/prometheusapi_mock.go -package=fake . PrometheusAPI
+
+// API PrometheusAPI is a type alias for the prometheus api interface
+type API = apiv1.API
+
 // Handler interacts with a prometheus API endpoint
 type Handler struct {
 	ApiURL         string
@@ -40,7 +54,7 @@ type Handler struct {
 	Service        string
 	DeploymentType string
 	Labels         map[string]string
-	prometheusAPI  apiv1.API
+	PrometheusAPI  API
 	CustomFilters  []*keptnv2.SLIFilter
 	CustomQueries  map[string]string
 }
@@ -166,7 +180,7 @@ func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, deploymen
 		Service:        eventData.Service,
 		DeploymentType: deploymentType,
 		Labels:         labels,
-		prometheusAPI:  v1api,
+		PrometheusAPI:  v1api,
 		CustomFilters:  customFilters,
 	}
 
@@ -177,39 +191,47 @@ func NewPrometheusHandler(apiURL string, eventData *keptnv2.EventData, deploymen
 func (ph *Handler) GetSLIValue(metric string, start string, end string) (float64, error) {
 	startUnix, err := parseUnixTimestamp(start)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unable to parse start timestamp: %w", err)
 	}
 	endUnix, _ := parseUnixTimestamp(end)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unable to parse end timestamp: %w", err)
 	}
 	query, err := ph.GetMetricQuery(metric, startUnix, endUnix)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unable to get metriy query: %w", err)
 	}
 
 	log.Println("GetSLIValue: Generated query: /api/v1/query?query=" + query + "&time=" + strconv.FormatInt(endUnix.Unix(), 10))
 
-	result, w, err := ph.prometheusAPI.Query(context.TODO(), query, endUnix)
+	result, w, err := ph.PrometheusAPI.Query(context.TODO(), query, endUnix)
+	if err != nil {
+		return 0, fmt.Errorf("unable to query prometheus api: %w", err)
+	}
+
 	if len(w) != 0 {
 		log.Printf("Prometheus API returned warnings: %v", w)
 	}
-	if err != nil {
-		return 0, err
-	}
 
+	// check if we can cast the result to a vector, it might be another data struct which we can't process
 	resultVector, ok := result.(model.Vector)
 	if !ok {
-		return 0, fmt.Errorf("prometheus response is not a Vector: %v", result)
-	}
-	if len(resultVector) == 0 {
-		return 0, nil
+		return 0, fmt.Errorf("prometheus api response is not a Vector: %v", result)
 	}
 
+	// We are only allowed to return one value, if not the query may be malformed
+	// we are using two different errors to give the user more information about the result
+	if len(resultVector) == 0 {
+		return 0, ErrNoValues
+	} else if len(resultVector) > 1 {
+		return 0, ErrMultipleValues
+	}
+
+	// parse the first entry as float and return the value if it's a valid float value
 	resultValue := resultVector[0].Value.String()
 	floatValue, err := strconv.ParseFloat(resultValue, 64)
-	if err != nil {
-		return 0, err
+	if err != nil || math.IsNaN(floatValue) {
+		return 0, ErrInvalidData
 	}
 
 	log.Printf(fmt.Sprintf("Prometheus Result is %v\n", floatValue))

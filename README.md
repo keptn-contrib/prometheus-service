@@ -32,10 +32,12 @@ Please always double-check the version of Keptn you are using compared to the ve
 |     0.10.0      |                           keptncontrib/prometheus-service:0.7.2                           |
 |     0.12.0      |                           keptncontrib/prometheus-service:0.7.3                           |
 |     0.13.x      |                           keptncontrib/prometheus-service:0.7.4                           |
+|     0.14.x      |                     *keptncontrib/prometheus-service:0.7.4-dev-PR-??*                     |
 
 \* This is the Keptn version we aim to be compatible with. Other versions should work too, but there is no guarantee.
 
-**Note**: This integration is currently incompatible with Keptn 0.14.x and newer.
+**Note**: Versions compatible with Keptn 0.14.x and newer are not backward compatible due to a change in NATS cluster name
+(see https://github.com/keptn/keptn/releases/tag/0.14.1 for more info about the breaking change).
 
 ## Installation instructions
 

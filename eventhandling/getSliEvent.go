@@ -111,7 +111,7 @@ func (eh GetSliEventHandler) HandleEvent() error {
 			}
 		}
 
-		if sliResultsFailed == 1 && len(sliResults) > 1 {
+		if sliResultsFailed > 0 && sliResultsFailed < len(sliResults) {
 			finalSLIEventResult = keptnv2.ResultWarning
 		} else if sliResultsFailed == len(sliResults) {
 			finalSLIEventResult = keptnv2.ResultFailed

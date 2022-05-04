@@ -104,7 +104,7 @@ spec:
               cpu: "100m"
           env:
             - name: PUBSUB_URL
-              value: 'nats://keptn-nats-cluster'
+              value: 'nats://keptn-nats'
             - name: PUBSUB_TOPIC
               value: 'sh.keptn.event.monitoring.configure,sh.keptn.event.configure-monitoring.triggered,sh.keptn.event.get-sli.triggered'
             - name: PUBSUB_RECIPIENT

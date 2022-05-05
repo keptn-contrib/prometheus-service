@@ -7,23 +7,23 @@ import (
 	"github.com/keptn-contrib/prometheus-service/utils/prometheus"
 	"gopkg.in/yaml.v2"
 	"log"
-	"math"
 	"net/url"
 	"strings"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/keptn-contrib/prometheus-service/utils"
+
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/rest"
 )
 
 // GetSliEventHandler is responsible for processing configure monitoring events
 type GetSliEventHandler struct {
 	event        cloudevents.Event
 	keptnHandler *keptnv2.Keptn
+	kubeClient   *kubernetes.Clientset
 }
 
 type prometheusCredentials struct {
@@ -47,75 +47,34 @@ func (eh GetSliEventHandler) HandleEvent() error {
 
 	// send started event
 	_, err = eh.keptnHandler.SendTaskStartedEvent(eventData, utils.ServiceName)
-
 	if err != nil {
-		errMsg := fmt.Sprintf("Failed to send task started CloudEvent (%s), aborting...", err.Error())
-		log.Println(errMsg)
+		errMsg := fmt.Errorf("failed to send task started CloudEvent: %w", err)
+		log.Println(errMsg.Error())
 		return err
 	}
 
-	// create SLI Results
-	var sliResults []*keptnv2.SLIResult
+	// helper function to log an error and send an appropriate finished event
+	sendFinishedErrorEvent := func(err error) error {
+		log.Printf("sending errored finished event: %s", err.Error())
 
-	// 2: try to fetch metrics into sliResults
-	if sliResults, err = retrieveMetrics(eventData, eh.keptnHandler); err != nil {
-		// failed to fetch metrics, send a finished event with the error
-		_, err = eh.keptnHandler.SendTaskFinishedEvent(&keptnv2.EventData{
+		_, sendError := eh.keptnHandler.SendTaskFinishedEvent(&keptnv2.EventData{
 			Status:  keptnv2.StatusErrored,
 			Result:  keptnv2.ResultFailed,
 			Message: err.Error(),
 		}, utils.ServiceName)
 
-		return err
-	}
+		// TODO: Maybe log error to console
 
-	// construct finished event data
-	getSliFinishedEventData := &keptnv2.GetSLIFinishedEventData{
-		EventData: keptnv2.EventData{
-			Status: keptnv2.StatusSucceeded,
-			Result: keptnv2.ResultPass,
-		},
-		GetSLI: keptnv2.GetSLIFinished{
-			IndicatorValues: sliResults,
-			Start:           eventData.GetSLI.Start,
-			End:             eventData.GetSLI.End,
-		},
-	}
-
-	// send get-sli.finished event with SLI DAta
-	_, err = eh.keptnHandler.SendTaskFinishedEvent(getSliFinishedEventData, utils.ServiceName)
-
-	if err != nil {
-		errMsg := fmt.Sprintf("Failed to send task finished CloudEvent (%s), aborting...", err.Error())
-		log.Println(errMsg)
-		return err
-	}
-
-	return nil
-}
-
-func retrieveMetrics(eventData *keptnv2.GetSLITriggeredEventData, keptnHandler *keptnv2.Keptn) ([]*keptnv2.SLIResult, error) {
-	log.Printf("Retrieving Prometheus metrics")
-
-	clusterConfig, err := rest.InClusterConfig()
-	if err != nil {
-		log.Println("could not create Kubernetes cluster config")
-		return nil, errors.New("could not create Kubernetes client")
-	}
-
-	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
-	if err != nil {
-		log.Println("could not create Kubernetes client")
-		return nil, errors.New("could not create Kubernetes client")
+		return sendError
 	}
 
 	// get prometheus API URL for the provided Project from Kubernetes Config Map
-	prometheusAPIURL, err := getPrometheusAPIURL(eventData.Project, kubeClient.CoreV1())
+	prometheusAPIURL, err := getPrometheusAPIURL(eventData.Project, eh.kubeClient.CoreV1())
 	if err != nil {
-		return nil, err
+		return sendFinishedErrorEvent(fmt.Errorf("unable to get prometheus api URL: %w", err))
 	}
 
-	// Create a new Prometheus Handler
+	// create a new Prometheus Handler
 	prometheusHandler := prometheus.NewPrometheusHandler(
 		prometheusAPIURL,
 		&eventData.EventData,
@@ -125,16 +84,70 @@ func retrieveMetrics(eventData *keptnv2.GetSLITriggeredEventData, keptnHandler *
 	)
 
 	// get SLI queries (from SLI.yaml)
-	projectCustomQueries, err := getCustomQueries(keptnHandler, eventData.Project, eventData.Stage, eventData.Service)
+	projectCustomQueries, err := getCustomQueries(eh.keptnHandler, eventData.Project, eventData.Stage, eventData.Service)
 	if err != nil {
-		log.Println("retrieveMetrics: Failed to get custom queries for project " + eventData.Project)
-		log.Println(err.Error())
-		return nil, err
+		return sendFinishedErrorEvent(
+			fmt.Errorf("unable to retrieve custom queries for project %s: %w", eventData.Project, err),
+		)
 	}
 
+	// only apply queries if they contain anything
 	if projectCustomQueries != nil {
 		prometheusHandler.CustomQueries = projectCustomQueries
 	}
+
+	// retrieve metrics from prometheus
+	sliResults := retrieveMetrics(prometheusHandler, eventData)
+
+	// If we hand any problem retrieving an SLI value, we set the result of the overall .finished event
+	// to Warning, if all fail ResultFailed is set for the event
+	finalSLIEventResult := keptnv2.ResultPass
+
+	if len(sliResults) > 0 {
+		sliResultsFailed := 0
+		for _, sliResult := range sliResults {
+			if !sliResult.Success {
+				sliResultsFailed++
+			}
+		}
+
+		if sliResultsFailed > 0 && sliResultsFailed < len(sliResults) {
+			finalSLIEventResult = keptnv2.ResultWarning
+		} else if sliResultsFailed == len(sliResults) {
+			finalSLIEventResult = keptnv2.ResultFailed
+		}
+	}
+
+	// construct finished event data
+	getSliFinishedEventData := &keptnv2.GetSLIFinishedEventData{
+		EventData: keptnv2.EventData{
+			Status: keptnv2.StatusSucceeded,
+			Result: finalSLIEventResult,
+		},
+		GetSLI: keptnv2.GetSLIFinished{
+			IndicatorValues: sliResults,
+			Start:           eventData.GetSLI.Start,
+			End:             eventData.GetSLI.End,
+		},
+	}
+
+	if getSliFinishedEventData.EventData.Result == keptnv2.ResultFailed {
+		getSliFinishedEventData.EventData.Message = "unable to retrieve metrics"
+	}
+
+	// send get-sli.finished event with SLI DATA
+	_, err = eh.keptnHandler.SendTaskFinishedEvent(getSliFinishedEventData, utils.ServiceName)
+	if err != nil {
+		errMsg := fmt.Sprintf("Failed to send task finished CloudEvent (%s), aborting...", err.Error())
+		log.Println(errMsg)
+		return err
+	}
+
+	return nil
+}
+
+func retrieveMetrics(prometheusHandler *prometheus.Handler, eventData *keptnv2.GetSLITriggeredEventData) []*keptnv2.SLIResult {
+	log.Printf("Retrieving Prometheus metrics")
 
 	var sliResults []*keptnv2.SLIResult
 
@@ -148,13 +161,6 @@ func retrieveMetrics(eventData *keptnv2.GetSLITriggeredEventData, keptnHandler *
 				Success: false,
 				Message: err.Error(),
 			})
-		} else if math.IsNaN(sliValue) {
-			sliResults = append(sliResults, &keptnv2.SLIResult{
-				Metric:  indicator,
-				Value:   0,
-				Success: false,
-				Message: "SLI value is NaN",
-			})
 		} else {
 			sliResults = append(sliResults, &keptnv2.SLIResult{
 				Metric:  indicator,
@@ -163,7 +169,8 @@ func retrieveMetrics(eventData *keptnv2.GetSLITriggeredEventData, keptnHandler *
 			})
 		}
 	}
-	return sliResults, nil
+
+	return sliResults
 }
 
 func getCustomQueries(keptnHandler *keptnv2.Keptn, project string, stage string, service string) (map[string]string, error) {

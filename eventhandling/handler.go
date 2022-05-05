@@ -6,6 +6,7 @@ import (
 	"github.com/keptn-contrib/prometheus-service/utils"
 	"github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
+	"k8s.io/client-go/kubernetes"
 )
 
 // PrometheusEventHandler defines a handler for events
@@ -25,7 +26,7 @@ func (e NoOpEventHandler) HandleEvent() error {
 var env utils.EnvConfig
 
 // NewEventHandler creates a new Handler for an incoming event
-func NewEventHandler(event cloudevents.Event, logger *keptn.Logger, keptnHandler *keptnv2.Keptn) PrometheusEventHandler {
+func NewEventHandler(event cloudevents.Event, logger *keptn.Logger, keptnHandler *keptnv2.Keptn, kubeClient *kubernetes.Clientset) PrometheusEventHandler {
 	logger.Debug("Received event: " + event.Type())
 
 	if err := envconfig.Process("", &env); err != nil {
@@ -42,6 +43,7 @@ func NewEventHandler(event cloudevents.Event, logger *keptn.Logger, keptnHandler
 		return &GetSliEventHandler{
 			event:        event,
 			keptnHandler: keptnHandler,
+			kubeClient:   kubeClient,
 		}
 	}
 

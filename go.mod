@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15
-	github.com/cloudevents/sdk-go/v2 v2.5.0
+	github.com/cloudevents/sdk-go/v2 v2.9.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0

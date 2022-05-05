@@ -9,6 +9,8 @@ import (
 	"github.com/keptn-contrib/prometheus-service/utils"
 	keptn "github.com/keptn/go-utils/pkg/lib"
 	"io/ioutil"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"log"
 	"net/http"
 	"os"
@@ -78,7 +80,19 @@ func gotEvent(event cloudevents.Event) error {
 		return fmt.Errorf("could not create Keptn handler: %v", err)
 	}
 
-	return eventhandling.NewEventHandler(event, logger, keptnHandler).HandleEvent()
+	clusterConfig, err := rest.InClusterConfig()
+	if err != nil {
+		// TODO: Send Error log event to Keptn
+		return fmt.Errorf("unable to create kubernetes cluster config: %w", err)
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
+	if err != nil {
+		// TODO: Send Error log event to Keptn
+		return fmt.Errorf("unable to create kubernetes client: %w", err)
+	}
+
+	return eventhandling.NewEventHandler(event, logger, keptnHandler, kubeClient).HandleEvent()
 }
 
 // HTTPGetHandler will handle all requests for '/health' and '/ready'

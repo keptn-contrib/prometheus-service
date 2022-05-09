@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/cloudevents/sdk-go/v2/types"
 	"github.com/google/uuid"
 	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	"github.com/keptn-contrib/prometheus-service/utils"
@@ -57,15 +58,25 @@ func _main(env utils.EnvConfig) int {
 
 	http.HandleFunc("/", HTTPGetHandler)
 	http.Handle(env.Path, ceHandler)
-	http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return 0
 }
 
 // gotEvent processes an incoming CloudEvent
 func gotEvent(event cloudevents.Event) error {
-	var shkeptncontext string
-	_ = event.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
+	keptnContext, err := event.Context.GetExtension("shkeptncontext")
+	if err != nil {
+		return fmt.Errorf("cloud event does not contain the field 'shkeptncontext'")
+	}
+
+	shkeptncontext, err := types.ToString(keptnContext)
+	if err != nil {
+		return fmt.Errorf("field 'shkeptncontext' can not be parsed as keptn context")
+	}
 
 	logger := keptncommon.NewLogger(shkeptncontext, "", utils.ServiceName)
 

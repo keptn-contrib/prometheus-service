@@ -17,7 +17,7 @@ func TestHandler_GetSLIValue(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	apiMock := prometheusfake.NewMockPrometheusAPI(mockCtrl)
+	apiMock := prometheusfake.NewMockAPI(mockCtrl)
 	handler := Handler{
 		PrometheusAPI: apiMock,
 	}
@@ -43,7 +43,7 @@ func TestHandler_GetSLIValueNoResult(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	apiMock := prometheusfake.NewMockPrometheusAPI(mockCtrl)
+	apiMock := prometheusfake.NewMockAPI(mockCtrl)
 	handler := Handler{
 		PrometheusAPI: apiMock,
 	}
@@ -64,7 +64,7 @@ func TestHandler_GetSLIValueMultipleValues(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	apiMock := prometheusfake.NewMockPrometheusAPI(mockCtrl)
+	apiMock := prometheusfake.NewMockAPI(mockCtrl)
 	handler := Handler{
 		PrometheusAPI: apiMock,
 	}
@@ -93,7 +93,7 @@ func TestHandler_GetSLIValueError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	apiMock := prometheusfake.NewMockPrometheusAPI(mockCtrl)
+	apiMock := prometheusfake.NewMockAPI(mockCtrl)
 	handler := Handler{
 		PrometheusAPI: apiMock,
 	}

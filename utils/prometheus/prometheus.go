@@ -39,9 +39,9 @@ var /* const */ ErrNoValues = errors.New("query did not return any values")
 // ErrMultipleValues indicates that multiple values where present in the prometheus api result
 var /* const */ ErrMultipleValues = errors.New("query did return multiple values")
 
-//go:generate mockgen -destination=fake/prometheusapi_mock.go -package=fake . PrometheusAPI
+//go:generate mockgen -destination=fake/prometheusapi_mock.go -package=fake . API
 
-// API PrometheusAPI is a type alias for the prometheus api interface
+// API is a type alias for the prometheus api interface
 type API = apiv1.API
 
 // Handler interacts with a prometheus API endpoint

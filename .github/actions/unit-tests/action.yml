@@ -2,6 +2,8 @@ name: 'Unit Tests'
 description: 'Run unit tests using go'
 inputs:
   GO_VERSION:
+    description: The GO version that should be used for compilation / execution of the unit tests
+    required: false
     default: "1.17"
 env:
   GO111MODULE: "on"

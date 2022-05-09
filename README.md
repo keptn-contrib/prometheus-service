@@ -69,7 +69,7 @@ Prometheus is then available on [localhost:8080/targets](http://localhost:8080/t
 
 Please replace the placeholders in the commands below. Examples are provided.
 
-* `<VERSION>`: prometheus-service version, e.g., `0.7.1`
+* `<VERSION>`: prometheus-service version, e.g., `0.8.0`
 * `<PROMETHEUS_NS>`: If prometheus is installed in the same Kubernetes cluster, the namespace needs to be provided, e.g., `monitoring`
 * `<PROMETHEUS_ENDPOINT>`: Endpoint for prometheus (primarily used for fetching metrics), e.g., `http://prometheus-server.monitoring.svc.cluster.local:80`
 * `<ALERT_MANAGER_NS>`: if prometheus alert manager is installed in the same Kubernetes cluster, the namespace needs to be provided, e.g., `monitoring`
@@ -197,7 +197,7 @@ Users can override the predefined queries, as well as add custom queries by crea
       response_time_p95: histogram_quantile(0.95, sum by(le) (rate(http_response_time_milliseconds_bucket{handler="ItemsController.addToCart",job="$SERVICE-$PROJECT-$STAGE-canary"}[$DURATION_SECONDS])))
     ```
 
-* To store this configuration, you need to add this file to a Keptn's configuration store. This is done by using the Keptn CLI with the [keptn add-resource](https://keptn.sh/docs/0.8.x/reference/cli/commands/keptn_add-resource/) command (see [SLI Provider](https://keptn.sh/docs/0.8.x/quality_gates/sli-provider/) for more information).
+* To store this configuration, you need to add this file to a Keptn's configuration store. This is done by using the Keptn CLI with the [keptn add-resource](https://keptn.sh/docs/0.14.x/reference/cli/commands/keptn_add-resource/) command (see [SLI Provider](https://keptn.sh/docs/0.14.x/quality_gates/sli-provider/) for more information).
 
 ---
 

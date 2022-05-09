@@ -55,7 +55,7 @@ func Test_retrieveMetrics(t *testing.T) {
 	err = incomingEvent.DataAs(eventData)
 	require.NoError(t, err)
 
-	apiMock := prometheusfake.NewMockPrometheusAPI(mockCtrl)
+	apiMock := prometheusfake.NewMockAPI(mockCtrl)
 	handler := prometheusUtils.Handler{
 		Project:       eventData.Project,
 		Stage:         eventData.Stage,
@@ -78,7 +78,7 @@ func Test_retrieveMetrics(t *testing.T) {
 
 	assert.Len(t, sliResults, 1)
 	assert.Contains(t, sliResults, &keptnv2.SLIResult{
-		Metric:        Throughput,
+		Metric:        prometheusUtils.Throughput,
 		Value:         sliValue,
 		ComparedValue: 0,
 		Success:       true,
@@ -99,7 +99,7 @@ func Test_retrieveMetricsWithMultipleValues(t *testing.T) {
 	err = incomingEvent.DataAs(eventData)
 	require.NoError(t, err)
 
-	apiMock := prometheusfake.NewMockPrometheusAPI(mockCtrl)
+	apiMock := prometheusfake.NewMockAPI(mockCtrl)
 	handler := prometheusUtils.Handler{
 		Project:       eventData.Project,
 		Stage:         eventData.Stage,
@@ -124,7 +124,7 @@ func Test_retrieveMetricsWithMultipleValues(t *testing.T) {
 
 	assert.Len(t, sliResults, 1)
 	assert.Contains(t, sliResults, &keptnv2.SLIResult{
-		Metric:        Throughput,
+		Metric:        prometheusUtils.Throughput,
 		Value:         0,
 		ComparedValue: 0,
 		Success:       false,
@@ -145,7 +145,7 @@ func Test_retrieveMetricsWithNoValue(t *testing.T) {
 	err = incomingEvent.DataAs(eventData)
 	require.NoError(t, err)
 
-	apiMock := prometheusfake.NewMockPrometheusAPI(mockCtrl)
+	apiMock := prometheusfake.NewMockAPI(mockCtrl)
 	handler := prometheusUtils.Handler{
 		Project:       eventData.Project,
 		Stage:         eventData.Stage,
@@ -161,7 +161,7 @@ func Test_retrieveMetricsWithNoValue(t *testing.T) {
 
 	assert.Len(t, sliResults, 1)
 	assert.Contains(t, sliResults, &keptnv2.SLIResult{
-		Metric:        Throughput,
+		Metric:        prometheusUtils.Throughput,
 		Value:         0,
 		ComparedValue: 0,
 		Success:       false,

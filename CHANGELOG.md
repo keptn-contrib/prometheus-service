@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.8.0](https://github.com/keptn-contrib/prometheus-service/compare/0.7.4...0.8.0) (2022-05-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* This release requires Keptn 0.14.2 or newer to be installed.
+
+Signed-off-by: Christian Kreuzberger <christian.kreuzberger@dynatrace.com>
+
+### Features
+
+* Upgrade to Keptn 0.13 ([#296](https://github.com/keptn-contrib/prometheus-service/issues/296)) ([7b04146](https://github.com/keptn-contrib/prometheus-service/commit/7b041462c5d51729adfe8efee9b503729a606be0))
+* Upgrade to Keptn 0.14 ([5d75b1f](https://github.com/keptn-contrib/prometheus-service/commit/5d75b1fea57a8a3e123242032d3dcb495a179d3e))
+
+
+### Bug Fixes
+
+* Queries with no data points ([#297](https://github.com/keptn-contrib/prometheus-service/issues/297)) ([1dffad4](https://github.com/keptn-contrib/prometheus-service/commit/1dffad48281c25d0ec4a621535d7bc271831fa3b))
+
+
+### Docs
+
+* compatibility with Keptn 0.14.2 ([#305](https://github.com/keptn-contrib/prometheus-service/issues/305)) ([e98a002](https://github.com/keptn-contrib/prometheus-service/commit/e98a0021d5a95de87f2073a4e0d6536252e650b3))
+
 ### [0.7.4](https://github.com/keptn-contrib/prometheus-service/compare/0.7.3...0.7.4) (2022-04-26)
 
 

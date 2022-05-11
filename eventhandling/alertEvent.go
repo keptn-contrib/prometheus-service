@@ -22,7 +22,7 @@ const remediationTaskName = "remediation"
 type alertManagerEvent struct {
 	Receiver string  `json:"receiver"`
 	Status   string  `json:"status"`
-	Alerts   []alert `json:"alerts""`
+	Alerts   []alert `json:"alerts"`
 }
 
 // alert coming from prometheus
@@ -113,8 +113,11 @@ func createAndSendCE(problemData keptncommons.ProblemEventData, shkeptncontext s
 	event.SetType(eventType)
 	event.SetSource(source.String())
 	event.SetDataContentType(cloudevents.ApplicationJSON)
-	event.SetData(cloudevents.ApplicationJSON, problemData)
 	event.SetExtension("shkeptncontext", shkeptncontext)
+	err := event.SetData(cloudevents.ApplicationJSON, problemData)
+	if err != nil {
+		return fmt.Errorf("unable to set cloud event data: %w", err)
+	}
 
 	keptnHandler, err := keptnv2.NewKeptn(&event, keptn.KeptnOpts{})
 	if err != nil {

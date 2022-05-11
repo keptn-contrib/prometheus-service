@@ -23,11 +23,6 @@ import (
 	prometheus_model "github.com/prometheus/common/model"
 )
 
-const Throughput = "throughput"
-const ErrorRate = "error_rate"
-const ResponseTimeP50 = "response_time_p50"
-const ResponseTimeP90 = "response_time_p90"
-const ResponseTimeP95 = "response_time_p95"
 const metricsScrapePathEnvName = "METRICS_SCRAPE_PATH"
 
 // ConfigureMonitoringEventHandler is responsible for processing configure monitoring events
@@ -188,7 +183,10 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	var alertingRulesConfig alertingRules
 	if cmPrometheus.Data["prometheus.rules"] != "" {
 		// take existing alerting rule
-		yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &alertingRulesConfig)
+		err := yaml.Unmarshal([]byte(cmPrometheus.Data["prometheus.rules"]), &alertingRulesConfig)
+		if err != nil {
+			return fmt.Errorf("unable to parse altering rules configuration: %w", err)
+		}
 	} else {
 		// create new empty alerting rule
 		alertingRulesConfig = alertingRules{}
@@ -243,8 +241,14 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	}
 
 	const remediationFileDefaultName = "remediation.yaml"
-	_, err = eh.keptnHandler.ResourceHandler.GetServiceResource(eventData.Project, stage.Name, eventData.Service,
-		remediationFileDefaultName)
+
+	resourceScope := configutils.NewResourceScope()
+	resourceScope.Project(eventData.Project)
+	resourceScope.Service(eventData.Service)
+	resourceScope.Stage(stage.Name)
+	resourceScope.Resource(remediationFileDefaultName)
+
+	_, err = eh.keptnHandler.ResourceHandler.GetResource(*resourceScope)
 
 	if errors.Is(err, configutils.ResourceNotFoundError) {
 		eh.logger.Infof("No remediation defined for project %s stage %s, skipping setup of prometheus alerts",
@@ -425,7 +429,13 @@ func getConfigurationServiceURL() string {
 func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage string, logger keptn.LoggerInterface) (*keptnevents.ServiceLevelObjectives, error) {
 	resourceHandler := configutils.NewResourceHandler(getConfigurationServiceURL())
 
-	resource, err := resourceHandler.GetServiceResource(eventData.Project, stage, eventData.Service, "slo.yaml")
+	resourceScope := configutils.NewResourceScope()
+	resourceScope.Project(eventData.Project)
+	resourceScope.Service(eventData.Service)
+	resourceScope.Stage(stage)
+	resourceScope.Resource("slo.yaml")
+
+	resource, err := resourceHandler.GetResource(*resourceScope)
 	if err != nil || resource.ResourceContent == "" {
 		return nil, errors.New("No SLO file available for service " + eventData.Service + " in stage " + stage)
 	}

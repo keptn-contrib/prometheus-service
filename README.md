@@ -12,32 +12,20 @@ The *prometheus-service* is a [Keptn](https://keptn.sh) integration responsible 
 
 Please always double-check the version of Keptn you are using compared to the version of this service, and follow the compatibility matrix below.
 
-
 | Keptn Version\* | [Prometheus Service Image](https://hub.docker.com/r/keptncontrib/prometheus-service/tags) |
 |:---------------:|:-----------------------------------------------------------------------------------------:|
-|      0.5.x      |                           keptncontrib/prometheus-service:0.2.0                           |
-|      0.6.x      |                           keptncontrib/prometheus-service:0.3.0                           |
-|      0.6.1      |                           keptncontrib/prometheus-service:0.3.2                           |
-|      0.6.2      |                           keptncontrib/prometheus-service:0.3.4                           |
-|  0.7.0, 0.7.1   |                           keptncontrib/prometheus-service:0.3.5                           |
-|      0.7.2      |                           keptncontrib/prometheus-service:0.3.6                           |
-|   0.8.0-alpha   |                        keptncontrib/prometheus-service:0.4.0-alpha                        |
-|      0.8.0      |                           keptncontrib/prometheus-service:0.4.0                           |
-|  0.8.1, 0.8.2   |                           keptncontrib/prometheus-service:0.5.0                           |
-|  0.8.1 - 0.8.3  |                           keptncontrib/prometheus-service:0.6.0                           |
-|  0.8.4 - 0.8.7  |                           keptncontrib/prometheus-service:0.6.1                           |
-|      0.9.0      |                           keptncontrib/prometheus-service:0.6.2                           |
-|  0.9.0 - 0.9.2  |                           keptncontrib/prometheus-service:0.7.0                           |
 |     0.10.0      |                           keptncontrib/prometheus-service:0.7.1                           |
 |     0.10.0      |                           keptncontrib/prometheus-service:0.7.2                           |
 |     0.12.0      |                           keptncontrib/prometheus-service:0.7.3                           |
 |     0.13.x      |                           keptncontrib/prometheus-service:0.7.4                           |
-|     0.14.x      |                           keptncontrib/prometheus-service:0.8.0                           |
+|     0.13.x      |                           keptncontrib/prometheus-service:0.7.5                           |
+|    0.14.2\**    |                           keptncontrib/prometheus-service:0.8.0                           |
 
 \* This is the Keptn version we aim to be compatible with. Other versions should work too, but there is no guarantee.
 
-**Note**: Versions compatible with Keptn 0.14.x and newer are not backward compatible due to a change in NATS cluster name
-(see https://github.com/keptn/keptn/releases/tag/0.14.1 for more info about the breaking change).
+\** This version is only compatible with Keptn 0.14.2 and potentially newer releases of Keptn 0.14.x due to a breaking change in NATS cluster name.
+
+You can find more information and older releases on the [Releases](https://github.com/keptn-contrib/prometheus-service/releases) page.
 
 ## Installation instructions
 

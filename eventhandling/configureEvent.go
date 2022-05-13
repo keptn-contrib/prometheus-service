@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -164,7 +165,9 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 
 	cmPrometheus, err := api.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(context.TODO(), env.PrometheusConfigMap, metav1.GetOptions{})
 	if err != nil {
-		if strings.Contains(err.Error(), "is forbidden") {
+		// Print better error message when role binding is missing
+		re := regexp.MustCompile(`configmaps|is forbidden: User|cannot get resource|in API group|in the namespace`)
+		if re.MatchString(err.Error()) {
 			return errors.New("not enough permissions to access configmap. Check if the role binding is correct")
 		}
 		return err

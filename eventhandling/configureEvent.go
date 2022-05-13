@@ -165,7 +165,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	cmPrometheus, err := api.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(context.TODO(), env.PrometheusConfigMap, metav1.GetOptions{})
 	if err != nil {
 		if strings.Contains(err.Error(), "is forbidden") {
-			return errors.New("not enough permissions to access configmap. Check if the role binding is correct.")
+			return errors.New("not enough permissions to access configmap. Check if the role binding is correct")
 		}
 		return err
 	}

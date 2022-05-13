@@ -204,7 +204,7 @@ rate(my_custom_metric{job='$SERVICE-$PROJECT-$STAGE',handler=~'$handler'}[$DURAT
 
 ## Troubleshooting
 
-Take a look at the [TROUBLESHOOTING.md](TROUBLESHOOTING) page for common errors and troubleshooting guidelines.
+Take a look at the [TROUBLESHOOTING](TROUBLESHOOTING.md) page for common errors and troubleshooting guidelines.
 
 # Contributions
 

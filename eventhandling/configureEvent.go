@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 
+	"github.com/gobwas/glob"
 	"github.com/keptn-contrib/prometheus-service/utils"
 	"github.com/keptn-contrib/prometheus-service/utils/prometheus"
 	prometheus_model "github.com/prometheus/common/model"
@@ -166,8 +166,8 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	cmPrometheus, err := api.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(context.TODO(), env.PrometheusConfigMap, metav1.GetOptions{})
 	if err != nil {
 		// Print better error message when role binding is missing
-		re := regexp.MustCompile(`configmaps|is forbidden: User|cannot get resource|in API group|in the namespace`)
-		if re.MatchString(err.Error()) {
+		g := glob.MustCompile("configmaps * is forbidden: User * cannot get resource * in API group * in the namespace *")
+		if g.Match(err.Error()) {
 			return errors.New("not enough permissions to access configmap. Check if the role binding is correct")
 		}
 		return err

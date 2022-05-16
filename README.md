@@ -202,6 +202,10 @@ For example, if an evaluation for the service **carts**  in the stage **producti
 rate(my_custom_metric{job='$SERVICE-$PROJECT-$STAGE',handler=~'$handler'}[$DURATION_SECONDS]) => rate(my_custom_metric{job='carts-sockshop-production',handler=~'$handler'}[30s])
 ```
 
+## Troubleshooting
+
+Take a look at the [TROUBLESHOOTING](TROUBLESHOOTING.md) page for common errors and troubleshooting guidelines.
+
 # Contributions
 
 You are welcome to contribute using Pull Requests against the **master** branch. Before contributing, please read our [Contributing Guidelines](CONTRIBUTING.md).

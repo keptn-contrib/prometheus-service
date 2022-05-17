@@ -155,21 +155,15 @@ Per default, the service works with the following assumptions regarding the setu
 
 ### Using an external Prometheus instance
 
-To use a Prometheus instance other than the one that is being managed by Keptn for a certain project, a secret containing the URL and the access credentials has to be deployed into the `keptn` namespace. The secret must have the following format:
-
-```yaml
-user: test
-password: test
-url: http://prometheus-service.monitoring.svc.cluster.local:8080
-```
-
-If this information is stored in a file, e.g. `prometheus-creds.yaml`, it can be stored with the following command (don't forget to replace the `<project>` placeholder with the name of your project:
+To use an external Prometheus instance for a certain project, a secret containing the URL and the access credentials has to be created using the `keptn` cli (don't forget to replace the `<project>` placeholder with the name of your project):
 
 ```console
-kubectl create secret -n keptn generic prometheus-credentials-<project> --from-file=prometheus-credentials=./mock_secret.yaml
-```
+PROMETHEUS_USER=test
+PROMETHEUS_PASSWORD=test-password
+PROMETHEUS_URL=http://prometheus-server.monitoring.svc.cluster.local
 
-Please note that there is a naming convention for the secret, because this can be configured per **project**. Therefore, the secret has to have the name `prometheus-credentials-<project>`
+keptn create secret prometheus-credentials-<project> --scope="keptn-prometheus-service" --from-literal="PROMETHEUS_USER=$PROMETHEUS_USER" --from-literal="PROMETHEUS_PASSWORD=$PROMETHEUS_PASSWORD" --from-literal="PROMETHEUS_URL=$PROMETHEUS_URL"
+```
 
 ### Custom SLI queries
 
@@ -185,16 +179,21 @@ Users can override the predefined queries, as well as add custom queries by crea
       response_time_p95: histogram_quantile(0.95, sum by(le) (rate(http_response_time_milliseconds_bucket{handler="ItemsController.addToCart",job="$SERVICE-$PROJECT-$STAGE-canary"}[$DURATION_SECONDS])))
     ```
 
-* To store this configuration, you need to add this file to a Keptn's configuration store. This is done by using the Keptn CLI with the [keptn add-resource](https://keptn.sh/docs/0.14.x/reference/cli/commands/keptn_add-resource/) command (see [SLI Provider](https://keptn.sh/docs/0.14.x/quality_gates/sli-provider/) for more information).
+* To store this configuration, you need to add this file to a Keptn's configuration store, e.g., using the [keptn add-resource](https://keptn.sh/docs/0.14.x/reference/cli/commands/keptn_add-resource/) command:
+
+    ```console
+    keptn add-resource --project <project> --service <service> --stage <stage> --resource=sli.yaml --resourceUri=prometheus/sli.yaml
+    ```
 
 ---
 
 Within the user-defined queries, the following variables can be used to dynamically build the query, depending on the project/stage/service, and the time frame:
 
-- $PROJECT: will be replaced with the name of the project
-- $STAGE: will be replaced with the name of the stage
-- $SERVICE: will be replaced with the name of the service
-- $DURATION_SECONDS: will be replaced with the test run duration, e.g. 30s
+- `$PROJECT`: will be replaced with the name of the project
+- `$STAGE`: will be replaced with the name of the stage
+- `$SERVICE`: will be replaced with the name of the service
+- `$DEPLOYMENT`: type of the deployment (e.g., direct, canary, primary)
+- `$DURATION_SECONDS`: will be replaced with the test run duration, e.g. 30s
 
 For example, if an evaluation for the service **carts**  in the stage **production** of the project **sockshop** is triggered, and the tests ran for 30s these will be the resulting queries:
 

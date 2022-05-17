@@ -334,6 +334,9 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 						criteriaString = strings.Replace(criteriaString, ">", "<", -1)
 					}
 
+					// sanitize criteria string: remove whitespaces
+					criteriaString = strings.Replace(criteriaString, " ", "", -1)
+
 					var newAlertingRule *alertingRule
 					ruleName := objective.SLI
 					newAlertingRule = getAlertingRuleOfGroup(alertingGroupConfig, ruleName)

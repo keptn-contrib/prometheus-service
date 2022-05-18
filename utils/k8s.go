@@ -46,3 +46,23 @@ func ListK8sServicesByLabel(svcLabelSelector, namespace string) (*v1.ServiceList
 	}
 	return svcList, nil
 }
+
+// ReadK8sSecretAsString returns the value of secretKey within a secret secretName within namespace namespace
+func ReadK8sSecretAsString(namespace string, secretName string, secretKey string) (string, error) {
+	api, err := GetKubeClient()
+
+	if err != nil {
+		return "", fmt.Errorf("could not initialize kubernetes client %w", err)
+	}
+
+	secret, err := api.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("could not get secret %s: %w", secretName, err)
+	}
+
+	secretData, found := secret.Data[secretKey]
+	if !found {
+		return "", fmt.Errorf("key \"%s\" was not found in secret \"%s\"", secretKey, secretName)
+	}
+	return string(secretData), nil
+}

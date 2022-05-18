@@ -187,25 +187,47 @@ func getCustomQueries(keptnHandler *keptnv2.Keptn, project string, stage string,
 // getPrometheusAPIURL fetches the prometheus API URL for the provided project (e.g., from Kubernetes configmap)
 func getPrometheusAPIURL(project string, kubeClient v1.CoreV1Interface) (string, error) {
 	log.Println("Checking if external prometheus instance has been defined for project " + project)
-	secret, err := kubeClient.Secrets(env.PodNamespace).Get(context.TODO(), "prometheus-credentials-"+project, metav1.GetOptions{})
 
-	// return cluster-internal prometheus URL if no secret has been found
+	secretName := fmt.Sprintf("prometheus-credentials-%s", project)
+
+	secret, err := kubeClient.Secrets(env.PodNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+
+	// fallback: return cluster-internal prometheus URL (configured via PrometheusEndpoint environment variable)
+	// in case no secret has been created for this project
 	if err != nil {
 		log.Println("Could not retrieve or read secret (" + err.Error() + ") for project " + project + ". Using default: " + env.PrometheusEndpoint)
 		return env.PrometheusEndpoint, nil
 	}
 
-	pc := &prometheusCredentials{}
-	err = yaml.Unmarshal(secret.Data["prometheus-credentials"], pc)
+	pc := prometheusCredentials{}
 
-	if err != nil {
-		log.Println("Could not parse credentials for external prometheus instance: " + err.Error())
-		return "", errors.New("invalid credentials format found in secret 'prometheus-credentials-" + project)
+	// Read Prometheus config from Kubernetes secret as strings
+	// Example: keptn create secret prometheus-credentials-<project> --scope="keptn-prometheus-service" --from-literal="PROMETHEUS_USER=$PROMETHEUS_USER" --from-literal="PROMETHEUS_PASSWORD=$PROMETHEUS_PASSWORD" --from-literal="PROMETHEUS_URL=$PROMETHEUS_URL"
+	prometheusURL, errURL := utils.ReadK8sSecretAsString(env.PodNamespace, secretName, "PROMETHEUS_URL")
+	prometheusUser, errUser := utils.ReadK8sSecretAsString(env.PodNamespace, secretName, "PROMETHEUS_USER")
+	prometheusPassword, errPassword := utils.ReadK8sSecretAsString(env.PodNamespace, secretName, "PROMETHEUS_PASSWORD")
+
+	if errURL == nil && errUser == nil && errPassword == nil {
+		// found! using it
+		pc.URL = prometheusURL
+		pc.User = prometheusUser
+		pc.Password = prometheusPassword
+	} else {
+		// deprecated: try to use legacy approach
+		err = yaml.Unmarshal(secret.Data["prometheus-credentials"], &pc)
+
+		if err != nil {
+			log.Println("Could not parse credentials for external prometheus instance: " + err.Error())
+			return "", errors.New("invalid credentials format found in secret 'prometheus-credentials-" + project)
+		}
+
+		// warn the user to migrate their credentials
+		log.Printf("Warning: Please migrate your prometheus credentials for project %s. ", project)
+		log.Printf("See https://github.com/keptn-contrib/prometheus-service/issues/274 for more information.\n")
 	}
-	log.Println("Using external prometheus instance for project " + project + ": " + pc.URL)
-	prometheusURL := generatePrometheusURL(pc)
 
-	return prometheusURL, nil
+	log.Println("Using external prometheus instance for project " + project + ": " + pc.URL)
+	return generatePrometheusURL(&pc), nil
 }
 
 func generatePrometheusURL(pc *prometheusCredentials) string {

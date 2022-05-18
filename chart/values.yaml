@@ -10,6 +10,7 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+# Prometheus specific configuration
 prometheus:
   namespace: "monitoring"                    # K8s namespace where prometheus is installed
   namespace_am: "monitoring"                 # K8s namespace where prometheus-alertmanager is installed
@@ -28,6 +29,7 @@ distributor:
     queueGroup:
       enabled: true                          # Enable connection via Nats queue group to support exactly-once message processing
 
+# Note: Remote Control Plane is currently not supported by prometheus-service - please keep this setting disabled
 remoteControlPlane:
   enabled: false                             # Enables remote execution plane mode
   api:
@@ -66,22 +68,6 @@ service:
   type: ClusterIP
   port: 8080
 
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
-
 resources: # Resource limits and requests
   limits:
     cpu: 500m
@@ -90,6 +76,7 @@ resources: # Resource limits and requests
     cpu: 50m
     memory: 32Mi
 
+# Note: We don't recommend turning on auto-scaling
 autoscaling:
   enabled: false
   minReplicas: 1

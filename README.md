@@ -159,7 +159,7 @@ To use an external Prometheus instance for a certain project, a secret containin
 
 ```console
 PROMETHEUS_USER=test
-PROMETHEUS_PASSWORD=test-password
+ PROMETHEUS_PASSWORD=test-password
 PROMETHEUS_URL=http://prometheus-server.monitoring.svc.cluster.local
 
 keptn create secret prometheus-credentials-<project> --scope="keptn-prometheus-service" --from-literal="PROMETHEUS_USER=$PROMETHEUS_USER" --from-literal="PROMETHEUS_PASSWORD=$PROMETHEUS_PASSWORD" --from-literal="PROMETHEUS_URL=$PROMETHEUS_URL"

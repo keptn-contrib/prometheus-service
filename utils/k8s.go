@@ -57,7 +57,7 @@ func ReadK8sSecretAsString(namespace string, secretName string, secretKey string
 
 	secret, err := api.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("could not get secret %s: %w", secretName, err)
 	}
 
 	secretData, found := secret.Data[secretKey]

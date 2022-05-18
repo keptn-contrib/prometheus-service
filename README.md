@@ -165,9 +165,11 @@ PROMETHEUS_URL=http://prometheus-server.monitoring.svc.cluster.local
 keptn create secret prometheus-credentials-<project> --scope="keptn-prometheus-service" --from-literal="PROMETHEUS_USER=$PROMETHEUS_USER" --from-literal="PROMETHEUS_PASSWORD=$PROMETHEUS_PASSWORD" --from-literal="PROMETHEUS_URL=$PROMETHEUS_URL"
 ```
 
-### Custom SLI queries
+Note: This creates an actual Kubernetes secret, with some Kubernetes labels (`app.kubernetes.io/managed-by=keptn-secret-service`, `app.kubernetes.io/scope=prometheus-service`) and is bound to the correct role (`keptn-prometheus-svc-read`) which allow prometheus-service to access it.
 
-Users can override the predefined queries, as well as add custom queries by creating a SLI configuration.
+### User-defined Service Level Indicators (SLIs)
+
+Users can override the predefined queries, as well as add custom queries by creating a SLI configuration. 
 
 * A SLI configuration is a yaml file as shown below:
 
@@ -178,6 +180,7 @@ Users can override the predefined queries, as well as add custom queries by crea
       cpu_usage: avg(rate(container_cpu_usage_seconds_total{namespace="$PROJECT-$STAGE",pod_name=~"$SERVICE-primary-.*"}[5m]))
       response_time_p95: histogram_quantile(0.95, sum by(le) (rate(http_response_time_milliseconds_bucket{handler="ItemsController.addToCart",job="$SERVICE-$PROJECT-$STAGE-canary"}[$DURATION_SECONDS])))
     ```
+    This file contains a list of keys (e.g., `cpu_usage`) and a prometheus metric expressions (e.g., `avg(rate(...{filters}[timeframe]))`).
 
 * To store this configuration, you need to add this file to a Keptn's configuration store, e.g., using the [keptn add-resource](https://keptn.sh/docs/0.14.x/reference/cli/commands/keptn_add-resource/) command:
 

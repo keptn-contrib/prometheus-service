@@ -21,6 +21,7 @@ Please always double-check the version of Keptn you are using compared to the ve
 |     0.13.x      |                           keptncontrib/prometheus-service:0.7.5                           |
 |    0.14.2\**    |                           keptncontrib/prometheus-service:0.8.0                           |
  |     0.15.1      |                           keptncontrib/prometheus-service:0.8.1                           |
+|     0.16.0      |                           keptncontrib/prometheus-service:0.8.2                           |
 
 \* This is the Keptn version we aim to be compatible with. Other versions should work too, but there is no guarantee.
 

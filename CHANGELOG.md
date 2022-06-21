@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.1](https://github.com/keptn-contrib/prometheus-service/compare/0.8.0...0.8.1) (2022-06-21)
+
+
+### Features
+
+* Add role binding error handling ([#307](https://github.com/keptn-contrib/prometheus-service/issues/307)) ([9e3b607](https://github.com/keptn-contrib/prometheus-service/commit/9e3b607ad6199d9166846665ad44077bc6fafd53))
+* Upgrade to Keptn 0.15.1 ([#319](https://github.com/keptn-contrib/prometheus-service/issues/319)) ([ec85241](https://github.com/keptn-contrib/prometheus-service/commit/ec85241e93fa5067754d876a3818038d52434d42))
+* Use Keptn secrets for storing external prometheus-server URL ([#308](https://github.com/keptn-contrib/prometheus-service/issues/308)) ([5e35109](https://github.com/keptn-contrib/prometheus-service/commit/5e35109c30efaa8bb10d9401c485f240bc54986c))
+
+
+### Bug Fixes
+
+* **docs:** Release version in compatibility matrix ([#321](https://github.com/keptn-contrib/prometheus-service/issues/321)) ([d1a0c30](https://github.com/keptn-contrib/prometheus-service/commit/d1a0c305badc16acb660d4fc9cbf92a7d0c4159f))
+* sanitize criteria string for alerts by removing white spaces ([#233](https://github.com/keptn-contrib/prometheus-service/issues/233)) ([f7bcb51](https://github.com/keptn-contrib/prometheus-service/commit/f7bcb5161cbb4750ee9a568e3012dd33560306b3))
+
+
+### Other
+
+* Remove ingress, cleanup helm chart ([#309](https://github.com/keptn-contrib/prometheus-service/issues/309)) ([aac5014](https://github.com/keptn-contrib/prometheus-service/commit/aac50149464da8508caea5768207ad6e8be43ebf))
+
 ## [0.8.0](https://github.com/keptn-contrib/prometheus-service/compare/0.7.4...0.8.0) (2022-05-11)
 
 

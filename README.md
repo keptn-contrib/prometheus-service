@@ -205,6 +205,13 @@ For example, if an evaluation for the service **carts**  in the stage **producti
 rate(my_custom_metric{job='$SERVICE-$PROJECT-$STAGE',handler=~'$handler'}[$DURATION_SECONDS]) => rate(my_custom_metric{job='carts-sockshop-production',handler=~'$handler'}[30s])
 ```
 
+### Manually creating configmaps and alerts
+
+By default, the `prometheus-service` automatically creates all the needed configmaps and alerts without needing to configure anything. In some cases, the user might want to manually create the configmaps and alerts instead, which can be enabled by changing the following flags inside the `values.yaml` file:
+
+- `createTargets` - Enable or disable the automatic creation of Prometheus targets
+- `createAlerts` - Enable or disable the automatic creation of Prometheus alerts
+
 ## Troubleshooting
 
 Take a look at the [TROUBLESHOOTING](TROUBLESHOOTING.md) page for common errors and troubleshooting guidelines.

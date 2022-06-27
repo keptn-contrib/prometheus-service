@@ -23,4 +23,6 @@ type EnvConfig struct {
 	AlertManagerConfigFileName    string `envconfig:"ALERT_MANAGER_CONFIG_FILENAME" default:"alertmanager.yml"`
 	PodNamespace                  string `envconfig:"POD_NAMESPACE" default:""`
 	PrometheusEndpoint            string `envconfig:"PROMETHEUS_ENDPOINT" default:""`
+	CreateTarget                  string `envconfig:"CREATE_TARGETS" default:"true"`
+	CreateAlerts                  string `envconfig:"CREATE_ALERTS" default:"false"`
 }

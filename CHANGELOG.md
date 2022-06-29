@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.2](https://github.com/keptn-contrib/prometheus-service/compare/0.8.1...0.8.2) (2022-06-29)
+
+
+### Features
+
+* Upgrade to Keptn 0.16 ([#323](https://github.com/keptn-contrib/prometheus-service/issues/323)) ([1045f30](https://github.com/keptn-contrib/prometheus-service/commit/1045f302dc4bbc5959c79947959653bbec607f39))
+
 ### [0.8.1](https://github.com/keptn-contrib/prometheus-service/compare/0.8.0...0.8.1) (2022-06-21)
 
 

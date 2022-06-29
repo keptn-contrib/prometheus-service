@@ -207,10 +207,10 @@ rate(my_custom_metric{job='$SERVICE-$PROJECT-$STAGE',handler=~'$handler'}[$DURAT
 
 ### Manually creating configmaps and alerts
 
-By default, the `prometheus-service` automatically creates all the needed configmaps and alerts without needing to configure anything. In some cases, the user might want to manually create the configmaps and alerts instead, which can be enabled by changing the following flags inside the `values.yaml` file:
+By default, the `prometheus-service` automatically creates all the needed configmaps for targets and alerts without needing to configure anything. In some cases, the user might want to manually create the configmaps and alerts instead, which can be enabled by changing the following flags inside the `values.yaml` file:
 
-- `createTargets` - Enable or disable the automatic creation of Prometheus targets
-- `createAlerts` - Enable or disable the automatic creation of Prometheus alerts
+- `prometheus.createTargets` (default: true) - Enable or disable the automatic creation of Prometheus targets
+- `prometheus.createAlerts` (default: true) - Enable or disable the automatic creation of Prometheus alerts
 
 ## Troubleshooting
 

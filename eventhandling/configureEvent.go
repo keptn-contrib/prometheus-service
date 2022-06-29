@@ -31,6 +31,7 @@ type ConfigureMonitoringEventHandler struct {
 	logger       keptn.LoggerInterface
 	event        cloudevents.Event
 	keptnHandler *keptnv2.Keptn
+	k8sNamespace string
 }
 
 type alertingRules struct {
@@ -95,7 +96,7 @@ func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(e
 		}
 
 		eh.logger.Debug("Configure prometheus alert manager with keptn")
-		err := eh.configurePrometheusAlertManager()
+		err := eh.configurePrometheusAlertManager(eh.k8sNamespace)
 		if err != nil {
 			return err
 		}
@@ -136,9 +137,9 @@ func getPrometheusAlertManagerServiceFromK8s() (*v1.ServiceList, error) {
 	return svcList, err
 }
 
-func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager() error {
+func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager(namespace string) error {
 	eh.logger.Info("Configuring Prometheus AlertManager...")
-	prometheusHelper, err := prometheus.NewPrometheusHelper()
+	prometheusHelper, err := prometheus.NewPrometheusHelper(namespace)
 
 	eh.logger.Info("Updating Prometheus AlertManager configmap...")
 	err = prometheusHelper.UpdateAMConfigMap(env.AlertManagerConfigMap, env.AlertManagerConfigFileName, env.AlertManagerNamespace)

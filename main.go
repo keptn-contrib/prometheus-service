@@ -103,7 +103,7 @@ func gotEvent(event cloudevents.Event) error {
 		return fmt.Errorf("unable to create kubernetes client: %w", err)
 	}
 
-	return eventhandling.NewEventHandler(event, logger, keptnHandler, kubeClient).HandleEvent()
+	return eventhandling.NewEventHandler(event, logger, keptnHandler, kubeClient, env.K8sNamespace).HandleEvent()
 }
 
 // HTTPGetHandler will handle all requests for '/health' and '/ready'

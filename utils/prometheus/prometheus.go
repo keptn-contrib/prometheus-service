@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/keptn-contrib/prometheus-service/utils"
 	"log"
 	"math"
 	"strconv"
@@ -82,12 +81,12 @@ receivers:
   - url: http://prometheus-service.%s.svc.cluster.local:8080`
 
 type PrometheusHelper struct {
-	KubeApi   *kubernetes.Clientset
+	KubeAPI   *kubernetes.Clientset
 	Namespace string
 }
 
 // NewPrometheusHelper creates a new PrometheusHelper
-func NewPrometheusHelper() (*PrometheusHelper, error) {
+func NewPrometheusHelper(namespace string) (*PrometheusHelper, error) {
 
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -99,16 +98,11 @@ func NewPrometheusHelper() (*PrometheusHelper, error) {
 		return nil, err
 	}
 
-	namespace, err := utils.ReadCurrentK8sNamespace()
-	if err != nil {
-		return nil, err
-	}
-
-	return &PrometheusHelper{KubeApi: clientSet, Namespace: namespace}, nil
+	return &PrometheusHelper{KubeAPI: clientSet, Namespace: namespace}, nil
 }
 
 func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) error {
-	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
+	_, err := p.KubeAPI.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -117,11 +111,11 @@ func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) e
 }
 
 func (p *PrometheusHelper) GetConfigMap(name string, namespace string) (*v1.ConfigMap, error) {
-	return p.KubeApi.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	return p.KubeAPI.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) error {
-	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
+	_, err := p.KubeAPI.CoreV1().ConfigMaps(namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -129,7 +123,7 @@ func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) e
 	return nil
 }
 
-func generateAlterManagerYaml(namespace string) string {
+func generateAlertManagerYaml(namespace string) string {
 	return fmt.Sprintf(alertManagerYamlTemplate, namespace)
 }
 
@@ -146,7 +140,7 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, names
 	}
 
 	var keptnAlertConfig alertConfig.Config
-	err = yaml.Unmarshal([]byte(generateAlterManagerYaml(p.Namespace)), &keptnAlertConfig)
+	err = yaml.Unmarshal([]byte(generateAlertManagerYaml(p.Namespace)), &keptnAlertConfig)
 	if err != nil {
 		return err
 	}

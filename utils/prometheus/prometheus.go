@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/keptn-contrib/prometheus-service/utils"
 	"log"
 	"math"
 	"strconv"
@@ -59,7 +60,7 @@ type Handler struct {
 	CustomQueries  map[string]string
 }
 
-const alertManagerYml = `global:
+const alertManagerYamlTemplate = `global:
 templates:
 - '/etc/alertmanager/*.tmpl'
 route:
@@ -78,10 +79,11 @@ route:
 receivers:
 - name: keptn_integration
   webhook_configs:
-  - url: http://prometheus-service.keptn.svc.cluster.local:8080`
+  - url: http://prometheus-service.%s.svc.cluster.local:8080`
 
 type PrometheusHelper struct {
-	KubeApi *kubernetes.Clientset
+	KubeApi   *kubernetes.Clientset
+	Namespace string
 }
 
 // NewPrometheusHelper creates a new PrometheusHelper
@@ -91,13 +93,18 @@ func NewPrometheusHelper() (*PrometheusHelper, error) {
 	if err != nil {
 		return nil, err
 	}
-	clientSet, err := kubernetes.NewForConfig(config)
 
+	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
-	return &PrometheusHelper{KubeApi: clientSet}, nil
+	namespace, err := utils.ReadCurrentK8sNamespace()
+	if err != nil {
+		return nil, err
+	}
+
+	return &PrometheusHelper{KubeApi: clientSet, Namespace: namespace}, nil
 }
 
 func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) error {
@@ -122,6 +129,10 @@ func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) e
 	return nil
 }
 
+func generateAlterManagerYaml(namespace string) string {
+	return fmt.Sprintf(alertManagerYamlTemplate, namespace)
+}
+
 func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, namespace string) error {
 	getCM, err := p.GetConfigMap(name, namespace)
 	if err != nil {
@@ -135,7 +146,7 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, names
 	}
 
 	var keptnAlertConfig alertConfig.Config
-	err = yaml.Unmarshal([]byte(alertManagerYml), &keptnAlertConfig)
+	err = yaml.Unmarshal([]byte(generateAlterManagerYaml(p.Namespace)), &keptnAlertConfig)
 	if err != nil {
 		return err
 	}

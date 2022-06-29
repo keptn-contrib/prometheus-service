@@ -45,8 +45,6 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 helm install prometheus prometheus-community/prometheus --namespace monitoring
 ```
 
-**Note**: After setting up prometheus, make sure to apply [deploy/role.yaml](deploy/role.yaml) such that prometheus-service can access the `monitoring` namespace (see instructions below).
-
 ### Optional: Verify Prometheus in your Kubernetes cluster
 
 * To verify that the Prometheus scrape jobs are correctly set up, you can access Prometheus by enabling port-forwarding for the prometheus-server:
@@ -62,7 +60,7 @@ Prometheus is then available on [localhost:8080/targets](http://localhost:8080/t
 
 Please replace the placeholders in the commands below. Examples are provided.
 
-* `<VERSION>`: prometheus-service version, e.g., `0.8.0`
+* `<VERSION>`: prometheus-service version, e.g., `0.8.3`
 * `<PROMETHEUS_NS>`: If prometheus is installed in the same Kubernetes cluster, the namespace needs to be provided, e.g., `monitoring`
 * `<PROMETHEUS_ENDPOINT>`: Endpoint for prometheus (primarily used for fetching metrics), e.g., `http://prometheus-server.monitoring.svc.cluster.local:80`
 * `<ALERT_MANAGER_NS>`: if prometheus alert manager is installed in the same Kubernetes cluster, the namespace needs to be provided, e.g., `monitoring`
@@ -74,27 +72,34 @@ Once this is done, you can go ahead and install prometheus-service:
 
 * Install Keptn prometheus-service in Kubernetes using
 
-```bash
-helm upgrade --install -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz --reuse-values
-```
+    ```bash
+    helm upgrade --install -n keptn prometheus-service \
+      https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz \
+      --reuse-values
+    ```
 
-* Install Role and RoleBinding to permit prometheus-service for performing operations in the Prometheus `monitoring` namespace:
+* (Optional) If you want to customize the namespaces of Keptn or the Prometheus installation, replace the environment 
+  variable values according to the use case and apply the manifest:
 
-```bash
-kubectl -n monitoring apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/<VERSION>/deploy/role.yaml
-```
-
-* (Optional) Replace the environment variable value according to the use case and apply the manifest:
-
-```bash
-helm upgrade -n keptn prometheus-service https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz --reuse-values --set=prometheus.namespace="<PROMETHEUS_NS>",prometheus.endpoint="<PROMETHEUS_ENDPOINT>",prometheus.namespace_am="<ALERT_MANAGER_NS>"
-```
+    ```bash
+    PROMETHEUS_NS=<PROMETHEUS_NS>
+    PROMETHEUS_ENDPOINT=<PROMETHEUS_ENDPOINT>
+    ALERT_MANAGER_NS=<ALERT_MANAGER_NS>
+    KEPTN_NAMESPACE="keptn"
+    
+    helm upgrade -n ${KEPTN_NAMESPACE} prometheus-service \
+      https://github.com/keptn-contrib/prometheus-service/releases/download/<VERSION>/prometheus-service-<VERSION>.tgz \
+      --reuse-values \
+      --set prometheus.namespace=${PROMETHEUS_NS} \
+      --set prometheus.endpoint=${PROMETHEUS_ENDPOINT} \
+      --set prometheus.namespace_am=${ALERT_MANAGER_NS}
+    ```
 
 * Execute the following command to configure Prometheus and set up the rules for the *Prometheus Alerting Manager*:
 
-```bash
-keptn configure monitoring prometheus --project=sockshop --service=carts
-```
+    ```bash
+    keptn configure monitoring prometheus --project=sockshop --service=carts
+    ```
 
 
 ### Advanced Options

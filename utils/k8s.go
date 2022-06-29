@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,4 +66,14 @@ func ReadK8sSecretAsString(namespace string, secretName string, secretKey string
 		return "", fmt.Errorf("key \"%s\" was not found in secret \"%s\"", secretKey, secretName)
 	}
 	return string(secretData), nil
+}
+
+// ReadCurrentK8sNamespace returns the value of the current namespace
+func ReadCurrentK8sNamespace() (string, error) {
+	contents, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	if err != nil {
+		return "", fmt.Errorf("unable to read current namespace: %w", err)
+	}
+
+	return string(contents), nil
 }

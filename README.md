@@ -20,12 +20,15 @@ Please always double-check the version of Keptn you are using compared to the ve
 |     0.13.x      |                           keptncontrib/prometheus-service:0.7.4                           |
 |     0.13.x      |                           keptncontrib/prometheus-service:0.7.5                           |
 |    0.14.2\**    |                           keptncontrib/prometheus-service:0.8.0                           |
- |     0.15.1      |                           keptncontrib/prometheus-service:0.8.1                           |
-|     0.16.0      |                           keptncontrib/prometheus-service:0.8.2                           |
+|     0.15.1      |                         keptncontrib/prometheus-service:0.8.1\***                         |
+|     0.16.0      |                         keptncontrib/prometheus-service:0.8.2\***                         |
+|     0.16.0      |                           keptncontrib/prometheus-service:0.8.3                           |
 
 \* This is the Keptn version we aim to be compatible with. Other versions should work too, but there is no guarantee.
 
 \** This version is only compatible with Keptn 0.14.2 and potentially newer releases of Keptn 0.14.x due to a breaking change in NATS cluster name.
+
+\*** These versions are not compatible with Prometheus Alertmanager <= 0.24
 
 You can find more information and older releases on the [Releases](https://github.com/keptn-contrib/prometheus-service/releases) page.
 

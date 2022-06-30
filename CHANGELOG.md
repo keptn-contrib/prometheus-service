@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.3](https://github.com/keptn-contrib/prometheus-service/compare/0.8.2...0.8.3) (2022-06-30)
+
+
+### Bug Fixes
+
+* Compatibility issues with alertmanager configuration ([#330](https://github.com/keptn-contrib/prometheus-service/issues/330)) ([278617e](https://github.com/keptn-contrib/prometheus-service/commit/278617ec31c0e5085d4481bdeb5df0a39bf91fa1))
+
+
+### Docs
+
+* Update Compatibility matrix in README.md ([#331](https://github.com/keptn-contrib/prometheus-service/issues/331)) ([13ec763](https://github.com/keptn-contrib/prometheus-service/commit/13ec763114dfb3837c64d0e7185be52fb7520aae))
+
 ### [0.8.2](https://github.com/keptn-contrib/prometheus-service/compare/0.8.1...0.8.2) (2022-06-29)
 
 

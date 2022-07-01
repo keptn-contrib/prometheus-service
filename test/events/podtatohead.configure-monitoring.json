@@ -1,0 +1,16 @@
+{
+  "contenttype": "application/json",
+  "data": {
+    "project": "e2e-project",
+    "service": "podtatoserver",
+    "temporaryData": {
+      "distributor": {
+        "subscriptionID": ""
+      }
+    },
+    "type": "prometheus"
+  },
+  "source": "https://github.com/keptn/keptn/cli#configuremonitoring",
+  "specversion": "1.0",
+  "type": "sh.keptn.event.monitoring.configure"
+}

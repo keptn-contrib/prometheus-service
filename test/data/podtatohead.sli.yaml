@@ -1,0 +1,6 @@
+---
+spec_version: '1.0'
+indicators:
+  response_time_p95: histogram_quantile(0.95,sum(rate(http_server_request_duration_seconds_bucket{job='$SERVICE-$PROJECT-$STAGE',route='/'}[$DURATION_SECONDS]))by(le))*1000
+  error_rate: sum(rate(http_requests_total{job='$SERVICE-$PROJECT-$STAGE',status!~'2..'}[$DURATION_SECONDS]))/sum(rate(http_requests_total{job='$SERVICE-$PROJECT-$STAGE'}[$DURATION_SECONDS]))
+  throughput: sum(rate(http_requests_total{job='$SERVICE-$PROJECT-$STAGE'}[$DURATION_SECONDS]))

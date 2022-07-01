@@ -1,0 +1,389 @@
+name: Integration Tests
+on:
+  schedule:
+    # * is a special character in YAML, so you have to quote this string
+    - cron: "0 3 * * 1-5" # run integration tests at 3 AM, monday to friday (1-5)
+
+  workflow_dispatch: # run integration tests only when triggered manually
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  integration_test:
+    name: "Integration Tests"
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        keptn-version: ["0.14.2", "0.15.1", "0.16.0"] # https://github.com/keptn/keptn/releases
+        prometheus-version: ["15.10.1"]
+    env:
+      GO_VERSION: 1.17
+      GOPROXY: "https://proxy.golang.org"
+      GO111MODULE: "on"
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+      ENABLE_E2E_TEST: true
+      JES_VERSION: "0.2.3"
+      JES_NAMESPACE: keptn-jes-e2e
+      GITEA_ADMIN_USERNAME: GiteaAdmin
+      GITEA_NAMESPACE: gitea
+      KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      TEST_REPORT_FILENAME: test-report-${{ github.run_id }}-keptn-${{ matrix.keptn-version }}-prometheus-${{ matrix.prometheus-version }}.json
+    steps:
+      # Checkout code for the integrations tests in test/e2e
+      - name: Check out code.
+        uses: actions/checkout@v3.0.2
+
+      - name: Setup Go
+        uses: actions/setup-go@v3.2.0
+        with:
+          go-version-file: "go.mod"
+
+      - name: Install gotestsum
+        shell: bash
+        run: go install gotest.tools/gotestsum@latest
+
+      # Download artifacts from last CI run
+      - name: Download artifacts
+        uses: dawidd6/action-download-artifact@v2.21.1
+        id: download_artifacts_push
+        with:
+          # Download last successful artifact from a CI build
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          workflow: CI.yml
+          branch: ${{ env.BRANCH }}
+          path: ./dist
+
+      # Prepare K3d + Keptn environment
+      - name: Install and start K3s
+        run: |
+          curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.21.12+k3s1" INSTALL_K3S_EXEC="--no-deploy traefik" K3S_KUBECONFIG_MODE="644" sh -
+
+      - name: Wait for K3s to become ready
+        timeout-minutes: 1
+        run: |
+          # uncomment the line below for debugging
+          # set -x
+          k3sReady=$(kubectl get node $(hostname) -ogo-template --template="{{ range .status.conditions }} {{- if eq .type \"Ready\" }}{{ .status }} {{- end }} {{- end }}" || echo "")
+          while [ "$k3sReady" != "True" ]; do
+          echo "K3s is not ready yet, sleep awhile to let things settle"
+          sleep 5
+          k3sReady=$(kubectl get node $(hostname) -ogo-template --template="{{ range .status.conditions }} {{- if eq .type \"Ready\" }}{{ .status }} {{- end }} {{- end }}" || echo "")
+          done;
+          echo "K3s ready!!!"
+
+      - name: Generate Gitea credentials
+        id: gitea_credentials
+        run: |
+          password=$(date +%s | sha256sum | base64 | head -c 32)
+          echo "::add-mask::$password"
+          echo "::set-output name=GITEA_ADMIN_PASSWORD::$password"
+
+      - name: Install Gitea
+        id: gitea
+        env:
+          GITEA_ADMIN_PASSWORD: ${{ steps.gitea_credentials.outputs.GITEA_ADMIN_PASSWORD }}
+        run: |
+          export GITEA_ENDPOINT="http://gitea-http.${GITEA_NAMESPACE}:3000"
+          
+          helm repo add gitea-charts https://dl.gitea.io/charts/
+          helm repo update
+          helm install -n ${GITEA_NAMESPACE} gitea gitea-charts/gitea \
+            --create-namespace \
+            --set memcached.enabled=false \
+            --set postgresql.enabled=false \
+            --set gitea.config.database.DB_TYPE=sqlite3 \
+            --set gitea.admin.username=${GITEA_ADMIN_USERNAME} \
+            --set gitea.admin.password=${GITEA_ADMIN_PASSWORD} \
+            --set gitea.config.server.OFFLINE_MODE=true \
+            --set gitea.config.server.ROOT_URL=${GITEA_ENDPOINT}/ \
+            --wait
+          
+          # Export Gitea connection details
+          echo "::set-output name=GITEA_ENDPOINT::${GITEA_ENDPOINT}"
+
+      - name: Install gitea provisioner-service
+        env:
+          GITEA_ADMIN_PASSWORD: ${{ steps.gitea_credentials.outputs.GITEA_ADMIN_PASSWORD }}
+          GITEA_ENDPOINT: ${{ steps.gitea.outputs.GITEA_ENDPOINT }}
+        run: |
+          helm install keptn-gitea-provisioner-service https://github.com/keptn-sandbox/keptn-gitea-provisioner-service/releases/download/0.1.0/keptn-gitea-provisioner-service-0.1.0.tgz \
+            --set gitea.endpoint=${GITEA_ENDPOINT} \
+            --set gitea.admin.create=true \
+            --set gitea.admin.username=${GITEA_ADMIN_USERNAME} \
+            --set gitea.admin.password=${GITEA_ADMIN_PASSWORD} \
+            --wait
+
+      - name: Install Keptn
+        id: install_keptn
+        uses: keptn-sandbox/action-install-keptn@v2.0.0
+        timeout-minutes: 5
+        with:
+          KEPTN_VERSION: ${{ matrix.keptn-version }}
+          HELM_VALUES: |
+            control-plane:
+              apiGatewayNginx:
+                type: LoadBalancer
+              features:
+                automaticProvisioningURL: http://keptn-gitea-provisioner-service.default
+          KUBECONFIG: ${{ env.KUBECONFIG }}
+
+      - name: Test connection to keptn
+        run: |
+          curl -X GET "${{ steps.install_keptn.outputs.KEPTN_API_URL }}/v1/metadata" -H  "accept: application/json" -H  "x-token: ${{ steps.install_keptn.outputs.KEPTN_API_TOKEN }}"
+
+      # Install job executor from downloaded helm chart
+      - name: Install Job-executor-service
+        env:
+          KEPTN_API_PROTOCOL: http
+          KEPTN_API_TOKEN: ${{ steps.install_keptn.outputs.KEPTN_API_TOKEN }}
+          KEPTN_ENDPOINT: ${{ steps.install_keptn.outputs.KEPTN_HTTP_ENDPOINT }}
+          TASK_SUBSCRIPTION: "sh.keptn.event.deployment.triggered,sh.keptn.event.test.triggered"
+        run: |
+          helm upgrade --install \
+            --create-namespace -n ${JES_NAMESPACE} \
+            job-executor-service \
+            "https://github.com/keptn-contrib/job-executor-service/releases/download/${JES_VERSION}/job-executor-service-${JES_VERSION}.tgz" \
+            --set remoteControlPlane.autoDetect.enabled="false" \
+            --set remoteControlPlane.topicSubscription="${TASK_SUBSCRIPTION}" \
+            --set remoteControlPlane.api.token=${KEPTN_API_TOKEN} \
+            --set remoteControlPlane.api.hostname=${KEPTN_ENDPOINT} \
+            --set remoteControlPlane.api.protocol=${KEPTN_API_PROTOCOL} \
+            --wait
+          
+          kubectl apply \
+            -f test/data/helm-serviceAccount.yaml \
+            -f test/data/helm-clusterRole.yaml \
+            -f test/data/helm-clusterRoleBinding.yaml
+
+      - name: Install prometheus
+        env:
+          PROMETHEUS_VERSION: ${{ matrix.prometheus-version }}
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm install prometheus prometheus-community/prometheus \
+            --namespace monitoring --create-namespace \
+            --version ${PROMETHEUS_VERSION}\
+            --wait
+
+      - name: Install prometheus-service
+        run: |
+          ls -lah ./dist/helm-charts/
+          helm upgrade --install -n keptn prometheus-service ./dist/helm-charts/prometheus-service-*.tgz --wait
+          kubectl -n monitoring deploy/role.yaml
+
+      # If we failed any previous step we might have a problem and not reporting anything for the version
+      - name: Create pipeline failure report
+        if: failure()
+        run: |
+          echo "Failed to run integration tests!"
+          echo '{"Test": "TestGitHub Pipeline", "Action": "fail"}' >> $TEST_REPORT_FILENAME
+
+      - name: Run Integration tests
+        env:
+          KEPTN_ENDPOINT: ${{ steps.install_keptn.outputs.KEPTN_API_URL }}
+          KEPTN_API_TOKEN: ${{ steps.install_keptn.outputs.KEPTN_API_TOKEN }}
+        run: |
+          gotestsum --format testname --jsonfile $TEST_REPORT_FILENAME ./test/e2e/...
+
+      # Upload the report files, so we can use them in later jobs
+      - name: Upload test report as an artifact
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-report
+          path: test-report-*.json
+
+      - name: Dump k8s debug info
+        if: always()
+        run: |
+          mkdir k8s_debug
+          kubectl describe nodes > k8s_debug/k8s_describe_nodes.txt
+          kubectl cluster-info dump > k8s_debug/k8s_cluster_info_dump.txt
+          kubectl get all -n keptn -o json > k8s_debug/k8s_keptn_objects.json
+          kubectl get configmaps,deployments,pods,networkpolicy,serviceaccounts,role,rolebindings,events -n ${JES_NAMESPACE} -o json > k8s_debug/k8s_jes_objects.json
+          kubectl logs -n keptn -l app.kubernetes.io/instance=keptn --prefix=true --previous=false --all-containers > k8s_debug/k8s_keptn_logs.txt || true
+          kubectl logs -n ${JES_NAMESPACE} deployment/job-executor-service --prefix=true --previous=false --all-containers > k8s_debug/k8s_jes_logs.txt || true
+          kubectl logs deployment/keptn-gitea-provisioner-service --prefix=true --previous=false --all-containers > k8s_debug/k8s_gitea_provisioner_logs.txt || true
+          kubectl get statefulsets,configmaps,pods,networkpolicy,serviceaccounts,role,rolebindings,events,services -n ${GITEA_NAMESPACE} -o json > k8s_debug/k8s_objects_gitea.json
+          kubectl logs statefulsets/gitea --prefix=true --previous=false --all-containers -n ${GITEA_NAMESPACE} > k8s_debug/k8s_logs_gitea.txt || true
+          kubectl get daemonsets,configmaps,pods,serviceaccounts,role,rolebindings,events,services -n monitoring -o json > k8s_debug/k8s_objects_prometheus.json
+          kubectl logs deployment/prometheus-alertmanager --prefix=true --previous=false --all-containers -n monitoring > k8s_debug/k8s_logs_prometheus-alertmanager.txt || true
+
+      # Upload the k8s debug archive, so we can use it for investigating
+      - name: Upload k8s debug archive
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: k8s-debug-archive-keptn-${{ matrix.keptn-version }}-prometheus-${{ matrix.prometheus-version }}
+          path: k8s_debug/
+
+  publish_final_test_report:
+    name: Finalize tests reports
+    needs: integration_test
+    if: always()
+    runs-on: ubuntu-20.04
+    env:
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+      TEST_REPORTS_PATH: "./test-reports/"
+      FINAL_TEST_REPORTS_FOLDER: "./final-test-reports/"
+      FINAL_TEST_REPORT_FILEPATH_JSON: "./final-test-reports/final-test-report.json"
+      FINAL_TEST_REPORT_FILEPATH_MARKDOWN: "./final-test-reports/final-test-report.md"
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@v3.3.0
+        with:
+          node-version: 16
+      - run: npm install ndjson-parse@1.0.4 tablemark@v2.0.0
+
+      - name: Download test reports
+        uses: actions/download-artifact@v3
+        with:
+          name: test-report
+          path: ${{ env.TEST_REPORTS_PATH }}
+
+      # This step collects all test reports and merges them into one
+      # As output a markdown and a json version will be generated
+      - name: Build final test report
+        id: build_final_test_report
+        uses: actions/github-script@v6.1.0
+        env:
+          TEST_REPORTS_PATH: ${{ env.TEST_REPORTS_PATH }}
+          FINAL_TEST_REPORTS_FOLDER: ${{ env.FINAL_TEST_REPORTS_FOLDER }}
+          FINAL_TEST_REPORT_FILEPATH_MARKDOWN: ${{ env.FINAL_TEST_REPORT_FILEPATH_MARKDOWN }}
+        with:
+          result-encoding: string
+          script: |
+            ndJsonParser = require('ndjson-parse');
+            tablemark = require('tablemark');
+            fs = require('fs');
+
+            const {TEST_REPORTS_PATH, 
+                   FINAL_TEST_REPORT_FILEPATH_MARKDOWN,
+                   FINAL_TEST_REPORTS_FOLDER
+                  } = process.env
+
+            const markdownReportData = [];
+
+            let transposedTable = {};
+
+            const keptnVersionRegex = /test-report-\d+-(.*).json/;
+
+            const fileList = fs.readdirSync(TEST_REPORTS_PATH);
+            let keptnVersionCount = 0;
+
+            fileList.forEach(fileName => {
+              console.log(`Reading file: ${fileName}`);
+              
+              const platformReportFile = fs.readFileSync(TEST_REPORTS_PATH + fileName, {encoding:'utf8', flag:'r'});
+              
+              const keptnVersion = keptnVersionRegex.exec(fileName)[1];
+              const testResults = ndJsonParser(platformReportFile);
+              
+              keptnVersionCount++;
+              
+              testResults.forEach(testResult => {
+
+                if (testResult.Test !== undefined && (testResult.Action === "pass" || testResult.Action === "fail" || testResult.Action ===  "skip")) {
+
+                  // Strip Test prefix from the name of the test
+                  name = testResult.Test
+
+                  // For the markdown version we transpose the table layout such that tests are listed in rows and the 
+                  // Keptn version are in the columns:
+                  if (transposedTable[name] === undefined) {
+                    transposedTable[name] = {"Test": name};
+                  }
+
+                  switch(testResult.Action) {
+                    case 'pass': transposedTable[name][keptnVersion] = ':heavy_check_mark:'; break;
+                    case 'fail': transposedTable[name][keptnVersion] = ':x:';                break;
+                    case 'skip': transposedTable[name][keptnVersion] = ':yellow_circle:';    break;
+                    default:     transposedTable[name][keptnVersion] = testResult.Action;
+                  }
+                }
+
+              });
+            });
+
+            transposedTable = Object.values(transposedTable)
+
+            let columns = [{ align: "left" }];
+            for(let i = 0; i < keptnVersionCount; i++){ 
+              columns.push({ align: "center" });
+            }
+
+            const markdownReport = tablemark(transposedTable, {caseHeaders: false, columns: columns});
+
+            fs.mkdirSync(FINAL_TEST_REPORTS_FOLDER);
+            fs.writeFileSync(FINAL_TEST_REPORT_FILEPATH_MARKDOWN, markdownReport);
+
+      - name: Upload final Markdown test report as an artifact
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: final-test-report-markdown
+          path: ${{ env.FINAL_TEST_REPORT_FILEPATH_MARKDOWN }}
+
+      # Check if an integration test failed
+      - name: Check test status
+        if: always()
+        id: check_test_status
+        env:
+          FINAL_TEST_REPORT_FILEPATH_MARKDOWN: ${{ env.FINAL_TEST_REPORT_FILEPATH_MARKDOWN }}
+        run: |
+          REPORT=$(cat "$FINAL_TEST_REPORT_FILEPATH_MARKDOWN")
+
+          if [[ "$REPORT" == *":x:"* ]]; then
+            echo "INTEGRATION TESTS FAILED!"
+            echo "##[set-output name=INTEGRATION_TESTS_FAILED;]true"
+          fi
+
+      - name: Finalize GitHub issue template
+        id: finalize_github_issue_template
+        if: always() && steps.check_test_status.outputs.INTEGRATION_TESTS_FAILED == 'true'
+        env:
+          FINAL_TEST_REPORT_FILEPATH_MARKDOWN: ${{ env.FINAL_TEST_REPORT_FILEPATH_MARKDOWN }}
+        run: |
+          REPORT=$(cat "$FINAL_TEST_REPORT_FILEPATH_MARKDOWN")
+
+          if [[ $GITHUB_EVENT_NAME == 'schedule' ]]; then
+            TRIGGERED_BY="Scheduled build"
+          else
+            TRIGGERED_BY="@$GITHUB_ACTOR"
+          fi
+
+          INTEGRATION_FILE_LINK=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$BRANCH/.github/workflows/integration_tests.yaml
+            
+          # Create issue for the failed integration test:  
+          cat <<EOT >> integration-tests-failed.md
+          ---
+          title: Integration tests failed
+          labels: type:critical
+          ---
+
+          * Link to run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          * Triggered by: $TRIGGERED_BY
+          * Branch: $BRANCH
+          * Commit: $GITHUB_SHA
+
+          $REPORT
+
+          Note: This issue was auto-generated from [integration_tests.yaml]($INTEGRATION_FILE_LINK)
+          EOT
+
+      # Create a GitHub issue if scheduled tests failed
+      - name: Create issue if tests failed
+        if: always() && github.event_name == 'schedule' && steps.check_test_status.outputs.INTEGRATION_TESTS_FAILED == 'true'
+        uses: JasonEtco/create-an-issue@v2.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          filename: integration-tests-failed.md
+
+      # This ensures that if the pipeline was triggered by hand that the user gets informed
+      - name: Fail pipeline if tests failed
+        if: always() && github.event_name != 'schedule' && steps.check_test_status.outputs.INTEGRATION_TESTS_FAILED == 'true'
+        run: exit 1

@@ -26,7 +26,7 @@ jobs:
       BRANCH: ${{ github.head_ref || github.ref_name }}
       ENABLE_E2E_TEST: true
       JES_VERSION: "0.2.3"
-      JES_NAMESPACE: keptn-jes-e2e
+      JES_NAMESPACE: keptn-jes
       GITEA_ADMIN_USERNAME: GiteaAdmin
       GITEA_NAMESPACE: gitea
       KUBECONFIG: /etc/rancher/k3s/k3s.yaml
@@ -140,14 +140,14 @@ jobs:
           KEPTN_API_PROTOCOL: http
           KEPTN_API_TOKEN: ${{ steps.install_keptn.outputs.KEPTN_API_TOKEN }}
           KEPTN_ENDPOINT: ${{ steps.install_keptn.outputs.KEPTN_HTTP_ENDPOINT }}
-          TASK_SUBSCRIPTION: "sh.keptn.event.deployment.triggered,sh.keptn.event.test.triggered"
+          TASK_SUBSCRIPTION: "sh.keptn.event.deployment.triggered\\,sh.keptn.event.test.triggered"
         run: |
           helm upgrade --install \
             --create-namespace -n ${JES_NAMESPACE} \
             job-executor-service \
             "https://github.com/keptn-contrib/job-executor-service/releases/download/${JES_VERSION}/job-executor-service-${JES_VERSION}.tgz" \
             --set remoteControlPlane.autoDetect.enabled="false" \
-            --set remoteControlPlane.topicSubscription="${TASK_SUBSCRIPTION}" \
+            --set remoteControlPlane.topicSubscription=${TASK_SUBSCRIPTION} \
             --set remoteControlPlane.api.token=${KEPTN_API_TOKEN} \
             --set remoteControlPlane.api.hostname=${KEPTN_ENDPOINT} \
             --set remoteControlPlane.api.protocol=${KEPTN_API_PROTOCOL} \

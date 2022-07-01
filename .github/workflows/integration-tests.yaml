@@ -171,8 +171,12 @@ jobs:
       - name: Install prometheus-service
         run: |
           ls -lah ./dist/helm-charts/
-          helm upgrade --install -n keptn prometheus-service ./dist/helm-charts/prometheus-service-*.tgz --wait
-          kubectl -n monitoring deploy/role.yaml
+          helm upgrade --install \
+            prometheus-service ./dist/helm-charts/prometheus-service-*.tgz \
+            -n keptn \
+            --wait
+          
+          kubectl apply -n monitoring -f deploy/role.yaml
 
       # If we failed any previous step we might have a problem and not reporting anything for the version
       - name: Create pipeline failure report

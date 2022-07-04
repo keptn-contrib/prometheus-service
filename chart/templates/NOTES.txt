@@ -4,7 +4,3 @@ You can find more information on the following pages:
 
 * https://github.com/keptn-contrib/prometheus-service
 * https://keptn.sh/docs/0.15.x/monitoring/prometheus/install/
-
-IMPORTANT: You must apply below manifest (contains role-binding for prometheus) in order for prometheus-service to be able to communicate with Prometheus:
-
-  kubectl -n monitoring apply -f https://raw.githubusercontent.com/keptn-contrib/prometheus-service/{{ .Chart.Version }}/deploy/role.yaml

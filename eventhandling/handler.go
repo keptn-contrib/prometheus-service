@@ -26,7 +26,7 @@ func (e NoOpEventHandler) HandleEvent() error {
 var env utils.EnvConfig
 
 // NewEventHandler creates a new Handler for an incoming event
-func NewEventHandler(event cloudevents.Event, logger *keptn.Logger, keptnHandler *keptnv2.Keptn, kubeClient *kubernetes.Clientset) PrometheusEventHandler {
+func NewEventHandler(event cloudevents.Event, logger *keptn.Logger, keptnHandler *keptnv2.Keptn, kubeClient *kubernetes.Clientset, k8sNamespace string) PrometheusEventHandler {
 	logger.Debug("Received event: " + event.Type())
 
 	if err := envconfig.Process("", &env); err != nil {
@@ -38,6 +38,7 @@ func NewEventHandler(event cloudevents.Event, logger *keptn.Logger, keptnHandler
 			logger:       logger,
 			event:        event,
 			keptnHandler: keptnHandler,
+			k8sNamespace: k8sNamespace,
 		}
 	} else if event.Type() == keptnv2.GetTriggeredEventType(keptnv2.GetSLITaskName) {
 		return &GetSliEventHandler{

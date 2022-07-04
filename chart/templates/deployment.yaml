@@ -82,6 +82,10 @@ spec:
               value: '{{ ((.Values.prometheus).createTargets) | default "true" }}'
             - name: CREATE_ALERTS
               value: '{{ ((.Values.prometheus).createAlerts) | default "true" }}'
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
         - name: distributor
           image: "{{ .Values.distributor.image.repository }}:{{ .Values.distributor.image.tag | default .Chart.AppVersion }}"
           livenessProbe:

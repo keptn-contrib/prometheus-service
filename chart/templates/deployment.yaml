@@ -79,9 +79,9 @@ spec:
             - name: SCRAPE_INTERVAL
               value: '{{ ((.Values.prometheus).scrapeInterval) | default "5s" }}'
             - name: CREATE_TARGETS
-              value: '{{ .Values.prometheus.createTargets }}'
+              value: '{{ .Values.prometheus.createTargets | default "true" }}'
             - name: CREATE_ALERTS
-              value: '{{.Values.prometheus.createAlerts}}'
+              value: '{{.Values.prometheus.createAlerts | default "true" }}'
         - name: distributor
           image: "{{ .Values.distributor.image.repository }}:{{ .Values.distributor.image.tag | default .Chart.AppVersion }}"
           livenessProbe:

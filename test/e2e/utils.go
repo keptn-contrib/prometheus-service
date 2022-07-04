@@ -3,18 +3,20 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Masterminds/semver/v3"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/keptn/go-utils/pkg/api/models"
-	keptnutils "github.com/keptn/kubernetes-utils/pkg"
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/require"
+
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // KeptnConnectionDetails contains the endpoint and the API token for Keptn
@@ -119,10 +121,10 @@ type testEnvironment struct {
 // files and extracting the necessary information form it.
 func newTestEnvironment(eventJSONFilePath string, shipyardPath string, jobConfigPath string) (*testEnvironment, error) {
 
-	// Just test if we can connect to the cluster
-	clientset, err := keptnutils.GetClientset(false)
+	// Create K8s clientset
+	clientset, err := NewK8sClient()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get clientset: %w", err)
+		return nil, fmt.Errorf("unable to build k8s clientset: %w", err)
 	}
 
 	// Create a new Keptn api for the use of the E2E test
@@ -262,4 +264,34 @@ func requireWaitForEvent(
 	// We require waiting for a keptn event, this is useful to exit out tests if no .started event occurred.
 	// It doesn't make sense in these cases to wait for a .finished or other .triggered events ...
 	require.Eventuallyf(t, checkForEventsToMatch, waitFor, tick, "did not receive keptn event: %s", eventType)
+}
+
+// NewK8sClient creates a K8s client from the KUBECONFIG environment variable
+func NewK8sClient() (*kubernetes.Clientset, error) {
+
+	// Get full path of the kubeconfig file:
+	var kubeconfig string
+	if os.Getenv("KUBECONFIG") != "" {
+		kubeconfigPath := os.Getenv("KUBECONFIG")
+		userHomeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get user home dir: %w", err)
+		}
+		kubeconfig = filepath.Join(userHomeDir, kubeconfigPath)
+	} else {
+		userHomeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get user home dir %w", err)
+		}
+
+		kubeconfig = filepath.Join(userHomeDir, ".kube", "config")
+	}
+
+	// create k8s client from the given configuration
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate k8s config from flags: %w", err)
+	}
+
+	return kubernetes.NewForConfig(config)
 }

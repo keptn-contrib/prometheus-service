@@ -3,12 +3,12 @@ package e2e
 import (
 	"encoding/base64"
 	"fmt"
+
 	"github.com/keptn/go-utils/pkg/api/models"
 	api "github.com/keptn/go-utils/pkg/api/utils"
 )
 
 const authHeaderName = "x-token"
-const protocolScheme = "http"
 const jobResourceURI = "job/config.yaml"
 
 // KeptnAPI structure holds different api handlers for the keptn api such that they can be used more easily
@@ -86,7 +86,7 @@ func (k KeptnAPI) CreateJobConfig(projectName string, stageName string, serviceN
 
 // AddServiceResource uploads a resource to a specific service and stage
 func (k KeptnAPI) AddServiceResource(projectName string, stageName string, serviceName string, path string, data string) error {
-	_, err := k.ResourceHandler.CreateServiceResources(projectName, stageName, serviceName, []*models.Resource{
+	_, err := k.ResourceHandler.CreateResources(projectName, stageName, serviceName, []*models.Resource{
 		{
 			Metadata:        nil,
 			ResourceContent: data,
@@ -95,7 +95,9 @@ func (k KeptnAPI) AddServiceResource(projectName string, stageName string, servi
 	})
 
 	if err != nil {
-		return fmt.Errorf("unable to create service resource for service %s in project %s: %s", serviceName, projectName, err)
+		return fmt.Errorf("unable to create service resource for service %s in project %s: %s",
+			serviceName, projectName, convertKeptnModelToErrorString(err),
+		)
 	}
 
 	return nil

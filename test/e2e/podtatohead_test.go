@@ -3,12 +3,14 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"github.com/keptn/go-utils/pkg/api/models"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
+
+	"github.com/keptn/go-utils/pkg/api/models"
+	"github.com/stretchr/testify/require"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPodtatoheadEvaluation(t *testing.T) {

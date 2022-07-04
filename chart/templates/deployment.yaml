@@ -81,11 +81,7 @@ spec:
             - name: CREATE_TARGETS
               value: '{{ .Values.prometheus.createTargets }}'
             - name: CREATE_ALERTS
-              {{- if (.Values.prometheus).createTargets}}
               value: '{{.Values.prometheus.createAlerts}}'
-              {{ else }}
-              value: 'false'
-              {{ end }}
         - name: distributor
           image: "{{ .Values.distributor.image.repository }}:{{ .Values.distributor.image.tag | default .Chart.AppVersion }}"
           livenessProbe:

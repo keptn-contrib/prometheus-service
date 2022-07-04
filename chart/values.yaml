@@ -16,8 +16,8 @@ prometheus:
   namespace_am: "monitoring"                 # K8s namespace where prometheus-alertmanager is installed
   endpoint: "http://prometheus-server.monitoring.svc.cluster.local:80"   # HTTP Endpoint for Prometheus
   scrapeInterval: 5s                         # Prometheus scrape interval. Value is a time duration expressed as a sequence of decimal numbers followed by unit suffixes such as "300ms", "-1.5h" or "2h45m". Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
-  createTargets: true                        # Enable the automatic creation of Prometheus targets (disable if you want to create targets manually)
-  createAlerts: true                         # Enable the automatic creation of Prometheus alerts (cannot be true if createTargets is false)
+  createTargets: true                        # Enables the automatic creation of Prometheus targets (disable if you want to create targets manually)
+  createAlerts: true                         # Enables the automatic creation of Prometheus alerts (cannot be true if createTargets is false)
 
 distributor:
   stageFilter: ""                            # Sets the stage this helm service belongs to

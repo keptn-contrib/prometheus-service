@@ -59,7 +59,7 @@ type Handler struct {
 	CustomQueries  map[string]string
 }
 
-const alertManagerYml = `global:
+const alertManagerYamlTemplate = `global:
 templates:
 - '/etc/alertmanager/*.tmpl'
 route:
@@ -78,30 +78,31 @@ route:
 receivers:
 - name: keptn_integration
   webhook_configs:
-  - url: http://prometheus-service.keptn.svc.cluster.local:8080`
+  - url: http://prometheus-service.%s.svc.cluster.local:8080`
 
 type PrometheusHelper struct {
-	KubeApi *kubernetes.Clientset
+	KubeAPI   *kubernetes.Clientset
+	Namespace string
 }
 
 // NewPrometheusHelper creates a new PrometheusHelper
-func NewPrometheusHelper() (*PrometheusHelper, error) {
+func NewPrometheusHelper(namespace string) (*PrometheusHelper, error) {
 
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
 	}
-	clientSet, err := kubernetes.NewForConfig(config)
 
+	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
-	return &PrometheusHelper{KubeApi: clientSet}, nil
+	return &PrometheusHelper{KubeAPI: clientSet, Namespace: namespace}, nil
 }
 
 func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) error {
-	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
+	_, err := p.KubeAPI.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -110,16 +111,20 @@ func (p *PrometheusHelper) UpdateConfigMap(cm *v1.ConfigMap, namespace string) e
 }
 
 func (p *PrometheusHelper) GetConfigMap(name string, namespace string) (*v1.ConfigMap, error) {
-	return p.KubeApi.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	return p.KubeAPI.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func (p *PrometheusHelper) CreateConfigMap(cm *v1.ConfigMap, namespace string) error {
-	_, err := p.KubeApi.CoreV1().ConfigMaps(namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
+	_, err := p.KubeAPI.CoreV1().ConfigMaps(namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func generateAlertManagerYaml(namespace string) string {
+	return fmt.Sprintf(alertManagerYamlTemplate, namespace)
 }
 
 func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, namespace string) error {
@@ -135,7 +140,7 @@ func (p *PrometheusHelper) UpdateAMConfigMap(name string, filename string, names
 	}
 
 	var keptnAlertConfig alertConfig.Config
-	err = yaml.Unmarshal([]byte(alertManagerYml), &keptnAlertConfig)
+	err = yaml.Unmarshal([]byte(generateAlertManagerYaml(p.Namespace)), &keptnAlertConfig)
 	if err != nil {
 		return err
 	}

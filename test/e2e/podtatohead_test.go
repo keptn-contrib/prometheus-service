@@ -40,10 +40,10 @@ func TestPodtatoheadEvaluation(t *testing.T) {
 	}
 
 	err = testEnv.SetupTestEnvironment()
-	//	require.NoError(t, err)
+	require.NoError(t, err)
 
 	// Make sure project is delete after the tests are completed
-	// defer testEnv.Cleanup()
+	defer testEnv.Cleanup()
 
 	// Upload additional resources to the keptn project
 	for _, resource := range additionalResources {

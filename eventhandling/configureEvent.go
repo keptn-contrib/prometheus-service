@@ -90,15 +90,19 @@ func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
 func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(eventData *keptnevents.ConfigureMonitoringEventData) error {
 	// (1) check if prometheus is installed
 	if eh.isPrometheusInstalled() {
-		eh.logger.Debug("Configure prometheus monitoring with keptn")
-		if err := eh.updatePrometheusConfigMap(*eventData); err != nil {
-			return err
+		if utils.EnvVarOrDefault("CREATE_TARGETS", "true") == "true" {
+			eh.logger.Debug("Configure prometheus monitoring with keptn")
+			if err := eh.updatePrometheusConfigMap(*eventData); err != nil {
+				return err
+			}
 		}
 
-		eh.logger.Debug("Configure prometheus alert manager with keptn")
-		err := eh.configurePrometheusAlertManager(eh.k8sNamespace)
-		if err != nil {
-			return err
+		if utils.EnvVarOrDefault("CREATE_ALERTS", "true") == "true" {
+			eh.logger.Debug("Configure prometheus alert manager with keptn")
+			err := eh.configurePrometheusAlertManager(eh.k8sNamespace)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

@@ -1,0 +1,44 @@
+apiVersion: v2
+actions:
+  - name: "Deploy with helm"
+    events:
+      - name: "sh.keptn.event.deployment.triggered"
+    tasks:
+      - name: "Run helm"
+        serviceAccount: "helm"
+        files:
+          - /charts
+        env:
+          - name: IMAGE
+            value: "$.data.configurationChange.values.image"
+            valueFrom: event
+        image: "alpine/helm:3.7.2"
+        imagePullPolicy: IfNotPresent
+        cmd: [ "helm" ]
+        args: [ "upgrade", "--install",
+                "--create-namespace", "-n", "$(KEPTN_PROJECT)-$(KEPTN_STAGE)",
+                "$(KEPTN_SERVICE)", "/keptn/charts/$(KEPTN_SERVICE).tgz",
+                "--set", "image=$(IMAGE)",
+                "--set", "keptn.project=$(KEPTN_PROJECT)",
+                "--set", "keptn.stage=$(KEPTN_STAGE)",
+                "--set", "keptn.service=$(KEPTN_SERVICE)",
+                "--set", "keptn.deployment=direct",
+                "--wait"
+        ]
+
+  - name: "Run tests using locust"
+    events:
+      - name: "sh.keptn.event.test.triggered"
+    tasks:
+      - name: "Run locust"
+        maxPollDuration: 360
+        files:
+          - locust/basic.py
+          - locust/locust.conf
+        image: "locustio/locust"
+        cmd: [ "locust" ]
+        args: [ "--config", "/keptn/locust/locust.conf",
+                "-f", "/keptn/locust/basic.py",
+                "--host", "http://podtatoserver.$(KEPTN_PROJECT)-$(KEPTN_STAGE):80",
+                "--only-summary"
+        ]

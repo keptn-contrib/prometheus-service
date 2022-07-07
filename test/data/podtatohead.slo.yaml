@@ -1,0 +1,29 @@
+---
+spec_version: "1.0"
+comparison:
+  aggregate_function: "avg"
+  compare_with: "single_result"
+  include_result_with_score: "pass"
+  number_of_comparison_results: 1
+filter:
+objectives:
+  - sli: "response_time_p95"
+    displayName: "Response time P95"
+    key_sli: false
+    weight: 1
+    pass:
+      - criteria:
+          - "<100"
+    warning:
+      - criteria:
+          - "<50"
+
+  - sli: "error_rate"
+    displayName: "Error rate"
+
+  - sli: "throughput"
+    displayName: "Throughput"
+
+total_score:
+  pass: "100%"
+  warning: "50%"

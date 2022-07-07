@@ -1,0 +1,24 @@
+{
+  "data": {
+    "configurationChange": {
+      "values": {
+        "image": "ghcr.io/podtato-head/podtatoserver:v0.1.1"
+      }
+    },
+    "deployment": {
+      "deploymentURIsLocal": null,
+      "deploymentstrategy": "direct"
+    },
+    "labels": {
+      "version": "v0.1.1"
+    },
+    "project": "e2e-project",
+    "service": "podtatoserver",
+    "stage": "staging"
+  },
+  "shkeptnspecversion": "0.2.4",
+  "specversion": "1.0",
+  "source": "https://github.com/keptn/keptn/cli#configuration-change",
+  "type": "sh.keptn.event.staging.deploy.triggered"
+}
+

@@ -272,12 +272,7 @@ func NewK8sClient() (*kubernetes.Clientset, error) {
 	// Get full path of the kubeconfig file:
 	var kubeconfig string
 	if os.Getenv("KUBECONFIG") != "" {
-		kubeconfigPath := os.Getenv("KUBECONFIG")
-		userHomeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("unable to get user home dir: %w", err)
-		}
-		kubeconfig = filepath.Join(userHomeDir, kubeconfigPath)
+		kubeconfig = os.Getenv("KUBECONFIG")
 	} else {
 		userHomeDir, err := os.UserHomeDir()
 		if err != nil {

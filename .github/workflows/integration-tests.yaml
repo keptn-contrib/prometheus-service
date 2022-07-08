@@ -175,8 +175,6 @@ jobs:
             prometheus-service ./dist/helm-charts/prometheus-service-*.tgz \
             -n keptn \
             --wait
-          
-          kubectl apply -n monitoring -f deploy/role.yaml
 
       # If we failed any previous step we might have a problem and not reporting anything for the version
       - name: Create pipeline failure report

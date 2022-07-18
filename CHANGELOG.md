@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.4](https://github.com/keptn-contrib/prometheus-service/compare/0.8.3...0.8.4) (2022-07-18)
+
+
+### Features
+
+* Allow customization of the installation namespace ([#328](https://github.com/keptn-contrib/prometheus-service/issues/328)) ([6ca8cf8](https://github.com/keptn-contrib/prometheus-service/commit/6ca8cf8969fec57e578f4f78d2c978f7f7852db7))
+* Disable automatic creation of Prometheus alerts and targets ([#327](https://github.com/keptn-contrib/prometheus-service/issues/327)) ([9ed3eb2](https://github.com/keptn-contrib/prometheus-service/commit/9ed3eb2f9bd11d2944cae1bf5a028eda9182cb1c))
+* Integration tests ([#333](https://github.com/keptn-contrib/prometheus-service/issues/333)) ([44e9691](https://github.com/keptn-contrib/prometheus-service/commit/44e9691ced4c53cda54a3fce2b3fb9c51249e02d))
+* Post integration test summary to GH workflow ([#340](https://github.com/keptn-contrib/prometheus-service/issues/340)) ([0d4da6d](https://github.com/keptn-contrib/prometheus-service/commit/0d4da6def060d4d4f4911643fb15470c1c957d85))
+* Upgrade to Keptn 0.17 ([#345](https://github.com/keptn-contrib/prometheus-service/issues/345)) ([d83a956](https://github.com/keptn-contrib/prometheus-service/commit/d83a956617121269ed945d79fdc78c9410971893))
+* Use Helm build action ([#334](https://github.com/keptn-contrib/prometheus-service/issues/334)) ([1ab1bca](https://github.com/keptn-contrib/prometheus-service/commit/1ab1bcad9b6d97a061119016156911211679244b))
+
+
+### Bug Fixes
+
+* Integration tests ([#339](https://github.com/keptn-contrib/prometheus-service/issues/339)) ([a5112a6](https://github.com/keptn-contrib/prometheus-service/commit/a5112a65d373f80ea6b8c4a627b4d777b328b03e))
+
 ### [0.8.3](https://github.com/keptn-contrib/prometheus-service/compare/0.8.2...0.8.3) (2022-06-30)
 
 

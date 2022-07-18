@@ -1,16 +1,19 @@
 # Prometheus Service
+
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/keptn-contrib/prometheus-service)
 [![Go Report Card](https://goreportcard.com/badge/github.com/keptn-contrib/prometheus-service)](https://goreportcard.com/report/github.com/keptn-contrib/prometheus-service)
 
 The *prometheus-service* is a [Keptn](https://keptn.sh) integration responsible for:
 
-1. configuring Prometheus for monitoring services managed by Keptn, 
-2. receiving alerts (on port 8080) from Prometheus Alertmanager and translating the alert payload to a cloud event (remediation.triggered) that is sent to the Keptn API,
-3. retrieving Service Level Indicators (SLIs) from a Prometheus API endpoint. 
+1. configuring Prometheus for monitoring services managed by Keptn,
+2. receiving alerts (on port 8080) from Prometheus Alertmanager and translating the alert payload to a cloud event (
+   remediation.triggered) that is sent to the Keptn API,
+3. retrieving Service Level Indicators (SLIs) from a Prometheus API endpoint.
 
 ## Compatibility Matrix
 
-Please always double-check the version of Keptn you are using compared to the version of this service, and follow the compatibility matrix below.
+Please always double-check the version of Keptn you are using compared to the version of this service, and follow the
+compatibility matrix below.
 
 | Keptn Version\* | [Prometheus Service Image](https://hub.docker.com/r/keptncontrib/prometheus-service/tags) |
 |:---------------:|:-----------------------------------------------------------------------------------------:|
@@ -23,14 +26,17 @@ Please always double-check the version of Keptn you are using compared to the ve
 |     0.15.1      |                         keptncontrib/prometheus-service:0.8.1\***                         |
 |     0.16.0      |                         keptncontrib/prometheus-service:0.8.2\***                         |
 |     0.16.0      |                           keptncontrib/prometheus-service:0.8.3                           |
+|     0.17.0      |                           keptncontrib/prometheus-service:0.8.4                           |
 
 \* This is the Keptn version we aim to be compatible with. Other versions should work too, but there is no guarantee.
 
-\** This version is only compatible with Keptn 0.14.2 and potentially newer releases of Keptn 0.14.x due to a breaking change in NATS cluster name.
+\** This version is only compatible with Keptn 0.14.2 and potentially newer releases of Keptn 0.14.x due to a breaking
+change in NATS cluster name.
 
 \*** These versions are not compatible with Prometheus Alertmanager <= 0.24
 
-You can find more information and older releases on the [Releases](https://github.com/keptn-contrib/prometheus-service/releases) page.
+You can find more information and older releases on
+the [Releases](https://github.com/keptn-contrib/prometheus-service/releases) page.
 
 ## Installation instructions
 
@@ -79,7 +85,7 @@ Once this is done, you can go ahead and install prometheus-service:
       --reuse-values
     ```
 
-* (Optional) If you want to customize the namespaces of Keptn or the Prometheus installation, replace the environment 
+* (Optional) If you want to customize the namespaces of Keptn or the Prometheus installation, replace the environment
   variable values according to the use case and apply the manifest:
 
     ```bash
@@ -180,7 +186,7 @@ Note: This creates an actual Kubernetes secret, with some Kubernetes labels (`ap
 
 ### User-defined Service Level Indicators (SLIs)
 
-Users can override the predefined queries, as well as add custom queries by creating a SLI configuration. 
+Users can override the predefined queries, as well as add custom queries by creating a SLI configuration.
 
 * A SLI configuration is a yaml file as shown below:
 
@@ -191,7 +197,7 @@ Users can override the predefined queries, as well as add custom queries by crea
       cpu_usage: avg(rate(container_cpu_usage_seconds_total{namespace="$PROJECT-$STAGE",pod_name=~"$SERVICE-primary-.*"}[5m]))
       response_time_p95: histogram_quantile(0.95, sum by(le) (rate(http_response_time_milliseconds_bucket{handler="ItemsController.addToCart",job="$SERVICE-$PROJECT-$STAGE-canary"}[$DURATION_SECONDS])))
     ```
-    This file contains a list of keys (e.g., `cpu_usage`) and a prometheus metric expressions (e.g., `avg(rate(...{filters}[timeframe]))`).
+  This file contains a list of keys (e.g., `cpu_usage`) and a prometheus metric expressions (e.g., `avg(rate(...{filters}[timeframe]))`).
 
 * To store this configuration, you need to add this file to a Keptn's configuration store, e.g., using the [keptn add-resource](https://keptn.sh/docs/0.14.x/reference/cli/commands/keptn_add-resource/) command:
 

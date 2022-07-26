@@ -75,13 +75,12 @@ Helper functions for auto detecting Prometheus namespace
         {{- end }}
 
         {{- if eq (len $detectedPrometheusServer) 0 }}
-            {{- fail (printf "Unable to detect Prometheus in the kubernetes cluster! %+v" $services) }}
-        {{- end }}
-        {{- if gt (len $detectedPrometheusServer) 1 }}
+            {{- fail (printf "Unable to detect Prometheus in the kubernetes cluster!") }}
+        {{- else if gt (len $detectedPrometheusServer) 1 }}
             {{- fail (printf "Detected more than one Prometheus installation: %+v" $detectedPrometheusServer) }}
+        {{ else }}
+            {{- (index $detectedPrometheusServer 0).metadata.namespace }}
         {{- end }}
-
-        {{- (index $detectedPrometheusServer 0).metadata.namespace }}
     {{- else }}
         {{- .Values.prometheus.namespace }}
     {{- end }}
@@ -104,13 +103,12 @@ Helper functions for auto detecting Prometheus alertmanager namespace
         {{- end }}
 
         {{- if eq (len $detectedPrometheusServer) 0 }}
-            {{- fail (printf "Unable to detect Prometheus in the kubernetes cluster! %+v" $services) }}
+            {{- fail (printf "Unable to detect Prometheus Alertmanager in the kubernetes cluster!") }}
+        {{- else if gt (len $detectedPrometheusServer) 1 }}
+            {{- fail (printf "Detected more than one Prometheus Alertmanager installation: %+v" $detectedPrometheusServer) }}
+        {{- else }}
+            {{- (index $detectedPrometheusServer 0).metadata.namespace }}
         {{- end }}
-        {{- if gt (len $detectedPrometheusServer) 1 }}
-            {{- fail (printf "Detected more than one Prometheus installation: %+v" $detectedPrometheusServer) }}
-        {{- end }}
-
-        {{- (index $detectedPrometheusServer 0).metadata.namespace }}
     {{- else }}
         {{- .Values.prometheus.namespace_am }}
     {{- end }}

@@ -3,22 +3,62 @@
   "properties": {
     "prometheus": {
       "type": "object",
-      "if": {
-        "properties": {
-          "createTargets": {
-            "type": "boolean",
-            "const": false
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "createTargets": {
+                "type": "boolean",
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "createAlerts": {
+                "type": "boolean",
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "autodetect": {
+                "type": "boolean",
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "autodetect_am": {
+                "type": "boolean",
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "namespace_am": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
         }
-      },
-      "then": {
-        "properties": {
-          "createAlerts": {
-            "type": "boolean",
-            "const": false
-          }
-        }
-      }
+      ]
     }
   }
 }

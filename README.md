@@ -77,7 +77,7 @@ Once this is done, you can go ahead and install prometheus-service:
 *Note*: Make sure to replace `<VERSION>` with the version you want to install.
 
 * Install Keptn prometheus-service in Kubernetes using the following command. This will install the prometheus-service into
-  the `keptn` namespace and will assume that prometheus and the alertmanager are installed in the `monitoring` namespace.
+  the `keptn` namespace and will autodetect the prometheus and the alertmanager namespaces.
 
     ```bash
     helm upgrade --install -n keptn prometheus-service \
@@ -86,7 +86,7 @@ Once this is done, you can go ahead and install prometheus-service:
     ```
 
 * (Optional) If you want to customize the namespaces of Keptn or the Prometheus installation, replace the environment
-  variable values according to the use case and apply the manifest:
+  variable values according to the use case and apply the manifest (this will automatically disable the autodetect):
 
     ```bash
     PROMETHEUS_NS=<PROMETHEUS_NS>

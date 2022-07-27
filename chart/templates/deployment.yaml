@@ -53,7 +53,7 @@ spec:
             - name: CONFIGURATION_SERVICE
               value: 'http://configuration-service:8080'
             - name: PROMETHEUS_NS
-              value: '{{ .Values.prometheus.namespace }}'
+              value: '{{- include "prometheus-service.namespace" . }}'
             - name: PROMETHEUS_CM
               value: 'prometheus-server'
             - name: PROMETHEUS_LABELS
@@ -69,7 +69,7 @@ spec:
             - name: ALERT_MANAGER_LABELS
               value: 'component=alertmanager'
             - name: ALERT_MANAGER_NS
-              value: '{{ .Values.prometheus.namespace_am }}'
+              value: '{{- include "prometheus-am-service.namespace" . }}'
             - name: ALERT_MANAGER_TEMPLATE_CM
               value: 'alertmanager-templates'
             - name: POD_NAMESPACE

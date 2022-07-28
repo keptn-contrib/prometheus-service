@@ -113,3 +113,11 @@ Helper functions for auto detecting Prometheus alertmanager namespace
         {{- .Values.prometheus.namespace_am }}
     {{- end }}
 {{- end }}
+
+{{- define "prometheus-service.endpoint" }}
+     {{- if and (.Values.prometheus.autodetect) (eq .Values.prometheus.endpoint "") }}
+        {{- printf "%s.%s.%s" "http://prometheus-server" (include  "prometheus-service.namespace" .) "svc.cluster.local:80" }}
+     {{- else }}
+        {{- .Values.prometheus.endpoint }}
+     {{- end }}
+{{- end }}

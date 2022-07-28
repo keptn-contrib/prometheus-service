@@ -214,6 +214,7 @@ jobs:
           kubectl get all -n keptn -o json > k8s_debug/k8s_keptn_objects.json
           kubectl get configmaps,deployments,pods,networkpolicy,serviceaccounts,role,rolebindings,events -n ${JES_NAMESPACE} -o json > k8s_debug/k8s_jes_objects.json
           kubectl logs -n keptn -l app.kubernetes.io/instance=keptn --prefix=true --previous=false --all-containers --tail=-1 > k8s_debug/k8s_keptn_logs.txt || true
+          kubectl logs -n keptn -l app.kubernetes.io/instance=prometheus-service --prefix=true --previous=false --all-containers --tail=-1 > k8s_debug/k8s_prometheus-service_logs.txt || true
           kubectl logs -n ${JES_NAMESPACE} deployment/job-executor-service --prefix=true --previous=false --all-containers --tail=-1 > k8s_debug/k8s_jes_logs.txt || true
           kubectl logs deployment/keptn-gitea-provisioner-service --prefix=true --previous=false --all-containers --tial=-1 > k8s_debug/k8s_gitea_provisioner_logs.txt || true
           kubectl get statefulsets,configmaps,pods,networkpolicy,serviceaccounts,role,rolebindings,events,services -n ${GITEA_NAMESPACE} -o json > k8s_debug/k8s_objects_gitea.json

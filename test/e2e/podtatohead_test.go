@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -81,11 +82,12 @@ func TestPodtatoheadEvaluation(t *testing.T) {
 			"prometheus-service",
 		)
 
+		prometheusNamespace := os.Getenv("PROMETHEUS_NAMESPACE")
 		// TODO: Improve checking of prometheus configuration
 		// Note: We don't parse and check the configuration at this point, but just making sure that things we write to
 		//       the prometheus.yml file are contained in there. Easiest way is to verify that the job configuration is
 		//       present and the targets are contained in the content ...
-		prometheusConfigMap, err := testEnv.K8s.CoreV1().ConfigMaps("monitoring").Get(
+		prometheusConfigMap, err := testEnv.K8s.CoreV1().ConfigMaps(prometheusNamespace).Get(
 			context.Background(), "prometheus-server", metav1.GetOptions{},
 		)
 		require.NoError(t, err)
@@ -96,7 +98,7 @@ func TestPodtatoheadEvaluation(t *testing.T) {
 		require.Contains(t, prometheusYaml, "job_name: podtatoserver-e2e-project-staging-primary")
 		require.Contains(t, prometheusYaml, "podtatoserver.e2e-project-staging:80")
 
-		alertmanagerConfigMap, err := testEnv.K8s.CoreV1().ConfigMaps("monitoring").Get(
+		alertmanagerConfigMap, err := testEnv.K8s.CoreV1().ConfigMaps(prometheusNamespace).Get(
 			context.Background(), "prometheus-alertmanager", metav1.GetOptions{},
 		)
 		require.NoError(t, err)

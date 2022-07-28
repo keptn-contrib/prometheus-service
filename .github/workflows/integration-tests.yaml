@@ -27,6 +27,7 @@ jobs:
       ENABLE_E2E_TEST: true
       JES_VERSION: "0.2.3"
       JES_NAMESPACE: keptn-jes
+      PROMETHEUS_NAMESPACE: monitoring
       GITEA_ADMIN_USERNAME: GiteaAdmin
       GITEA_NAMESPACE: gitea
       KUBECONFIG: /etc/rancher/k3s/k3s.yaml
@@ -171,7 +172,7 @@ jobs:
         run: |
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm install prometheus prometheus-community/prometheus \
-            --namespace monitoring --create-namespace \
+            --namespace ${PROMETHEUS_NAMESPACE} --create-namespace \
             --version ${PROMETHEUS_VERSION}\
             --wait
 
@@ -219,8 +220,8 @@ jobs:
           kubectl logs deployment/keptn-gitea-provisioner-service --prefix=true --previous=false --all-containers --tial=-1 > k8s_debug/k8s_gitea_provisioner_logs.txt || true
           kubectl get statefulsets,configmaps,pods,networkpolicy,serviceaccounts,role,rolebindings,events,services -n ${GITEA_NAMESPACE} -o json > k8s_debug/k8s_objects_gitea.json
           kubectl logs statefulsets/gitea --prefix=true --previous=false --all-containers -n ${GITEA_NAMESPACE} --tail=-1 > k8s_debug/k8s_logs_gitea.txt || true
-          kubectl get daemonsets,configmaps,pods,serviceaccounts,role,rolebindings,events,services -n monitoring -o json > k8s_debug/k8s_objects_prometheus.json
-          kubectl logs deployment/prometheus-alertmanager --prefix=true --previous=false --all-containers -n monitoring --tail=-1 > k8s_debug/k8s_logs_prometheus-alertmanager.txt || true
+          kubectl get daemonsets,configmaps,pods,serviceaccounts,role,rolebindings,events,services -n ${PROMETHEUS_NAMESPACE} -o json > k8s_debug/k8s_objects_prometheus.json
+          kubectl logs deployment/prometheus-alertmanager --prefix=true --previous=false --all-containers -n ${PROMETHEUS_NAMESPACE} --tail=-1 > k8s_debug/k8s_logs_prometheus-alertmanager.txt || true
 
       # Upload the k8s debug archive, so we can use it for investigating
       - name: Upload k8s debug archive

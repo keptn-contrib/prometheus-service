@@ -59,7 +59,7 @@ spec:
             - name: PROMETHEUS_LABELS
               value: 'component=server'
             - name: PROMETHEUS_ENDPOINT
-              value: "{{ .Values.prometheus.endpoint }}"
+              value: "{{ include "prometheus-service.endpoint" . }}"
             - name: PROMETHEUS_CONFIG_FILENAME
               value: 'prometheus.yml'
             - name: ALERT_MANAGER_CONFIG_FILENAME

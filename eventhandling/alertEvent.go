@@ -89,7 +89,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		Service:        event.Alerts[0].Labels.Service,
 	}
 
-	newEventData := &remediationTriggeredEventData{
+	newEventData := remediationTriggeredEventData{
 		EventData: keptnv2.EventData{
 			Project: event.Alerts[0].Labels.Project,
 			Stage:   event.Alerts[0].Labels.Stage,
@@ -107,7 +107,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 	}
 
 	logger.Debug("Sending event to eventbroker")
-	err = createAndSendCE(*newEventData, shkeptncontext)
+	err = createAndSendCE(newEventData, shkeptncontext)
 	if err != nil {
 		logger.Error("Could not send cloud event: " + err.Error())
 		rw.WriteHeader(500)

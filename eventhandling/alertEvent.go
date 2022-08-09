@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	keptncommons "github.com/keptn/go-utils/pkg/lib"
 	"net/http"
 	"net/url"
 	"strings"
@@ -50,11 +51,11 @@ type annotations struct {
 	Description string `json:"descriptions,omitempty"`
 }
 
-type problemEventData struct {
-	Project string                 `json:"project"`
-	Stage   string                 `json:"stage"`
-	Service string                 `json:"service"`
-	Problem keptnv2.ProblemDetails `json:"problem"`
+type RemediationTriggeredEventData struct {
+	keptnv2.EventData
+
+	// Problem contains details about the problem
+	Problem keptncommons.ProblemEventData `json:"problem"`
 }
 
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud event to the keptn event broker
@@ -73,16 +74,33 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		return
 	}
 
-	problemDetails := keptnv2.ProblemDetails{
-		ProblemTitle: event.Alerts[0].Labels.AlertName,
-		RootCause:    event.Alerts[0].Annotations.Summary,
+	problemState := ""
+	if event.Status == "firing" {
+		problemState = "OPEN"
+	} else if event.Status == "resolved" {
+		logger.Info("Don't forward resolved problem.")
+		return
 	}
 
-	newEventData := &problemEventData{
-		Project: event.Alerts[0].Labels.Project,
-		Stage:   event.Alerts[0].Labels.Stage,
-		Service: event.Alerts[0].Labels.Service,
-		Problem: problemDetails,
+	problemData := keptncommons.ProblemEventData{
+		State:          problemState,
+		ProblemID:      "",
+		ProblemTitle:   event.Alerts[0].Annotations.Summary,
+		ProblemDetails: json.RawMessage(`{"problemDetails":"` + event.Alerts[0].Annotations.Description + `"}`),
+		ProblemURL:     event.Alerts[0].GeneratorURL,
+		ImpactedEntity: event.Alerts[0].Labels.PodName,
+		Project:        event.Alerts[0].Labels.Project,
+		Stage:          event.Alerts[0].Labels.Stage,
+		Service:        event.Alerts[0].Labels.Service,
+	}
+
+	newEventData := &RemediationTriggeredEventData{
+		EventData: keptnv2.EventData{
+			Project: event.Alerts[0].Labels.Project,
+			Stage:   event.Alerts[0].Labels.Stage,
+			Service: event.Alerts[0].Labels.Service,
+		},
+		Problem: problemData,
 	}
 
 	if event.Alerts[0].Fingerprint != "" {
@@ -105,7 +123,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 }
 
 // createAndSendCE create a new problem.triggered event and send it to Keptn
-func createAndSendCE(problemData problemEventData, shkeptncontext string) error {
+func createAndSendCE(problemData RemediationTriggeredEventData, shkeptncontext string) error {
 	source, _ := url.Parse("prometheus")
 
 	eventType := keptnv2.GetTriggeredEventType(problemData.Stage + "." + remediationTaskName)

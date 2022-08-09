@@ -51,7 +51,7 @@ type annotations struct {
 	Description string `json:"descriptions,omitempty"`
 }
 
-type RemediationTriggeredEventData struct {
+type remediationTriggeredEventData struct {
 	keptnv2.EventData
 
 	// Problem contains details about the problem
@@ -89,7 +89,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		Service:        event.Alerts[0].Labels.Service,
 	}
 
-	newEventData := &RemediationTriggeredEventData{
+	newEventData := &remediationTriggeredEventData{
 		EventData: keptnv2.EventData{
 			Project: event.Alerts[0].Labels.Project,
 			Stage:   event.Alerts[0].Labels.Stage,
@@ -118,7 +118,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 }
 
 // createAndSendCE create a new problem.triggered event and send it to Keptn
-func createAndSendCE(problemData RemediationTriggeredEventData, shkeptncontext string) error {
+func createAndSendCE(problemData remediationTriggeredEventData, shkeptncontext string) error {
 	source, _ := url.Parse("prometheus")
 
 	eventType := keptnv2.GetTriggeredEventType(problemData.Stage + "." + remediationTaskName)

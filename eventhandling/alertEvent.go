@@ -4,12 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	keptncommons "github.com/keptn/go-utils/pkg/lib"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	keptncommons "github.com/keptn/go-utils/pkg/lib"
 	"github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 
@@ -51,6 +51,13 @@ type annotations struct {
 	Description string `json:"descriptions,omitempty"`
 }
 
+type remediationTriggeredEventData struct {
+	keptnv2.EventData
+
+	// Problem contains details about the problem
+	Problem keptncommons.ProblemEventData `json:"problem"`
+}
+
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud event to the keptn event broker
 func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, logger *keptn.Logger, shkeptncontext string) {
 	var event alertManagerEvent
@@ -70,7 +77,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		return
 	}
 
-	newEventData := keptncommons.ProblemEventData{
+	problemData := keptncommons.ProblemEventData{
 		State:          problemState,
 		ProblemID:      "",
 		ProblemTitle:   event.Alerts[0].Annotations.Summary,
@@ -80,6 +87,15 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		Project:        event.Alerts[0].Labels.Project,
 		Stage:          event.Alerts[0].Labels.Stage,
 		Service:        event.Alerts[0].Labels.Service,
+	}
+
+	newEventData := remediationTriggeredEventData{
+		EventData: keptnv2.EventData{
+			Project: event.Alerts[0].Labels.Project,
+			Stage:   event.Alerts[0].Labels.Stage,
+			Service: event.Alerts[0].Labels.Service,
+		},
+		Problem: problemData,
 	}
 
 	if event.Alerts[0].Fingerprint != "" {
@@ -102,7 +118,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 }
 
 // createAndSendCE create a new problem.triggered event and send it to Keptn
-func createAndSendCE(problemData keptncommons.ProblemEventData, shkeptncontext string) error {
+func createAndSendCE(problemData remediationTriggeredEventData, shkeptncontext string) error {
 	source, _ := url.Parse("prometheus")
 
 	eventType := keptnv2.GetTriggeredEventType(problemData.Stage + "." + remediationTaskName)

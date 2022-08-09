@@ -69,11 +69,6 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		return
 	}
 
-	if event.Status == "resolved" {
-		logger.Info("Don't forward resolved problem.")
-		return
-	}
-
 	problemState := ""
 	if event.Status == "firing" {
 		problemState = "OPEN"

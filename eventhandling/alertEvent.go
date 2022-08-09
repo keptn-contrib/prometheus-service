@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	keptncommons "github.com/keptn/go-utils/pkg/lib"
 	"github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 
@@ -51,6 +50,13 @@ type annotations struct {
 	Description string `json:"descriptions,omitempty"`
 }
 
+type problemEventData struct {
+	Project string                 `json:"project"`
+	Stage   string                 `json:"stage"`
+	Service string                 `json:"service"`
+	Problem keptnv2.ProblemDetails `json:"problem"`
+}
+
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud event to the keptn event broker
 func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, logger *keptn.Logger, shkeptncontext string) {
 	var event alertManagerEvent
@@ -62,24 +68,21 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		return
 	}
 
-	problemState := ""
-	if event.Status == "firing" {
-		problemState = "OPEN"
-	} else if event.Status == "resolved" {
+	if event.Status == "resolved" {
 		logger.Info("Don't forward resolved problem.")
 		return
 	}
 
-	newEventData := keptncommons.ProblemEventData{
-		State:          problemState,
-		ProblemID:      "",
-		ProblemTitle:   event.Alerts[0].Annotations.Summary,
-		ProblemDetails: json.RawMessage(`{"problemDetails":"` + event.Alerts[0].Annotations.Description + `"}`),
-		ProblemURL:     event.Alerts[0].GeneratorURL,
-		ImpactedEntity: event.Alerts[0].Labels.PodName,
-		Project:        event.Alerts[0].Labels.Project,
-		Stage:          event.Alerts[0].Labels.Stage,
-		Service:        event.Alerts[0].Labels.Service,
+	problemDetails := keptnv2.ProblemDetails{
+		ProblemTitle: event.Alerts[0].Labels.AlertName,
+		RootCause:    event.Alerts[0].Annotations.Summary,
+	}
+
+	newEventData := &problemEventData{
+		Project: event.Alerts[0].Labels.Project,
+		Stage:   event.Alerts[0].Labels.Stage,
+		Service: event.Alerts[0].Labels.Service,
+		Problem: problemDetails,
 	}
 
 	if event.Alerts[0].Fingerprint != "" {
@@ -91,7 +94,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 	}
 
 	logger.Debug("Sending event to eventbroker")
-	err = createAndSendCE(newEventData, shkeptncontext)
+	err = createAndSendCE(*newEventData, shkeptncontext)
 	if err != nil {
 		logger.Error("Could not send cloud event: " + err.Error())
 		rw.WriteHeader(500)
@@ -102,7 +105,7 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 }
 
 // createAndSendCE create a new problem.triggered event and send it to Keptn
-func createAndSendCE(problemData keptncommons.ProblemEventData, shkeptncontext string) error {
+func createAndSendCE(problemData problemEventData, shkeptncontext string) error {
 	source, _ := url.Parse("prometheus")
 
 	eventType := keptnv2.GetTriggeredEventType(problemData.Stage + "." + remediationTaskName)

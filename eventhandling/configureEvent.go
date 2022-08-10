@@ -52,11 +52,12 @@ type alertingRule struct {
 }
 
 type alertingLabel struct {
-	Severity string `json:"severity" yaml:"severity"`
-	PodName  string `json:"pod_name,omitempty" yaml:"pod_name"`
-	Service  string `json:"service,omitempty" yaml:"service"`
-	Stage    string `json:"stage,omitempty" yaml:"stage"`
-	Project  string `json:"project,omitempty" yaml:"project"`
+	Severity   string `json:"severity" yaml:"severity"`
+	PodName    string `json:"pod_name,omitempty" yaml:"pod_name"`
+	Service    string `json:"service,omitempty" yaml:"service"`
+	Stage      string `json:"stage,omitempty" yaml:"stage"`
+	Project    string `json:"project,omitempty" yaml:"project"`
+	Deployment string `json:"deployment,omitempty" yaml:"deployment"`
 }
 
 type alertingAnnotations struct {
@@ -285,6 +286,7 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	}
 
 	// create a new prometheus handler in order to query SLI expressions
+	const deploymentType = "primary" // only create alerts for primary deployments
 	prometheusHandler := prometheus.NewPrometheusHandler(
 		"",
 		&keptnv2.EventData{
@@ -292,7 +294,7 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 			Service: eventData.Service,
 			Stage:   stage.Name,
 		},
-		"primary", // only create alerts for primary deployments
+		deploymentType,
 		nil,
 		nil,
 	)
@@ -355,11 +357,12 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 					newAlertingRule.Expr = expr + criteriaString
 					newAlertingRule.For = "10m" // TODO: introduce alert duration concept in SLO?
 					newAlertingRule.Labels = &alertingLabel{
-						Severity: "webhook",
-						PodName:  eventData.Service + "-primary",
-						Service:  eventData.Service,
-						Project:  eventData.Project,
-						Stage:    stage.Name,
+						Severity:   "webhook",
+						PodName:    fmt.Sprintf("%s-%s", eventData.Service, deploymentType),
+						Service:    eventData.Service,
+						Project:    eventData.Project,
+						Stage:      stage.Name,
+						Deployment: deploymentType,
 					}
 					newAlertingRule.Annotations = &alertingAnnotations{
 						Summary:     ruleName,

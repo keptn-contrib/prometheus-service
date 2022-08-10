@@ -242,11 +242,11 @@ func (env testEnvironment) ShouldRun(semverConstraint string) error {
 // requireWaitForEvent checks if an event occurred in a specific time frame while polling the event bus of keptn, the eventValidator
 // should return true if the desired event was found
 func requireWaitForEvent(
-	t *testing.T, keptnApi *KeptnAPI, waitFor time.Duration, tick time.Duration, keptnContext *models.EventContext,
+	t *testing.T, keptnAPI *KeptnAPI, waitFor time.Duration, tick time.Duration, keptnContext *models.EventContext,
 	eventType string, eventValidator func(c *models.KeptnContextExtendedCE) bool, source string,
 ) {
 	requireWaitForFilteredEvent(t,
-		keptnApi,
+		keptnAPI,
 		waitFor,
 		tick,
 		&api.EventFilter{
@@ -287,6 +287,8 @@ func requireWaitForFilteredEvent(
 	require.Eventuallyf(t, checkForEventsToMatch, waitFor, tick, "did not receive keptn event: %s", eventFilter.EventType)
 }
 
+// BuildK8sConfig builds the kubernetes configuration from default or the configuration file that is specified
+// in the KUBECONFIG environment variable.
 func BuildK8sConfig() (*rest.Config, error) {
 	// Get full path of the kubeconfig file:
 	var kubeconfig string

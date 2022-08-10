@@ -1,10 +1,19 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	api "github.com/keptn/go-utils/pkg/api/utils"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/tools/portforward"
+	"k8s.io/client-go/transport/spdy"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -44,7 +53,7 @@ func TestPodtatoheadEvaluation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Make sure project is delete after the tests are completed
-	defer testEnv.Cleanup()
+	// defer testEnv.Cleanup()
 
 	// Upload additional resources to the keptn project
 	for _, resource := range additionalResources {
@@ -211,6 +220,92 @@ func TestPodtatoheadEvaluation(t *testing.T) {
 		)
 	})
 
-	// Note: Remediation skipped in this test because it is configured to trigger after 10m
-	// TODO: Maybe make a REST call to the alertmanager and ask which alerts are pending?
+	// Note: This part should be improved:
+	t.Run("Test Alertmanager", func(t *testing.T) {
+
+		// First create a portforward from the prometheus-service pod to the host (:11111)
+		config, err := BuildK8sConfig()
+		require.NoError(t, err)
+
+		roundTripper, upgrader, err := spdy.RoundTripperFor(config)
+		require.NoError(t, err)
+
+		labelSelector := labels.NewSelector()
+		labelRequirement, _ := labels.NewRequirement("app.kubernetes.io/name", selection.Equals, []string{"prometheus-service"})
+		labelSelector = labelSelector.Add(*labelRequirement)
+
+		pods, err := testEnv.K8s.CoreV1().Pods(testEnv.Namespace).List(context.TODO(), metav1.ListOptions{
+			TypeMeta:      metav1.TypeMeta{},
+			LabelSelector: labelSelector.String(),
+		})
+		require.NoError(t, err)
+		require.Len(t, pods.Items, 1)
+
+		path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", testEnv.Namespace, pods.Items[0].Name)
+		hostIP := strings.TrimLeft(config.Host, "https:/")
+		serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
+
+		dailer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
+
+		stopChan, readyChan := make(chan struct{}, 1), make(chan struct{}, 1)
+		out, errOut := new(bytes.Buffer), new(bytes.Buffer)
+
+		forwarder, err := portforward.New(dailer, []string{"11111:8080"}, stopChan, readyChan, out, errOut)
+		require.NoError(t, err)
+
+		// If the connection is read, post the prometheus event to the prometheus-service
+		go func() {
+			for range readyChan {
+			}
+
+			requestBody, err := os.Open("../events/prometheus-firing.json")
+			require.NoError(t, err)
+
+			_, err = http.DefaultClient.Post("http://localhost:11111", "application/json", requestBody)
+			require.NoError(t, err)
+
+			close(stopChan)
+		}()
+
+		err = forwarder.ForwardPorts()
+		require.NoError(t, err)
+
+		// Check if the following event are in the project:
+		//   - remediation.triggered		(making sure prometheus-service actually sends a message to Keptn)
+		//   - get-action.finished          (The message format is compatible with remediation-service)
+		requireWaitForFilteredEvent(t,
+			testEnv.API,
+			1*time.Minute,
+			1*time.Second,
+			&api.EventFilter{
+				Project:   testEnv.EventData.Project,
+				Stage:     testEnv.EventData.Stage,
+				Service:   testEnv.EventData.Service,
+				EventType: "sh.keptn.event.staging.remediation.triggered",
+			},
+			func(event *models.KeptnContextExtendedCE) bool {
+				return true
+			},
+			"prometheus",
+		)
+
+		requireWaitForFilteredEvent(t,
+			testEnv.API,
+			1*time.Minute,
+			1*time.Second,
+			&api.EventFilter{
+				Project:   testEnv.EventData.Project,
+				Stage:     testEnv.EventData.Stage,
+				Service:   testEnv.EventData.Service,
+				EventType: "sh.keptn.event.get-action.finished",
+			},
+			func(event *models.KeptnContextExtendedCE) bool {
+				responseEventData, err := parseKeptnEventData(event)
+				require.NoError(t, err)
+
+				return responseEventData.Result == "pass" && responseEventData.Status == "succeeded"
+			},
+			"remediation-service",
+		)
+	})
 }

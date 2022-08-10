@@ -3,7 +3,9 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	api "github.com/keptn/go-utils/pkg/api/utils"
 	"io/ioutil"
+	"k8s.io/client-go/rest"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -240,18 +242,37 @@ func (env testEnvironment) ShouldRun(semverConstraint string) error {
 // requireWaitForEvent checks if an event occurred in a specific time frame while polling the event bus of keptn, the eventValidator
 // should return true if the desired event was found
 func requireWaitForEvent(
-	t *testing.T, api *KeptnAPI, waitFor time.Duration, tick time.Duration, keptnContext *models.EventContext,
+	t *testing.T, keptnApi *KeptnAPI, waitFor time.Duration, tick time.Duration, keptnContext *models.EventContext,
 	eventType string, eventValidator func(c *models.KeptnContextExtendedCE) bool, source string,
 ) {
-	checkForEventsToMatch := func() bool {
-		events, err := api.GetEvents(keptnContext.KeptnContext)
-		require.NoError(t, err)
+	requireWaitForFilteredEvent(t,
+		keptnApi,
+		waitFor,
+		tick,
+		&api.EventFilter{
+			KeptnContext: *keptnContext.KeptnContext,
+			EventType:    eventType,
+		},
+		eventValidator,
+		source,
+	)
+}
 
+func requireWaitForFilteredEvent(
+	t *testing.T, api *KeptnAPI, waitFor time.Duration, tick time.Duration, eventFilter *api.EventFilter,
+	eventValidator func(c *models.KeptnContextExtendedCE) bool, source string,
+) {
+	checkForEventsToMatch := func() bool {
+		events, err := api.EventHandler.GetEvents(eventFilter)
+		if err != nil {
+			goErr := convertKeptnModelToErrorString(err)
+			require.Fail(t, goErr)
+		}
 		// for each event we have to check if the type is the correct one and if
 		// the source of the event matches the job executor, if that is the case
 		// the event can be checked by the eventValidator
 		for _, event := range events {
-			if *event.Type == eventType && *event.Source == source {
+			if *event.Source == source {
 				if eventValidator(event) {
 					return true
 				}
@@ -263,12 +284,10 @@ func requireWaitForEvent(
 
 	// We require waiting for a keptn event, this is useful to exit out tests if no .started event occurred.
 	// It doesn't make sense in these cases to wait for a .finished or other .triggered events ...
-	require.Eventuallyf(t, checkForEventsToMatch, waitFor, tick, "did not receive keptn event: %s", eventType)
+	require.Eventuallyf(t, checkForEventsToMatch, waitFor, tick, "did not receive keptn event: %s", eventFilter.EventType)
 }
 
-// NewK8sClient creates a K8s client from the KUBECONFIG environment variable
-func NewK8sClient() (*kubernetes.Clientset, error) {
-
+func BuildK8sConfig() (*rest.Config, error) {
 	// Get full path of the kubeconfig file:
 	var kubeconfig string
 	if os.Getenv("KUBECONFIG") != "" {
@@ -283,7 +302,13 @@ func NewK8sClient() (*kubernetes.Clientset, error) {
 	}
 
 	// create k8s client from the given configuration
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	return clientcmd.BuildConfigFromFlags("", kubeconfig)
+}
+
+// NewK8sClient creates a K8s client from the KUBECONFIG environment variable
+func NewK8sClient() (*kubernetes.Clientset, error) {
+
+	config, err := BuildK8sConfig()
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate k8s config from flags: %w", err)
 	}

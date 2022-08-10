@@ -17,3 +17,8 @@ spec:
             - name: "evaluation"
               properties:
                 timeframe: "1m"
+
+        - name: "remediation"
+          tasks:
+            - name: "get-action"
+            - name: "action"

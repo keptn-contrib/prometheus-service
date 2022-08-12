@@ -4,7 +4,7 @@ metadata:
   name: remediation-configuration
 spec:
   remediations:
-    - problemType: "default"
+    - problemType: "response_time_p90"
       actionsOnOpen:
         - name: Rollback
           action: rollback

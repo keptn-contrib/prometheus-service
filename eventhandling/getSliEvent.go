@@ -74,11 +74,20 @@ func (eh GetSliEventHandler) HandleEvent() error {
 		return sendFinishedErrorEvent(fmt.Errorf("unable to get prometheus api URL: %w", err))
 	}
 
+	deployment := eventData.Deployment // "canary", "primary" or "" (or "direct" or "user_managed")
+	if deploymentLabel, ok := eventData.Labels["deployment"]; deployment == "" && !ok {
+		log.Println("Warning: no deployment type specified in event, defaulting to \"primary\"")
+		deployment = "primary"
+	} else if ok {
+		log.Println("Deployment was not set, but label exist. Using label from event")
+		deployment = deploymentLabel
+	}
+
 	// create a new Prometheus Handler
 	prometheusHandler := prometheus.NewPrometheusHandler(
 		prometheusAPIURL,
 		&eventData.EventData,
-		eventData.Deployment, // "canary", "primary" or "" (or "direct" or "user_managed")
+		deployment,
 		eventData.Labels,
 		eventData.GetSLI.CustomFilters,
 	)

@@ -42,3 +42,15 @@ actions:
                 "--host", "http://podtatoserver.$(KEPTN_PROJECT)-$(KEPTN_STAGE):80",
                 "--only-summary"
         ]
+
+  - name: "Rollback Action"
+    events:
+      - name: "sh.keptn.event.action.triggered"
+        jsonpath:
+          property: "$.data.action.action"
+          match: "rollback"
+    tasks:
+      - name: "Run roolback"
+        image: "alpine"
+        cmd: [ "sh" ]
+        args: [ "-c", "echo run rollback" ]

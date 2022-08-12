@@ -37,13 +37,14 @@ type alert struct {
 }
 
 type labels struct {
-	AlertName string `json:"alertname,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-	PodName   string `json:"pod_name,omitempty"`
-	Severity  string `json:"severity,omitempty"`
-	Service   string `json:"service,omitempty" yaml:"service"`
-	Stage     string `json:"stage,omitempty" yaml:"stage"`
-	Project   string `json:"project,omitempty" yaml:"project"`
+	AlertName  string `json:"alertname,omitempty"`
+	Namespace  string `json:"namespace,omitempty"`
+	PodName    string `json:"pod_name,omitempty"`
+	Severity   string `json:"severity,omitempty"`
+	Service    string `json:"service,omitempty" yaml:"service"`
+	Stage      string `json:"stage,omitempty" yaml:"stage"`
+	Project    string `json:"project,omitempty" yaml:"project"`
+	Deployment string `json:"deployment,omitempty" yaml:"deployment"`
 }
 
 type annotations struct {
@@ -56,6 +57,8 @@ type remediationTriggeredEventData struct {
 
 	// Problem contains details about the problem
 	Problem keptncommons.ProblemEventData `json:"problem"`
+	// Deployment contains the current deployment, that is inferred from the alert event
+	Deployment string `json:"deployment"`
 }
 
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud event to the keptn event broker
@@ -87,6 +90,9 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 		Project:        event.Alerts[0].Labels.Project,
 		Stage:          event.Alerts[0].Labels.Stage,
 		Service:        event.Alerts[0].Labels.Service,
+		Labels: map[string]string{
+			"deployment": event.Alerts[0].Labels.Deployment,
+		},
 	}
 
 	newEventData := remediationTriggeredEventData{
@@ -94,8 +100,12 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 			Project: event.Alerts[0].Labels.Project,
 			Stage:   event.Alerts[0].Labels.Stage,
 			Service: event.Alerts[0].Labels.Service,
+			Labels: map[string]string{
+				"Problem URL": event.Alerts[0].GeneratorURL,
+			},
 		},
-		Problem: problemData,
+		Problem:    problemData,
+		Deployment: event.Alerts[0].Labels.Deployment,
 	}
 
 	if event.Alerts[0].Fingerprint != "" {

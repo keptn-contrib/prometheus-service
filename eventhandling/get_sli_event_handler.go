@@ -4,26 +4,35 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/keptn-contrib/prometheus-service/utils/prometheus"
+	"github.com/keptn/go-utils/pkg/api/models"
+	api "github.com/keptn/go-utils/pkg/api/utils"
+	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
+	"github.com/keptn/go-utils/pkg/sdk"
 	"gopkg.in/yaml.v2"
+	"k8s.io/client-go/kubernetes"
 	"log"
 	"net/url"
 	"strings"
 
-	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/keptn-contrib/prometheus-service/utils"
 
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 // GetSliEventHandler is responsible for processing configure monitoring events
 type GetSliEventHandler struct {
-	event        cloudevents.Event
-	keptnHandler *keptnv2.Keptn
-	kubeClient   *kubernetes.Clientset
+	kubeClient kubernetes.Clientset
+}
+
+// NewGetSliEventHandler creates a new TriggeredEventHandler
+func NewGetSliEventHandler(kubeClient kubernetes.Clientset) *GetSliEventHandler {
+	return &GetSliEventHandler{
+		kubeClient: kubeClient,
+	}
 }
 
 type prometheusCredentials struct {
@@ -32,46 +41,23 @@ type prometheusCredentials struct {
 	Password string `json:"password" yaml:"password"`
 }
 
-// HandleEvent processes an event
-func (eh GetSliEventHandler) HandleEvent() error {
+var env utils.EnvConfig
+
+// Execute processes an event
+func (eh GetSliEventHandler) Execute(k sdk.IKeptn, event sdk.KeptnEvent) (interface{}, *sdk.Error) {
+	if err := envconfig.Process("", &env); err != nil {
+		k.Logger().Error("Failed to process env var: " + err.Error())
+	}
+
 	eventData := &keptnv2.GetSLITriggeredEventData{}
-	err := eh.event.DataAs(eventData)
-	if err != nil {
-		return err
-	}
-
-	// don't continue if SLIProvider is not prometheus
-	if eventData.GetSLI.SLIProvider != "prometheus" {
-		return nil
-	}
-
-	// send started event
-	_, err = eh.keptnHandler.SendTaskStartedEvent(eventData, utils.ServiceName)
-	if err != nil {
-		errMsg := fmt.Errorf("failed to send task started CloudEvent: %w", err)
-		log.Println(errMsg.Error())
-		return err
-	}
-
-	// helper function to log an error and send an appropriate finished event
-	sendFinishedErrorEvent := func(err error) error {
-		log.Printf("sending errored finished event: %s", err.Error())
-
-		_, sendError := eh.keptnHandler.SendTaskFinishedEvent(&keptnv2.EventData{
-			Status:  keptnv2.StatusErrored,
-			Result:  keptnv2.ResultFailed,
-			Message: err.Error(),
-		}, utils.ServiceName)
-
-		// TODO: Maybe log error to console
-
-		return sendError
+	if err := keptnv2.Decode(event.Data, eventData); err != nil {
+		return nil, &sdk.Error{Err: err, StatusType: keptnv2.StatusErrored, ResultType: keptnv2.ResultFailed, Message: "failed to decode get-sli.triggered event: " + err.Error()}
 	}
 
 	// get prometheus API URL for the provided Project from Kubernetes Config Map
 	prometheusAPIURL, err := getPrometheusAPIURL(eventData.Project, eh.kubeClient.CoreV1())
 	if err != nil {
-		return sendFinishedErrorEvent(fmt.Errorf("unable to get prometheus api URL: %w", err))
+		return nil, &sdk.Error{Err: err, StatusType: keptnv2.StatusErrored, ResultType: keptnv2.ResultFailed, Message: "failed to get Prometheus API URL: " + err.Error()}
 	}
 
 	deployment := eventData.Deployment // "canary", "primary" or "" (or "direct" or "user_managed")
@@ -93,11 +79,9 @@ func (eh GetSliEventHandler) HandleEvent() error {
 	)
 
 	// get SLI queries (from SLI.yaml)
-	projectCustomQueries, err := getCustomQueries(eh.keptnHandler, eventData.Project, eventData.Stage, eventData.Service)
+	projectCustomQueries, err := getCustomQueries(k.GetResourceHandler(), eventData.Project, eventData.Stage, eventData.Service)
 	if err != nil {
-		return sendFinishedErrorEvent(
-			fmt.Errorf("unable to retrieve custom queries for project %s: %w", eventData.Project, err),
-		)
+		return nil, &sdk.Error{Err: err, StatusType: keptnv2.StatusErrored, ResultType: keptnv2.ResultFailed, Message: fmt.Sprintf("unable to retrieve custom queries for project %s: %e", eventData.Project, err)}
 	}
 
 	// only apply queries if they contain anything
@@ -144,15 +128,7 @@ func (eh GetSliEventHandler) HandleEvent() error {
 		getSliFinishedEventData.EventData.Message = "unable to retrieve metrics"
 	}
 
-	// send get-sli.finished event with SLI DATA
-	_, err = eh.keptnHandler.SendTaskFinishedEvent(getSliFinishedEventData, utils.ServiceName)
-	if err != nil {
-		errMsg := fmt.Sprintf("Failed to send task finished CloudEvent (%s), aborting...", err.Error())
-		log.Println(errMsg)
-		return err
-	}
-
-	return nil
+	return getSliFinishedEventData, nil
 }
 
 func retrieveMetrics(prometheusHandler *prometheus.Handler, eventData *keptnv2.GetSLITriggeredEventData) []*keptnv2.SLIResult {
@@ -182,10 +158,10 @@ func retrieveMetrics(prometheusHandler *prometheus.Handler, eventData *keptnv2.G
 	return sliResults
 }
 
-func getCustomQueries(keptnHandler *keptnv2.Keptn, project string, stage string, service string) (map[string]string, error) {
+func getCustomQueries(resourceHandler sdk.ResourceHandler, project string, stage string, service string) (map[string]string, error) {
 	log.Println("Checking for custom SLI queries")
 
-	customQueries, err := keptnHandler.GetSLIConfiguration(project, stage, service, utils.SliResourceURI)
+	customQueries, err := GetSLIConfiguration(resourceHandler, project, stage, service, utils.SliResourceURI)
 	if err != nil {
 		return nil, err
 	}
@@ -258,4 +234,91 @@ func generatePrometheusURL(pc *prometheusCredentials) string {
 		prometheusURL = "https://" + credentialsString + prometheusURL
 	}
 	return strings.Replace(prometheusURL, " ", "", -1)
+}
+
+// GetSLIConfiguration retrieves the SLI configuration for a service considering SLI configuration on stage and project level.
+// First, the configuration of project-level is retrieved, which is then overridden by configuration on stage level,
+// overridden by configuration on service level.
+func GetSLIConfiguration(resourceHandler sdk.ResourceHandler, project string, stage string, service string, resourceURI string) (map[string]string, error) {
+	var res *models.Resource
+	var err error
+	SLIs := make(map[string]string)
+
+	// get sli config from project
+	if project != "" {
+		scope := api.NewResourceScope()
+		scope.Project(project)
+		scope.Resource(resourceURI)
+		res, err = resourceHandler.GetResource(*scope)
+		if err != nil {
+			// return error except "resource not found" type
+			if !strings.Contains(strings.ToLower(err.Error()), "resource not found") {
+				return nil, err
+			}
+		}
+		SLIs, err = addResourceContentToSLIMap(SLIs, res)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// get sli config from stage
+	if project != "" && stage != "" {
+		scope := api.NewResourceScope()
+		scope.Project(project)
+		scope.Stage(stage)
+		scope.Resource(resourceURI)
+		res, err = resourceHandler.GetResource(*scope)
+		if err != nil {
+			// return error except "resource not found" type
+			if !strings.Contains(strings.ToLower(err.Error()), "resource not found") {
+				return nil, err
+			}
+		}
+		SLIs, err = addResourceContentToSLIMap(SLIs, res)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// get sli config from service
+	if project != "" && stage != "" && service != "" {
+		scope := api.NewResourceScope()
+		scope.Project(project)
+		scope.Stage(stage)
+		scope.Service(service)
+		scope.Resource(resourceURI)
+		res, err = resourceHandler.GetResource(*scope)
+		if err != nil {
+			// return error except "resource not found" type
+			if !strings.Contains(strings.ToLower(err.Error()), "resource not found") {
+				return nil, err
+			}
+		}
+		SLIs, err = addResourceContentToSLIMap(SLIs, res)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return SLIs, nil
+}
+
+func addResourceContentToSLIMap(SLIs map[string]string, resource *models.Resource) (map[string]string, error) {
+	if resource != nil {
+		sliConfig := keptncommon.SLIConfig{}
+		err := yaml.Unmarshal([]byte(resource.ResourceContent), &sliConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		for key, value := range sliConfig.Indicators {
+			SLIs[key] = value
+		}
+
+		if len(SLIs) == 0 {
+			return nil, errors.New("missing required field: indicators")
+		}
+	}
+	return SLIs, nil
 }

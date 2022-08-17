@@ -1,14 +1,13 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/cloudevents/sdk-go/v2/types"
 	"github.com/google/uuid"
 	"github.com/keptn-contrib/prometheus-service/eventhandling"
 	"github.com/keptn-contrib/prometheus-service/utils"
-	keptn "github.com/keptn/go-utils/pkg/lib"
+	"github.com/keptn/go-utils/pkg/sdk"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -16,8 +15,7 @@ import (
 	"net/http"
 	"os"
 
-	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/kelseyhightower/envconfig"
+	keptnevents "github.com/keptn/go-utils/pkg/lib"
 	keptncommon "github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 )
@@ -26,84 +24,70 @@ var (
 	env utils.EnvConfig
 )
 
+const serviceName = "prometheus-service"
+const envVarLogLevel = "LOG_LEVEL"
+const monitoringTriggeredEvent = "sh.keptn.event.configure-monitoring.triggered"
+const getSliTriggeredEvent = "sh.keptn.event.get-sli.triggered"
+
 func main() {
-	logger := keptncommon.NewLogger("", "", utils.ServiceName)
-
-	env = utils.EnvConfig{}
-
-	if err := envconfig.Process("", &env); err != nil {
-		logger.Error(fmt.Sprintf("Failed to process env var: %s", err))
+	if os.Getenv(envVarLogLevel) != "" {
+		logLevel, err := logrus.ParseLevel(os.Getenv(envVarLogLevel))
+		if err != nil {
+			logrus.WithError(err).Error("could not parse log level provided by 'LOG_LEVEL' env var")
+			logrus.SetLevel(logrus.InfoLevel)
+		} else {
+			logrus.SetLevel(logLevel)
+		}
 	}
 
-	logger.Debug(fmt.Sprintf("Configuration service: %s", env.ConfigurationServiceURL))
-	logger.Debug(fmt.Sprintf("Port: %d, Path: %s", env.Port, env.Path))
+	log.Printf("Starting %s", serviceName)
 
-	// start internal CloudEvents handler (on port env.Port)
-	os.Exit(_main(env))
-}
-
-func _main(env utils.EnvConfig) int {
-	ctx := context.Background()
-	ctx = cloudevents.WithEncodingStructured(ctx)
-
-	p, err := cloudevents.NewHTTP()
-	if err != nil {
-		log.Fatalf("failed to create protocol: %s", err.Error())
-	}
-
-	ceHandler, err := cloudevents.NewHTTPReceiveHandler(ctx, p, gotEvent)
-	if err != nil {
-		log.Fatalf("failed to create handler: %s", err.Error())
-	}
-
+	// TODO: Start alertmanager API endpoint
 	http.HandleFunc("/", HTTPGetHandler)
-	http.Handle(env.Path, ceHandler)
-	err = http.ListenAndServe(":8080", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return 0
-}
-
-// gotEvent processes an incoming CloudEvent
-func gotEvent(event cloudevents.Event) error {
-	keptnContext, err := event.Context.GetExtension("shkeptncontext")
-	if err != nil {
-		return fmt.Errorf("cloud event does not contain the field 'shkeptncontext'")
-	}
-
-	shkeptncontext, err := types.ToString(keptnContext)
-	if err != nil {
-		return fmt.Errorf("field 'shkeptncontext' can not be parsed as keptn context")
-	}
-
-	logger := keptncommon.NewLogger(shkeptncontext, "", utils.ServiceName)
-
-	// convert v0.1.4 spec monitoring.configure CloudEvent into a v0.2.0 spec configure-monitoring.triggered CloudEvent
-	if event.Type() == keptn.ConfigureMonitoringEventType {
-		event.SetType(keptnv2.GetTriggeredEventType(keptnv2.ConfigureMonitoringTaskName))
-	}
-
-	keptnHandler, err := keptnv2.NewKeptn(&event, keptncommon.KeptnOpts{})
-
-	if err != nil {
-		return fmt.Errorf("could not create Keptn handler: %v", err)
-	}
+	go http.ListenAndServe(":8080", nil)
 
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {
-		// TODO: Send Error log event to Keptn
-		return fmt.Errorf("unable to create kubernetes cluster config: %w", err)
+		log.Fatalf("unable to create kubernetes cluster config: %w", err)
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
 	if err != nil {
-		// TODO: Send Error log event to Keptn
-		return fmt.Errorf("unable to create kubernetes client: %w", err)
+		log.Fatalf("unable to create kubernetes client: %w", err)
 	}
 
-	return eventhandling.NewEventHandler(event, logger, keptnHandler, kubeClient, env.K8sNamespace).HandleEvent()
+	log.Fatal(sdk.NewKeptn(
+		serviceName,
+		sdk.WithTaskHandler(
+			monitoringTriggeredEvent,
+			eventhandling.NewConfigureMonitoringEventHandler(),
+			prometheusTypeFilter),
+		sdk.WithTaskHandler(
+			getSliTriggeredEvent,
+			eventhandling.NewGetSliEventHandler(*kubeClient),
+			prometheusSLIProviderFilter),
+		sdk.WithLogger(logrus.New()),
+	).Start())
+}
+
+func prometheusSLIProviderFilter(keptnHandle sdk.IKeptn, event sdk.KeptnEvent) bool {
+	data := &keptnv2.GetSLITriggeredEventData{}
+	if err := keptnv2.Decode(event.Data, data); err != nil {
+		keptnHandle.Logger().Errorf("Could not parse test.triggered event: %s", err.Error())
+		return false
+	}
+
+	return data.GetSLI.SLIProvider == "prometheus"
+}
+
+func prometheusTypeFilter(keptnHandle sdk.IKeptn, event sdk.KeptnEvent) bool {
+	data := &keptnevents.ConfigureMonitoringEventData{}
+	if err := keptnv2.Decode(event.Data, data); err != nil {
+		keptnHandle.Logger().Errorf("Could not parse test.triggered event: %s", err.Error())
+		return false
+	}
+
+	return data.Type == "prometheus"
 }
 
 // HTTPGetHandler will handle all requests for '/health' and '/ready'

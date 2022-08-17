@@ -4,23 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kelseyhightower/envconfig"
+	"github.com/keptn/go-utils/pkg/sdk"
 	"log"
+	"os"
 	"strings"
 	"time"
 
-	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	configutils "github.com/keptn/go-utils/pkg/api/utils"
 	keptnevents "github.com/keptn/go-utils/pkg/lib"
-	"github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 
 	"github.com/gobwas/glob"
 	"github.com/keptn-contrib/prometheus-service/utils"
 	"github.com/keptn-contrib/prometheus-service/utils/prometheus"
+	api "github.com/keptn/go-utils/pkg/api/utils"
 	prometheus_model "github.com/prometheus/common/model"
 )
 
@@ -28,10 +30,11 @@ const metricsScrapePathEnvName = "METRICS_SCRAPE_PATH"
 
 // ConfigureMonitoringEventHandler is responsible for processing configure monitoring events
 type ConfigureMonitoringEventHandler struct {
-	logger       keptn.LoggerInterface
-	event        cloudevents.Event
-	keptnHandler *keptnv2.Keptn
-	k8sNamespace string
+}
+
+// NewConfigureMonitoringEventHandler creates a new ConfigureMonitoringEventHandler
+func NewConfigureMonitoringEventHandler() *ConfigureMonitoringEventHandler {
+	return &ConfigureMonitoringEventHandler{}
 }
 
 type alertingRules struct {
@@ -65,42 +68,38 @@ type alertingAnnotations struct {
 	Description string `json:"description" yaml:"descriptions"`
 }
 
-// HandleEvent processes an event
-func (eh ConfigureMonitoringEventHandler) HandleEvent() error {
+// Execute processes an event
+func (eh ConfigureMonitoringEventHandler) Execute(k sdk.IKeptn, event sdk.KeptnEvent) (interface{}, *sdk.Error) {
+	if err := envconfig.Process("", &env); err != nil {
+		k.Logger().Error("Failed to process env var: " + err.Error())
+	}
+
 	eventData := &keptnevents.ConfigureMonitoringEventData{}
-	if err := eh.event.DataAs(eventData); err != nil {
-		return err
-	}
-	if eventData.Type != "prometheus" {
-		return nil
-	}
 
-	err := eh.configurePrometheusAndStoreResources(eventData)
+	err := eh.configurePrometheusAndStoreResources(k, eventData, os.Getenv("K8S_NAMESPACE"))
 	if err != nil {
-		eh.logger.Error(err.Error())
-		return eh.handleError(err.Error())
+		k.Logger().Error(err.Error())
+		return nil, &sdk.Error{Err: err, StatusType: keptnv2.StatusErrored, ResultType: keptnv2.ResultFailed, Message: "configure prometheus failed with error: " + err.Error()}
 	}
 
-	if err = eh.sendConfigureMonitoringFinishedEvent(keptnv2.StatusSucceeded, keptnv2.ResultPass, "Prometheus successfully configured and rule created"); err != nil {
-		eh.logger.Error(err.Error())
-	}
-	return nil
+	finishedEventData := eh.getConfigureMonitoringFinishedEvent(keptnv2.StatusSucceeded, keptnv2.ResultPass, *eventData, "Prometheus successfully configured and rule created")
+	return finishedEventData, nil
 }
 
 // configurePrometheusAndStoreResources
-func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(eventData *keptnevents.ConfigureMonitoringEventData) error {
+func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(k sdk.IKeptn, eventData *keptnevents.ConfigureMonitoringEventData, k8sNamespace string) error {
 	// (1) check if prometheus is installed
-	if eh.isPrometheusInstalled() {
+	if eh.isPrometheusInstalled(k) {
 		if utils.EnvVarOrDefault("CREATE_TARGETS", "true") == "true" {
-			eh.logger.Debug("Configure prometheus monitoring with keptn")
-			if err := eh.updatePrometheusConfigMap(*eventData); err != nil {
+			k.Logger().Debug("Configure prometheus monitoring with keptn")
+			if err := eh.updatePrometheusConfigMap(k, *eventData); err != nil {
 				return err
 			}
 		}
 
 		if utils.EnvVarOrDefault("CREATE_ALERTS", "true") == "true" {
-			eh.logger.Debug("Configure prometheus alert manager with keptn")
-			err := eh.configurePrometheusAlertManager(eh.k8sNamespace)
+			k.Logger().Debug("Configure prometheus alert manager with keptn")
+			err := eh.configurePrometheusAlertManager(k, k8sNamespace)
 			if err != nil {
 				return err
 			}
@@ -110,16 +109,16 @@ func (eh ConfigureMonitoringEventHandler) configurePrometheusAndStoreResources(e
 	return nil
 }
 
-func (eh ConfigureMonitoringEventHandler) isPrometheusInstalled() bool {
-	eh.logger.Debug("Check if prometheus service in " + env.PrometheusNamespace + " namespace is available")
+func (eh ConfigureMonitoringEventHandler) isPrometheusInstalled(k sdk.IKeptn) bool {
+	k.Logger().Debug("Check if prometheus service in " + env.PrometheusNamespace + " namespace is available")
 	svcList, err := getPrometheusServiceFromK8s()
 	if err != nil {
-		eh.logger.Errorf("Error locating prometheus service in k8s: %v", err)
+		k.Logger().Errorf("Error locating prometheus service in k8s: %v", err)
 		return false
 	}
 
 	if len(svcList.Items) > 0 {
-		eh.logger.Debug("Prometheus service in " + env.PrometheusNamespace + " namespace is available")
+		k.Logger().Debug("Prometheus service in " + env.PrometheusNamespace + " namespace is available")
 		return true
 	}
 
@@ -142,34 +141,38 @@ func getPrometheusAlertManagerServiceFromK8s() (*v1.ServiceList, error) {
 	return svcList, err
 }
 
-func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager(namespace string) error {
-	eh.logger.Info("Configuring Prometheus AlertManager...")
+func (eh ConfigureMonitoringEventHandler) configurePrometheusAlertManager(k sdk.IKeptn, namespace string) error {
+	k.Logger().Info("Configuring Prometheus AlertManager...")
 	prometheusHelper, err := prometheus.NewPrometheusHelper(namespace)
 
-	eh.logger.Info("Updating Prometheus AlertManager configmap...")
+	k.Logger().Info("Updating Prometheus AlertManager configmap...")
 	err = prometheusHelper.UpdateAMConfigMap(env.AlertManagerConfigMap, env.AlertManagerConfigFileName, env.AlertManagerNamespace)
 	if err != nil {
 		return err
 	}
 
-	eh.logger.Info("Prometheus AlertManager configuration successfully")
+	k.Logger().Info("Prometheus AlertManager configuration successfully")
 
 	return nil
 }
 
 // updatePrometheusConfigMap updates the prometheus configmap with scrape configs and alerting rules
-func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData keptnevents.ConfigureMonitoringEventData) error {
-	shipyard, err := eh.keptnHandler.GetShipyard()
+func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(k sdk.IKeptn, eventData keptnevents.ConfigureMonitoringEventData) error {
+	scope := api.NewResourceScope()
+	scope.Project(eventData.Project)
+	scope.Resource("shipyard.yaml")
+
+	shipyard, err := GetShipyard(k.GetResourceHandler(), *scope)
 	if err != nil {
 		return err
 	}
 
-	api, err := utils.GetKubeClient()
+	kubeApi, err := utils.GetKubeClient()
 	if err != nil {
 		return err
 	}
 
-	cmPrometheus, err := api.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(context.TODO(), env.PrometheusConfigMap, metav1.GetOptions{})
+	cmPrometheus, err := kubeApi.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(context.TODO(), env.PrometheusConfigMap, metav1.GetOptions{})
 	if err != nil {
 		// Print better error message when role binding is missing
 		g := glob.MustCompile("configmaps * is forbidden: User * cannot get resource * in API group * in the namespace *")
@@ -187,7 +190,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	scrapeInterval, err := time.ParseDuration(scrapeIntervalString)
 
 	if err != nil {
-		eh.logger.Error("Error while converting SCRAPE_INTERVAL value. Using default value instead!")
+		k.Logger().Error("Error while converting SCRAPE_INTERVAL value. Using default value instead!")
 		scrapeInterval = 5 * time.Second
 	}
 
@@ -215,7 +218,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 		// <service>.<project>-<stage>
 		createScrapeJobConfig(scrapeConfig, config, eventData.Project, stage.Name, eventData.Service, false, false, scrapeInterval)
 
-		alertingRulesConfig, err = eh.createPrometheusAlertsIfSLOsAndRemediationDefined(eventData, stage,
+		alertingRulesConfig, err = eh.createPrometheusAlertsIfSLOsAndRemediationDefined(k, eventData, stage,
 			alertingRulesConfig)
 
 		if err != nil {
@@ -235,7 +238,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 	// apply
 	cmPrometheus.Data["alerting_rules.yml"] = string(alertingRulesYAMLString)
 	cmPrometheus.Data[env.PrometheusConfigFileName] = string(updatedConfigYAMLString)
-	_, err = api.CoreV1().ConfigMaps(env.PrometheusNamespace).Update(context.TODO(), cmPrometheus, metav1.UpdateOptions{})
+	_, err = kubeApi.CoreV1().ConfigMaps(env.PrometheusNamespace).Update(context.TODO(), cmPrometheus, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -243,12 +246,12 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(eventData ke
 }
 
 func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemediationDefined(
-	eventData keptnevents.ConfigureMonitoringEventData, stage keptnv2.Stage, alertingRulesConfig alertingRules,
+	k sdk.IKeptn, eventData keptnevents.ConfigureMonitoringEventData, stage keptnv2.Stage, alertingRulesConfig alertingRules,
 ) (alertingRules, error) {
 	// fetch SLOs for the given service and stage
-	slos, err := retrieveSLOs(eventData, stage.Name, eh.logger)
+	slos, err := retrieveSLOs(eventData, stage.Name)
 	if err != nil || slos == nil {
-		eh.logger.Info("No SLO file found for stage " + stage.Name + ". No alerting rules created for this stage")
+		k.Logger().Info("No SLO file found for stage " + stage.Name + ". No alerting rules created for this stage")
 		return alertingRulesConfig, nil
 	}
 
@@ -260,10 +263,10 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	resourceScope.Stage(stage.Name)
 	resourceScope.Resource(remediationFileDefaultName)
 
-	_, err = eh.keptnHandler.ResourceHandler.GetResource(*resourceScope)
+	_, err = k.GetResourceHandler().GetResource(*resourceScope)
 
 	if errors.Is(err, configutils.ResourceNotFoundError) {
-		eh.logger.Infof("No remediation defined for project %s stage %s, skipping setup of prometheus alerts",
+		k.Logger().Infof("No remediation defined for project %s stage %s, skipping setup of prometheus alerts",
 			eventData.Project, stage.Name)
 		return alertingRulesConfig, nil
 	}
@@ -300,7 +303,7 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	)
 
 	// get SLI queries
-	projectCustomQueries, err := getCustomQueries(eh.keptnHandler, eventData.Project, stage.Name, eventData.Service)
+	projectCustomQueries, err := getCustomQueries(k.GetResourceHandler(), eventData.Project, stage.Name, eventData.Service)
 	if err != nil {
 		log.Println("Failed to get custom queries for project " + eventData.Project)
 		log.Println(err.Error())
@@ -311,20 +314,20 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 		prometheusHandler.CustomQueries = projectCustomQueries
 	}
 
-	eh.logger.Info("Going over SLO.objectives")
+	k.Logger().Info("Going over SLO.objectives")
 
 	for _, objective := range slos.Objectives {
-		eh.logger.Info("SLO:" + objective.DisplayName + ", " + objective.SLI)
+		k.Logger().Info("SLO:" + objective.DisplayName + ", " + objective.SLI)
 		// Get Prometheus Metric Expression
 		end := time.Now()
 		start := end.Add(-180 * time.Second)
 
 		expr, err := prometheusHandler.GetMetricQuery(objective.SLI, start, end)
 		if err != nil || expr == "" {
-			eh.logger.Error("No query defined for SLI " + objective.SLI + " in project " + eventData.Project)
+			k.Logger().Error("No query defined for SLI " + objective.SLI + " in project " + eventData.Project)
 			continue
 		}
-		eh.logger.Info("expr=" + expr)
+		k.Logger().Info("expr=" + expr)
 
 		if objective.Pass != nil {
 			for _, criteriaGroup := range objective.Pass {
@@ -443,7 +446,7 @@ func getConfigurationServiceURL() string {
 	return env.ConfigurationServiceURL
 }
 
-func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage string, logger keptn.LoggerInterface) (*keptnevents.ServiceLevelObjectives, error) {
+func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage string) (*keptnevents.ServiceLevelObjectives, error) {
 	resourceHandler := configutils.NewResourceHandler(getConfigurationServiceURL())
 
 	resourceScope := configutils.NewResourceScope()
@@ -467,25 +470,30 @@ func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage stri
 	return &slos, nil
 }
 
-func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(status keptnv2.StatusType, result keptnv2.ResultType, msg string) error {
-	_, err := eh.keptnHandler.SendTaskFinishedEvent(&keptnv2.EventData{
-		Status:  status,
-		Result:  result,
-		Message: msg,
-	}, utils.ServiceName)
+func (eh ConfigureMonitoringEventHandler) getConfigureMonitoringFinishedEvent(status keptnv2.StatusType, result keptnv2.ResultType, configureMonitoringTriggeredEven keptnevents.ConfigureMonitoringEventData, msg string) keptnv2.ConfigureMonitoringFinishedEventData {
 
-	if err != nil {
-		return fmt.Errorf("could not send %s event: %s", keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName), err.Error())
+	return keptnv2.ConfigureMonitoringFinishedEventData{
+		EventData: keptnv2.EventData{
+			Project: configureMonitoringTriggeredEven.Project,
+			Service: configureMonitoringTriggeredEven.Service,
+			Status:  status,
+			Result:  result,
+			Message: msg,
+		},
 	}
-
-	return nil
 }
 
-func (eh ConfigureMonitoringEventHandler) handleError(msg string) error {
-	//logger.Error(msg)
-	if err := eh.sendConfigureMonitoringFinishedEvent(keptnv2.StatusErrored, keptnv2.ResultFailed, msg); err != nil {
-		// an additional error occurred when trying to send configure monitoring finished back to Keptn
-		eh.logger.Error(err.Error())
+// GetShipyard returns the shipyard definition of a project
+func GetShipyard(resourceHandler sdk.ResourceHandler, scope api.ResourceScope) (*keptnv2.Shipyard, error) {
+	shipyardResource, err := resourceHandler.GetResource(scope)
+	if err != nil {
+		return nil, err
 	}
-	return errors.New(msg)
+
+	shipyard := keptnv2.Shipyard{}
+	err = yaml.Unmarshal([]byte(shipyardResource.ResourceContent), &shipyard)
+	if err != nil {
+		return nil, err
+	}
+	return &shipyard, nil
 }

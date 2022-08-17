@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.5](https://github.com/keptn-contrib/prometheus-service/compare/0.8.4...0.8.5) (2022-08-17)
+
+
+### Features
+
+* Autodetect prometheus and alertmanager namespaces ([#349](https://github.com/keptn-contrib/prometheus-service/issues/349)) ([e607d4b](https://github.com/keptn-contrib/prometheus-service/commit/e607d4b62c93dc82f6430c1adc82a07028405c9e))
+
+
+### Bug Fixes
+
+* Alertmanager cloudevent payload ([#353](https://github.com/keptn-contrib/prometheus-service/issues/353)) ([55caac4](https://github.com/keptn-contrib/prometheus-service/commit/55caac456f98314d1af1bda93ad552daee8419c5))
+* Auto-detection feature ([#350](https://github.com/keptn-contrib/prometheus-service/issues/350)) ([7748961](https://github.com/keptn-contrib/prometheus-service/commit/774896105abba2c77db933a68bfd69eba12e90c7))
+* Default deployment in alerts/remediations to "primary" if not specified ([#355](https://github.com/keptn-contrib/prometheus-service/issues/355)) ([6dffc14](https://github.com/keptn-contrib/prometheus-service/commit/6dffc14b31e07baf3a7f5542cf4ece23f6a6ae55))
+
+
+### Other
+
+* Update Readme.md for release of 0.8.5 ([#356](https://github.com/keptn-contrib/prometheus-service/issues/356)) ([cf7e32d](https://github.com/keptn-contrib/prometheus-service/commit/cf7e32d19a657570dbb0d5a7b8e40e8ab9b90e08))
+
 ### [0.8.4](https://github.com/keptn-contrib/prometheus-service/compare/0.8.3...0.8.4) (2022-07-18)
 
 

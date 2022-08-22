@@ -48,12 +48,12 @@ func main() {
 
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {
-		log.Fatalf("unable to create kubernetes cluster config: %w", err)
+		log.Fatalf("unable to create kubernetes cluster config: %e", err)
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
 	if err != nil {
-		log.Fatalf("unable to create kubernetes client: %w", err)
+		log.Fatalf("unable to create kubernetes client: %e", err)
 	}
 
 	log.Fatal(sdk.NewKeptn(

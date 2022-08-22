@@ -1,5 +1,20 @@
 package eventhandling
 
+import (
+	"encoding/json"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/golang/mock/gomock"
+	prometheusUtils "github.com/keptn-contrib/prometheus-service/utils/prometheus"
+	prometheusfake "github.com/keptn-contrib/prometheus-service/utils/prometheus/fake"
+	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
+	prometheusAPI "github.com/prometheus/client_golang/api/prometheus/v1"
+	prometheusModel "github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"math/rand"
+	"testing"
+)
+
 const eventJSON = `
 {
   "data": {
@@ -25,7 +40,7 @@ const eventJSON = `
 }
 `
 
-/*func Test_retrieveMetrics(t *testing.T) {
+func Test_retrieveMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -151,4 +166,3 @@ func Test_retrieveMetricsWithNoValue(t *testing.T) {
 		Message:       prometheusUtils.ErrNoValues.Error(),
 	})
 }
-*/

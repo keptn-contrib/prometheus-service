@@ -174,12 +174,12 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(k sdk.IKeptn
 		return err
 	}
 
-	kubeApi, err := utils.GetKubeClient()
+	kubeAPI, err := utils.GetKubeClient()
 	if err != nil {
 		return err
 	}
 
-	cmPrometheus, err := kubeApi.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(context.TODO(), env.PrometheusConfigMap, metav1.GetOptions{})
+	cmPrometheus, err := kubeAPI.CoreV1().ConfigMaps(env.PrometheusNamespace).Get(context.TODO(), env.PrometheusConfigMap, metav1.GetOptions{})
 	if err != nil {
 		// Print better error message when role binding is missing
 		g := glob.MustCompile("configmaps * is forbidden: User * cannot get resource * in API group * in the namespace *")
@@ -245,7 +245,7 @@ func (eh ConfigureMonitoringEventHandler) updatePrometheusConfigMap(k sdk.IKeptn
 	// apply
 	cmPrometheus.Data["alerting_rules.yml"] = string(alertingRulesYAMLString)
 	cmPrometheus.Data[env.PrometheusConfigFileName] = string(updatedConfigYAMLString)
-	_, err = kubeApi.CoreV1().ConfigMaps(env.PrometheusNamespace).Update(context.TODO(), cmPrometheus, metav1.UpdateOptions{})
+	_, err = kubeAPI.CoreV1().ConfigMaps(env.PrometheusNamespace).Update(context.TODO(), cmPrometheus, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}

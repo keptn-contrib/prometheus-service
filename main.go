@@ -42,9 +42,13 @@ func main() {
 
 	log.Printf("Starting %s", serviceName)
 
-	// TODO: Start alertmanager API endpoint
 	http.HandleFunc("/", HTTPGetHandler)
-	go http.ListenAndServe(":8080", nil)
+	go func() {
+		err := http.ListenAndServe(":8080", nil)
+		if err != nil {
+			log.Fatalf("Error with HTTP server: %e", err)
+		}
+	}()
 
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {

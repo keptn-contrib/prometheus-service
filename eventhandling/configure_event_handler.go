@@ -249,7 +249,7 @@ func (eh ConfigureMonitoringEventHandler) createPrometheusAlertsIfSLOsAndRemedia
 	k sdk.IKeptn, eventData keptnevents.ConfigureMonitoringEventData, stage keptnv2.Stage, alertingRulesConfig alertingRules,
 ) (alertingRules, error) {
 	// fetch SLOs for the given service and stage
-	slos, err := retrieveSLOs(eventData, stage.Name)
+	slos, err := retrieveSLOs(k.GetResourceHandler(), eventData, stage.Name)
 	if err != nil || slos == nil {
 		k.Logger().Info("No SLO file found for stage " + stage.Name + ". No alerting rules created for this stage")
 		return alertingRulesConfig, nil
@@ -442,13 +442,7 @@ func getScrapeConfig(config *prometheus.Config, name string) *prometheus.ScrapeC
 	return nil
 }
 
-func getConfigurationServiceURL() string {
-	return env.ConfigurationServiceURL
-}
-
-func retrieveSLOs(eventData keptnevents.ConfigureMonitoringEventData, stage string) (*keptnevents.ServiceLevelObjectives, error) {
-	resourceHandler := configutils.NewResourceHandler(getConfigurationServiceURL())
-
+func retrieveSLOs(resourceHandler sdk.ResourceHandler, eventData keptnevents.ConfigureMonitoringEventData, stage string) (*keptnevents.ServiceLevelObjectives, error) {
 	resourceScope := configutils.NewResourceScope()
 	resourceScope.Project(eventData.Project)
 	resourceScope.Service(eventData.Service)

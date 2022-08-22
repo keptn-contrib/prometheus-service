@@ -70,11 +70,16 @@ type alertingAnnotations struct {
 
 // Execute processes an event
 func (eh ConfigureMonitoringEventHandler) Execute(k sdk.IKeptn, event sdk.KeptnEvent) (interface{}, *sdk.Error) {
+	k.Logger().Infof("Handling configure monitoring event from %s with id: %s and context: %s", *event.Source, event.ID, event.Shkeptncontext)
+
 	if err := envconfig.Process("", &env); err != nil {
 		k.Logger().Error("Failed to process env var: " + err.Error())
 	}
 
 	eventData := &keptnevents.ConfigureMonitoringEventData{}
+	if err := keptnv2.Decode(event.Data, eventData); err != nil {
+		return nil, &sdk.Error{Err: err, StatusType: keptnv2.StatusErrored, ResultType: keptnv2.ResultFailed, Message: "failed to decode get-sli.triggered event: " + err.Error()}
+	}
 
 	err := eh.configurePrometheusAndStoreResources(k, eventData, os.Getenv("K8S_NAMESPACE"))
 	if err != nil {
@@ -83,6 +88,8 @@ func (eh ConfigureMonitoringEventHandler) Execute(k sdk.IKeptn, event sdk.KeptnE
 	}
 
 	finishedEventData := eh.getConfigureMonitoringFinishedEvent(keptnv2.StatusSucceeded, keptnv2.ResultPass, *eventData, "Prometheus successfully configured and rule created")
+	k.Logger().Infof("Sending configure-monitoring.finished event with context: %s", event.Shkeptncontext)
+
 	return finishedEventData, nil
 }
 

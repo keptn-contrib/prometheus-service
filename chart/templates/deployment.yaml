@@ -40,11 +40,11 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: http
+              port: 8081
           readinessProbe:
             httpGet:
               path: /health
-              port: http
+              port: 8081
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
@@ -56,6 +56,8 @@ spec:
               value: 'prometheus-server'
             - name: PROMETHEUS_LABELS
               value: 'component=server'
+            - name: HEALTH_ENDPOINT_PORT
+              value: '8081'
             - name: PROMETHEUS_ENDPOINT
               value: "{{ include "prometheus-service.endpoint" . }}"
             - name: PROMETHEUS_CONFIG_FILENAME

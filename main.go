@@ -26,7 +26,7 @@ var (
 
 const serviceName = "prometheus-service"
 const envVarLogLevel = "LOG_LEVEL"
-const monitoringTriggeredEvent = "sh.keptn.event.configure-monitoring.triggered"
+const monitoringTriggeredEvent = keptnevents.ConfigureMonitoringEventType
 const getSliTriggeredEvent = "sh.keptn.event.get-sli.triggered"
 
 func main() {

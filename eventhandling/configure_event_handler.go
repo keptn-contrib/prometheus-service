@@ -81,6 +81,11 @@ func (eh ConfigureMonitoringEventHandler) Execute(k sdk.IKeptn, event sdk.KeptnE
 		return nil, &sdk.Error{Err: err, StatusType: keptnv2.StatusErrored, ResultType: keptnv2.ResultFailed, Message: "failed to decode get-sli.triggered event: " + err.Error()}
 	}
 
+	if err := eh.sendConfigureMonitoringStartedEvent(k, event); err != nil {
+		k.Logger().Infof("Error while sending configure-monitoring.started event: %s", err.Message)
+		return nil, err
+	}
+
 	err := eh.configurePrometheusAndStoreResources(k, eventData, os.Getenv("K8S_NAMESPACE"))
 	if err != nil {
 		k.Logger().Error(err.Error())
@@ -89,6 +94,10 @@ func (eh ConfigureMonitoringEventHandler) Execute(k sdk.IKeptn, event sdk.KeptnE
 
 	finishedEventData := eh.getConfigureMonitoringFinishedEvent(keptnv2.StatusSucceeded, keptnv2.ResultPass, *eventData, "Prometheus successfully configured and rule created")
 	k.Logger().Infof("Sending configure-monitoring.finished event with context: %s", event.Shkeptncontext)
+	if err := eh.sendConfigureMonitoringFinishedEvent(k, event, finishedEventData); err != nil {
+		k.Logger().Infof("Error while sending configure-monitoring.finished event: %s", err.Message)
+		return nil, err
+	}
 
 	return finishedEventData, nil
 }
@@ -482,6 +491,26 @@ func (eh ConfigureMonitoringEventHandler) getConfigureMonitoringFinishedEvent(st
 			Message: msg,
 		},
 	}
+}
+
+func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringStartedEvent(k sdk.IKeptn, event sdk.KeptnEvent) *sdk.Error {
+	eventType := keptnv2.GetTriggeredEventType(keptnv2.ConfigureMonitoringTaskName)
+	event.Type = &eventType
+
+	if err := k.SendStartedEvent(event); err != nil {
+		return &sdk.Error{Err: err, StatusType: keptnv2.StatusErrored, ResultType: keptnv2.ResultFailed, Message: "Error sending configure-monitoring.started: " + err.Error()}
+	}
+	return nil
+}
+
+func (eh ConfigureMonitoringEventHandler) sendConfigureMonitoringFinishedEvent(k sdk.IKeptn, event sdk.KeptnEvent, eventData keptnv2.ConfigureMonitoringFinishedEventData) *sdk.Error {
+	eventType := keptnv2.GetTriggeredEventType(keptnv2.ConfigureMonitoringTaskName)
+	event.Type = &eventType
+
+	if err := k.SendFinishedEvent(event, eventData); err != nil {
+		return &sdk.Error{Err: err, StatusType: keptnv2.StatusErrored, ResultType: keptnv2.ResultFailed, Message: "Error sending configure-monitoring.started: " + err.Error()}
+	}
+	return nil
 }
 
 // GetShipyard returns the shipyard definition of a project

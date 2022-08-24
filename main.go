@@ -42,6 +42,7 @@ func main() {
 
 	log.Printf("Starting %s", serviceName)
 
+	// Creating an HTTP listener on port 8080 to receive alerts from Prometheus directly
 	http.HandleFunc("/", HTTPGetHandler)
 	go func() {
 		err := http.ListenAndServe(":8080", nil)
@@ -74,20 +75,22 @@ func main() {
 	).Start())
 }
 
+// prometheusSLIProviderFilter filters get-sli.triggered events for Prometheus
 func prometheusSLIProviderFilter(keptnHandle sdk.IKeptn, event sdk.KeptnEvent) bool {
 	data := &keptnv2.GetSLITriggeredEventData{}
 	if err := keptnv2.Decode(event.Data, data); err != nil {
-		keptnHandle.Logger().Errorf("Could not parse test.triggered event: %s", err.Error())
+		keptnHandle.Logger().Errorf("Could not parse get-sli.triggered event: %s", err.Error())
 		return false
 	}
 
 	return data.GetSLI.SLIProvider == "prometheus"
 }
 
+// prometheusTypeFilter filters monitoring.configure events for Prometheus
 func prometheusTypeFilter(keptnHandle sdk.IKeptn, event sdk.KeptnEvent) bool {
 	data := &keptnevents.ConfigureMonitoringEventData{}
 	if err := keptnv2.Decode(event.Data, data); err != nil {
-		keptnHandle.Logger().Errorf("Could not parse test.triggered event: %s", err.Error())
+		keptnHandle.Logger().Errorf("Could not parse monitoring.configure event: %s", err.Error())
 		return false
 	}
 

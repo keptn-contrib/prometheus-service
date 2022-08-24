@@ -11,7 +11,7 @@ image:
   tag: ""
 
 subscription:
-  pubsubTopic: "sh.keptn.event.monitoring.configure,sh.keptn.event.configure-monitoring.triggered,sh.keptn.event.get-sli.triggered" # Sets the events the service subscribes to
+  pubsubTopic: "sh.keptn.event.monitoring.configure,sh.keptn.event.get-sli.triggered" # Sets the events the service subscribes to
 
 # Prometheus specific configuration
 prometheus:

@@ -114,8 +114,12 @@ func (eh GetSliEventHandler) Execute(k sdk.IKeptn, event sdk.KeptnEvent) (interf
 	// construct finished event data
 	getSliFinishedEventData := &keptnv2.GetSLIFinishedEventData{
 		EventData: keptnv2.EventData{
-			Status: keptnv2.StatusSucceeded,
-			Result: finalSLIEventResult,
+			Status:  keptnv2.StatusSucceeded,
+			Result:  finalSLIEventResult,
+			Project: eventData.Project,
+			Stage:   eventData.Stage,
+			Service: eventData.Service,
+			Labels:  eventData.Labels,
 		},
 		GetSLI: keptnv2.GetSLIFinished{
 			IndicatorValues: sliResults,

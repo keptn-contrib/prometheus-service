@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.9.0](https://github.com/keptn-contrib/prometheus-service/compare/0.8.5...0.9.0) (2022-08-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Keptn 0.18 compatibility (#363)
+
+### Features
+
+* Keptn 0.18 compatibility ([#363](https://github.com/keptn-contrib/prometheus-service/issues/363)) ([1288de5](https://github.com/keptn-contrib/prometheus-service/commit/1288de5580c086d135d968d4d10794638e9becd0))
+* Switch to resource-service in order to guarantee compat. with Keptn 0.18 and newer ([#361](https://github.com/keptn-contrib/prometheus-service/issues/361)) ([d33a1a5](https://github.com/keptn-contrib/prometheus-service/commit/d33a1a5e08672fde1cdd1f6ccd60881990d8e84c))
+
 ### [0.8.5](https://github.com/keptn-contrib/prometheus-service/compare/0.8.4...0.8.5) (2022-08-17)
 
 

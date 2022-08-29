@@ -58,7 +58,8 @@ type remediationTriggeredEventData struct {
 	// Problem contains details about the problem
 	Problem keptncommons.ProblemEventData `json:"problem"`
 	// Deployment contains the current deployment, that is inferred from the alert event
-	Deployment string `json:"deployment"`
+
+	Deployment keptnv2.DeploymentFinishedData `json:"deployment"`
 }
 
 // ProcessAndForwardAlertEvent reads the payload from the request and sends a valid Cloud event to the keptn event broker
@@ -104,8 +105,12 @@ func ProcessAndForwardAlertEvent(rw http.ResponseWriter, requestBody []byte, log
 				"Problem URL": event.Alerts[0].GeneratorURL,
 			},
 		},
-		Problem:    problemData,
-		Deployment: event.Alerts[0].Labels.Deployment,
+		Problem: problemData,
+		Deployment: keptnv2.DeploymentFinishedData{
+			DeploymentNames: []string{
+				event.Alerts[0].Labels.Deployment,
+			},
+		},
 	}
 
 	if event.Alerts[0].Fingerprint != "" {

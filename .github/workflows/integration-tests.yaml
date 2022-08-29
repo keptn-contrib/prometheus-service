@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        keptn-version: ["0.18.0"] # https://github.com/keptn/keptn/releases
+        keptn-version: ["0.18.1"] # https://github.com/keptn/keptn/releases
         prometheus-version: ["15.10.1"]
     env:
       GO_VERSION: 1.17
@@ -25,9 +25,10 @@ jobs:
       GO111MODULE: "on"
       BRANCH: ${{ github.head_ref || github.ref_name }}
       ENABLE_E2E_TEST: true
-      JES_VERSION: "0.2.3"
+      JES_VERSION: "0.2.4"
       JES_NAMESPACE: keptn-jes
       PROMETHEUS_NAMESPACE: monitoring
+      GITEA_PROVISIONER_VERSION: "0.1.1"
       GITEA_ADMIN_USERNAME: GiteaAdmin
       GITEA_NAMESPACE: gitea
       KUBECONFIG: /etc/rancher/k3s/k3s.yaml
@@ -61,6 +62,7 @@ jobs:
       - name: Install and start K3s
         run: |
           curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.21.12+k3s1" INSTALL_K3S_EXEC="--no-deploy traefik" K3S_KUBECONFIG_MODE="644" sh -
+
 
       - name: Wait for K3s to become ready
         timeout-minutes: 1
@@ -110,7 +112,8 @@ jobs:
           GITEA_ADMIN_PASSWORD: ${{ steps.gitea_credentials.outputs.GITEA_ADMIN_PASSWORD }}
           GITEA_ENDPOINT: ${{ steps.gitea.outputs.GITEA_ENDPOINT }}
         run: |
-          helm install keptn-gitea-provisioner-service https://github.com/keptn-sandbox/keptn-gitea-provisioner-service/releases/download/0.1.0/keptn-gitea-provisioner-service-0.1.0.tgz \
+          helm install keptn-gitea-provisioner-service \
+            https://github.com/keptn-sandbox/keptn-gitea-provisioner-service/releases/download/${GITEA_PROVISIONER_VERSION}/keptn-gitea-provisioner-service-${GITEA_PROVISIONER_VERSION}.tgz \
             --set gitea.endpoint=${GITEA_ENDPOINT} \
             --set gitea.admin.create=true \
             --set gitea.admin.username=${GITEA_ADMIN_USERNAME} \

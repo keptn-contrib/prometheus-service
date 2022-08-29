@@ -17,9 +17,6 @@ compatibility matrix below.
 
 | Keptn Version\* | [Prometheus Service Image](https://github.com/keptn-contrib/prometheus-service/pkgs/container/prometheus-service) |
 |:---------------:|:-----------------------------------------------------------------------------------------------------------------:|
-|     0.10.0      |                                       keptncontrib/prometheus-service:0.7.1                                       |
-|     0.10.0      |                                       keptncontrib/prometheus-service:0.7.2                                       |
-|     0.12.0      |                                       keptncontrib/prometheus-service:0.7.3                                       |
 |     0.13.x      |                                       keptncontrib/prometheus-service:0.7.4                                       |
 |     0.13.x      |                                       keptncontrib/prometheus-service:0.7.5                                       |
 |    0.14.2\**    |                                       keptncontrib/prometheus-service:0.8.0                                       |
@@ -27,6 +24,8 @@ compatibility matrix below.
 |     0.16.0      |                                     keptncontrib/prometheus-service:0.8.2\***                                     |
 |     0.16.0      |                                       keptncontrib/prometheus-service:0.8.3                                       |
 |     0.17.0      |                                       keptncontrib/prometheus-service:0.8.5                                       |
+|   0.18.0\****   |                                       keptncontrib/prometheus-service:0.9.0                                       |
+
 
 \* This is the Keptn version we aim to be compatible with. Other versions should work too, but there is no guarantee.
 
@@ -34,6 +33,9 @@ compatibility matrix below.
 change in NATS cluster name.
 
 \*** These versions are not compatible with Prometheus Alertmanager <= 0.24
+
+\**** This version is only compatible with Keptn 0.18.0 and potentially newer releases due to a breaking change with
+resource-service / configuration-service.
 
 You can find more information and older releases on
 the [Releases](https://github.com/keptn-contrib/prometheus-service/releases) page.

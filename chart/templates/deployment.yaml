@@ -51,7 +51,7 @@ spec:
             - name: METRICS_SCRAPE_PATH
               value: '/metrics'
             - name: CONFIGURATION_SERVICE
-              value: 'http://resource-service:8080'
+              value: 'http://configuration-service:8080'
             - name: PROMETHEUS_NS
               value: '{{- include "prometheus-service.namespace" . }}'
             - name: PROMETHEUS_CM

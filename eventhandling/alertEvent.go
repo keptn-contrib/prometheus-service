@@ -1,10 +1,14 @@
 package eventhandling
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	keptncommons "github.com/keptn/go-utils/pkg/lib"
+	"github.com/nats-io/nats.go"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,6 +17,7 @@ import (
 	"github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 
+	cenats "github.com/cloudevents/sdk-go/protocol/nats/v2"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/uuid"
 )
@@ -145,16 +150,48 @@ func createAndSendCE(problemData remediationTriggeredEventData, shkeptncontext s
 		return fmt.Errorf("unable to set cloud event data: %w", err)
 	}
 
-	keptnHandler, err := keptnv2.NewKeptn(&event, keptn.KeptnOpts{})
+	err = forwardEventToNATSServer(event)
 	if err != nil {
-		return fmt.Errorf("could not initialize Keptn Handler: %s", err.Error())
-	}
-
-	if err := keptnHandler.SendCloudEvent(event); err != nil {
-		return fmt.Errorf("could not send event: %s", err.Error())
+		return err
 	}
 
 	return nil
+}
+
+func forwardEventToNATSServer(event cloudevents.Event) error {
+	pubSubConnection, err := createPubSubConnection(event.Context.GetType())
+	if err != nil {
+		return err
+	}
+
+	c, err := cloudevents.NewClient(pubSubConnection)
+	if err != nil {
+		log.Printf("Failed to create cloudevents client: %v", err)
+		return err
+	}
+
+	cloudevents.WithEncodingStructured(context.Background())
+
+	if result := c.Send(context.Background(), event); cloudevents.IsUndelivered(result) {
+		log.Printf("Failed to send cloud event: %v", result.Error())
+	} else {
+		log.Printf("Sent: %s, accepted: %t", event.ID(), cloudevents.IsACK(result))
+	}
+	return nil
+}
+
+func createPubSubConnection(topic string) (*cenats.Sender, error) {
+	if topic == "" {
+		return nil, errors.New("no PubSub Topic defined")
+	}
+
+	p, err := cenats.NewSender("nats://keptn-nats", topic, cenats.NatsOptions(nats.MaxReconnects(-1)))
+	if err != nil {
+		log.Printf("Failed to create nats protocol, %v", err)
+		return nil, err
+	}
+
+	return p, nil
 }
 
 // createOrApplyKeptnContext re-uses the existing Keptn Context or creates a new one based on prometheus fingerprint

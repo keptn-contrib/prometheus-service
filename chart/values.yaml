@@ -10,6 +10,9 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+subscription:
+  pubsubTopic: "sh.keptn.event.monitoring.configure,sh.keptn.event.get-sli.triggered" # Sets the events the service subscribes to
+
 # Prometheus specific configuration
 prometheus:
   namespace: ""                              # K8s namespace where prometheus is installed
@@ -20,18 +23,6 @@ prometheus:
   createAlerts: true                         # Enables the automatic creation of Prometheus alerts (cannot be true if createTargets is false)
   autodetect: true                           # Enable of the auto-detection of the Prometheus installation
   autodetect_am: true                        # Enable of the auto-detection of the Prometheus Alertmanager installation
-
-distributor:
-  stageFilter: ""                            # Sets the stage this helm service belongs to
-  serviceFilter: ""                          # Sets the service this helm service belongs to
-  projectFilter: ""                          # Sets the project this helm service belongs to
-  image:
-    repository: docker.io/keptn/distributor  # Container Image Name
-    pullPolicy: IfNotPresent                 # Kubernetes Image Pull Policy
-    tag: "0.18.0"                            # Container Tag
-  config:
-    queueGroup:
-      enabled: true                          # Enable connection via Nats queue group to support exactly-once message processing
 
 # Note: Remote Control Plane is currently not supported by prometheus-service - please keep this setting disabled
 remoteControlPlane:

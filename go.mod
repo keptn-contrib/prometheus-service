@@ -16,7 +16,7 @@ require (
 	github.com/nats-io/nats.go v1.16.0
 	github.com/prometheus/alertmanager v0.24.0
 	github.com/prometheus/client_golang v1.12.2
-	github.com/prometheus/common v0.32.1 // pin to v0.32.1; must be the same as alertmanager
+	github.com/prometheus/common v0.37.0 // pin to v0.32.1; must be the same as alertmanager
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.8.0
 	gopkg.in/yaml.v2 v2.4.0

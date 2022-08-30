@@ -60,7 +60,9 @@ func (eh GetSliEventHandler) Execute(k sdk.IKeptn, event sdk.KeptnEvent) (interf
 		return nil, &sdk.Error{Err: err, StatusType: keptnv2.StatusErrored, ResultType: keptnv2.ResultFailed, Message: "failed to get Prometheus API URL: " + err.Error()}
 	}
 
+	// determine deployment type based on what lighthouse-service is providing
 	deployment := eventData.Deployment // "canary", "primary" or "" (or "direct" or "user_managed")
+	// fallback: get deployment type from labels
 	if deploymentLabel, ok := eventData.Labels["deployment"]; deployment == "" && !ok {
 		log.Println("Warning: no deployment type specified in event, defaulting to \"primary\"")
 		deployment = "primary"

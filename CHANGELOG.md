@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.9.1](https://github.com/keptn-contrib/prometheus-service/compare/0.9.0...0.9.1) (2022-08-30)
+
+
+### Features
+
+* Reimplement service with go-sdk ([#358](https://github.com/keptn-contrib/prometheus-service/issues/358)) ([dbb3576](https://github.com/keptn-contrib/prometheus-service/commit/dbb357614041e16999fd0026a56b3dd7c5bbf8b0))
+
+
+### Bug Fixes
+
+* Deployment Type in remediation.triggered incompatible with Keptn cloud events ([#366](https://github.com/keptn-contrib/prometheus-service/issues/366)) ([af1db26](https://github.com/keptn-contrib/prometheus-service/commit/af1db26db108b3233ff4212b787f49045c65c108))
+
 ## [0.9.0](https://github.com/keptn-contrib/prometheus-service/compare/0.8.5...0.9.0) (2022-08-29)
 
 

@@ -22,3 +22,5 @@ spec:
           tasks:
             - name: "get-action"
             - name: "action"
+            - name: "evaluation"
+              triggeredAfter: "1m"

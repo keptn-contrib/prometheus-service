@@ -273,6 +273,8 @@ func TestPodtatoheadEvaluation(t *testing.T) {
 		// Check if the following event are in the project:
 		//   - remediation.triggered		(making sure prometheus-service actually sends a message to Keptn)
 		//   - get-action.finished          (The message format is compatible with remediation-service)
+		//   - evaluation.triggered         (making sure Keptn emits an evaluation.triggered)
+		//   - get-sli.finished             (making sure prometheus-service responds with data)
 		requireWaitForFilteredEvent(t,
 			testEnv.API,
 			1*time.Minute,
@@ -306,6 +308,43 @@ func TestPodtatoheadEvaluation(t *testing.T) {
 				return responseEventData.Result == "pass" && responseEventData.Status == "succeeded"
 			},
 			"remediation-service",
+		)
+
+		// wait roughly 60 seconds for evaluation.triggered
+		requireWaitForFilteredEvent(t,
+			testEnv.API,
+			2*time.Minute,
+			1*time.Second,
+			&api.EventFilter{
+				Project:   testEnv.EventData.Project,
+				Stage:     testEnv.EventData.Stage,
+				Service:   testEnv.EventData.Service,
+				EventType: "sh.keptn.event.evaluation.triggered",
+			},
+			func(event *models.KeptnContextExtendedCE) bool {
+				return true
+			},
+			"shipyard-controller",
+		)
+
+		// wait for prometheus-service returning a get-sli.finished
+		requireWaitForFilteredEvent(t,
+			testEnv.API,
+			1*time.Minute,
+			1*time.Second,
+			&api.EventFilter{
+				Project:   testEnv.EventData.Project,
+				Stage:     testEnv.EventData.Stage,
+				Service:   testEnv.EventData.Service,
+				EventType: "sh.keptn.event.get-sli.finished",
+			},
+			func(event *models.KeptnContextExtendedCE) bool {
+				responseEventData, err := parseKeptnEventData(event)
+				require.NoError(t, err)
+
+				return responseEventData.Result == "pass" && responseEventData.Status == "succeeded"
+			},
+			"prometheus-service",
 		)
 	})
 }

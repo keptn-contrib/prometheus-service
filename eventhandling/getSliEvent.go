@@ -74,7 +74,9 @@ func (eh GetSliEventHandler) HandleEvent() error {
 		return sendFinishedErrorEvent(fmt.Errorf("unable to get prometheus api URL: %w", err))
 	}
 
+	// determine deployment type based on what lighthouse-service is providing
 	deployment := eventData.Deployment // "canary", "primary" or "" (or "direct" or "user_managed")
+	// fallback: get deployment type from labels
 	if deploymentLabel, ok := eventData.Labels["deployment"]; deployment == "" && !ok {
 		log.Println("Warning: no deployment type specified in event, defaulting to \"primary\"")
 		deployment = "primary"

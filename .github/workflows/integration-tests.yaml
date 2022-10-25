@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        keptn-version: ["0.18.1"] # https://github.com/keptn/keptn/releases
+        keptn-version: ["0.18.1", "0.19.0", "0.19.1"] # https://github.com/keptn/keptn/releases
         prometheus-version: ["15.10.1"]
     env:
       GO_VERSION: 1.17

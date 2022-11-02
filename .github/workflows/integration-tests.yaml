@@ -11,13 +11,28 @@ defaults:
     shell: bash
 
 jobs:
+  fetch_latest_keptn_versions:
+    name: Fetch latest Keptn version for integration test run
+    runs-on: ubuntu-20.04
+    outputs:
+      LATEST_KEPTN_RELEASE: ${{ steps.prepare_keptn_version_matrix.outputs.LATEST_RELEASE }}
+      LATEST_KEPTN_PRERELEASE: ${{ steps.prepare_keptn_version_matrix.outputs.LATEST_PRERELEASE }}
+    steps:
+      - name: Check out code.
+        uses: actions/checkout@v3.0.2
+
+      - name: Prepare Keptn version matrix
+        id: prepare_keptn_version_matrix
+        run: |
+          ./.github/actions/github-script/fetch-keptn-versions.sh
   integration_test:
     name: "Integration Tests"
+    needs: fetch_latest_keptn_versions
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
-        keptn-version: ["0.18.1", "0.19.0", "0.19.1"] # https://github.com/keptn/keptn/releases
+        keptn-version: ["0.18.1", "${{ needs.fetch_latest_keptn_versions.outputs.LATEST_KEPTN_RELEASE }}", "${{ needs.fetch_latest_keptn_versions.outputs.LATEST_KEPTN_PRERELEASE }}"] # https://github.com/keptn/keptn/releases
         prometheus-version: ["15.10.1"]
     env:
       GO_VERSION: 1.17

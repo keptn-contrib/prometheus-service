@@ -24,7 +24,7 @@ jobs:
       - name: Prepare Keptn version matrix
         id: prepare_keptn_version_matrix
         run: |
-          ./.github/actions/github-script/fetch_keptn_versions.sh
+          ./.github/actions/github-script/fetch-keptn-versions.sh
   integration_test:
     name: "Integration Tests"
     needs: fetch_latest_keptn_versions

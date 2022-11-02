@@ -82,7 +82,7 @@ jobs:
         run: |
           password=$(date +%s | sha256sum | base64 | head -c 32)
           echo "::add-mask::$password"
-          echo "::set-output name=GITEA_ADMIN_PASSWORD::$password"
+          echo "GITEA_ADMIN_PASSWORD=$password" >> "$GITHUB_OUTPUT"
 
       - name: Install Gitea
         id: gitea
@@ -105,7 +105,7 @@ jobs:
             --wait
           
           # Export Gitea connection details
-          echo "::set-output name=GITEA_ENDPOINT::${GITEA_ENDPOINT}"
+          echo "GITEA_ENDPOINT=${GITEA_ENDPOINT}" >> "$GITHUB_OUTPUT"
 
       - name: Install gitea provisioner-service
         env:
@@ -356,7 +356,7 @@ jobs:
 
           if [[ "$REPORT" == *":x:"* ]]; then
             echo "INTEGRATION TESTS FAILED!"
-            echo "##[set-output name=INTEGRATION_TESTS_FAILED;]true"
+            echo "INTEGRATION_TESTS_FAILED=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Finalize GitHub issue template

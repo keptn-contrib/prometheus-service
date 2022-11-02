@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        keptn-version: ["0.18.1"] # https://github.com/keptn/keptn/releases
+        keptn-version: ["0.18.1", "0.19.0", "0.19.1"] # https://github.com/keptn/keptn/releases
         prometheus-version: ["15.10.1"]
     env:
       GO_VERSION: 1.17
@@ -25,7 +25,7 @@ jobs:
       GO111MODULE: "on"
       BRANCH: ${{ github.head_ref || github.ref_name }}
       ENABLE_E2E_TEST: true
-      JES_VERSION: "0.2.4"
+      JES_VERSION: "0.3.0"
       JES_NAMESPACE: keptn-jes
       PROMETHEUS_NAMESPACE: monitoring
       GITEA_PROVISIONER_VERSION: "0.1.1"

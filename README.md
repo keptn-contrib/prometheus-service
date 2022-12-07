@@ -24,7 +24,12 @@ compatibility matrix below.
 |     0.16.0      |                                     keptncontrib/prometheus-service:0.8.2\***                                     |
 |     0.16.x      |                                       keptncontrib/prometheus-service:0.8.3                                       |
 |     0.17.x      |                                       keptncontrib/prometheus-service:0.8.6                                       |
-| 0.18.x & 0.19.x |                                       keptncontrib/prometheus-service:0.9.1                                       |
+|     0.18.x      |                                       keptncontrib/prometheus-service:0.9.1                                       |
+|     0.19.x      |                                       keptncontrib/prometheus-service:0.9.1                                       |
+|     0.20.x      |                                       keptncontrib/prometheus-service:0.9.1                                       |
+|     1.x.y       |                                       keptncontrib/prometheus-service:0.9.1                                       |
+
+
 
 
 \* This is the Keptn version we aim to be compatible with. Other versions should work too, but there is no guarantee.

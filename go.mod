@@ -18,7 +18,7 @@ require (
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/common v0.32.1 // pin to v0.32.1; must be the same as alertmanager
 	github.com/sirupsen/logrus v1.8.1
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.4
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.24.2
 	k8s.io/apimachinery v0.24.2
@@ -36,10 +36,10 @@ require (
 	github.com/cloudevents/sdk-go/observability/opentelemetry/v2 v2.0.0-20211001212819-74757a691209 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful v2.9.5+incompatible // indirect
-	github.com/felixge/httpsnoop v1.0.2 // indirect
+	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
-	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
@@ -69,10 +69,10 @@ require (
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.32.0 // indirect
-	go.opentelemetry.io/otel v1.7.0 // indirect
-	go.opentelemetry.io/otel/metric v0.30.0 // indirect
-	go.opentelemetry.io/otel/trace v1.7.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0 // indirect
+	go.opentelemetry.io/otel v1.18.0 // indirect
+	go.opentelemetry.io/otel/metric v1.18.0 // indirect
+	go.opentelemetry.io/otel/trace v1.18.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.0 // indirect
